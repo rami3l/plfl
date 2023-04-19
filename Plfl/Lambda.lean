@@ -1,5 +1,6 @@
 -- https://plfa.github.io/Lambda/
 
+import Mathlib.Data.Pi.Lex
 import Mathlib.Tactic
 
 open String
@@ -48,10 +49,11 @@ namespace Term
 end Term
 
 -- https://plfa.github.io/Lambda/#values
-inductive Value : Term → Prop where
+inductive Value : Term → Type where
 | lam : Value (ƛ v : d)
 | zero: Value o
 | succ: Value n → Value (ι n)
+deriving BEq, DecidableEq, Repr
 
 -- https://plfa.github.io/Lambda/#substitution
 namespace Term
@@ -93,7 +95,7 @@ namespace Term
   /--
   `Reduce t t'` says that `t` reduces to `t'`.
   -/
-  inductive Reduce : Term → Term → Prop where
+  inductive Reduce : Term → Term → Type where
   | ξ_ap₁ : Reduce l l' → Reduce (l $ m) (l' $ m)
   | ξ_ap₂ : Value v → Reduce m m' → Reduce (v $ m) (v $ m')
   | β_lam : Value v → Reduce ((ƛ x : n) $ v) (n[x := v])
@@ -128,15 +130,71 @@ namespace Term.Reduce
   A reflexive and transitive closure,
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
-  inductive Clos : Term → Term → Prop where
-  | step : (m —→ n) → Clos m n
-  | refl : Clos m m
-  | trans : Clos l m → Clos m n → Clos l n
+  inductive Clos : Term → Term → Type where
+  | nil : Clos m m
+  | cons : (l —→ m) → Clos m n → Clos l n
 
   infix:20 " —↠ " => Clos
 
-  instance preorder : Preorder Term where
-    le := Clos
-    le_refl := by simp [Clos.refl]
-    le_trans := by intros; apply Clos.trans <;> trivial
+  namespace Clos
+    def length : Clos m n → Nat
+    | nil => 0
+    | cons _ cdr => 1 + cdr.length
+
+    def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
+    | nil, c => c
+    | cons h c, c' => cons h <| c.trans c'
+  end Clos
+
+  inductive Clos' : Term → Term → Type where 
+  | refl : Clos' m m
+  | step : (m —→ n) → Clos' m n
+  | trans : Clos' l m → Clos' m n → Clos' l n
+
+  infix:20 " —↠' " => Clos'
+
+  def Clos.to_clos' : (m —↠ n) → (m —↠' n) := by
+    intro
+    | Clos.nil => exact Clos'.refl
+    | Clos.cons h h' => exact Clos'.trans (Clos'.step h) h'.to_clos'
+
+  def Clos'.to_clos : (m —↠' n) → (m —↠ n) := by
+    intro
+    | Clos'.refl => exact Clos.nil
+    | Clos'.step h => exact Clos.cons h Clos.nil
+    | Clos'.trans h h' => apply Clos.trans <;> (apply Clos'.to_clos; assumption)
+  
+  -- https://plfa.github.io/Lambda/#exercise-practice
+  lemma Clos.to_clos'_left_inv : ∀ {x : m —↠ n}, x.to_clos'.to_clos = x := by
+    intro
+    | Clos.nil => rfl
+    | Clos.cons car cdr =>
+      unfold Clos.to_clos' Clos'.to_clos Clos.trans
+      have hcdr := Clos.to_clos'_left_inv (x := cdr); split <;> rw [hcdr]
+      · contradiction -- m —→ m cannot exist.
+      · simp_all; rename_i k _ _ _ l h c heq; unfold Clos'.to_clos at heq
+        suffices hlk : l = k by subst hlk; simp_all; rw [←heq.2]; trivial
+        injection heq; simp_all
+
+  lemma Clos.to_clos'_inj
+  : @Function.Injective (m —↠ n) (m —↠' n) Clos.to_clos'
+  := by
+    unfold Function.Injective
+    intro a b h
+    suffices a.to_clos'.to_clos = b.to_clos'.to_clos by
+      rwa [←Clos.to_clos'_left_inv (x := a), ←Clos.to_clos'_left_inv (x := b)]
+    exact congr_arg Clos'.to_clos h
+
+  theorem Clos.embeds_in_clos' : (m —↠ n) ↪ (m —↠' n) := open Clos in
+    {toFun := to_clos', inj' := to_clos'_inj}
 end Reduce
+
+-- https://plfa.github.io/Lambda/#confluence
+section confluence
+  def Confluence : Type := ∀ {l m n}, (l —↠ m) → (l —↠ n) → (Πₗ p, (m —↠ p) × (n —↠ p))
+  def Diamond : Type := ∀ {l m n}, (l —→ m) → (l —→ n) → (Πₗ p, (m —↠ p) × (n —↠ p))
+  def Deterministic : Prop := ∀ {l m n}, (l —→ m) → (l —→ n) → (m = n)
+
+  -- theorem deterministic_to_confluence : ∀ {l m n}, @Deterministic l m n → @Confluence l m n := by
+  --   sorry
+end confluence
