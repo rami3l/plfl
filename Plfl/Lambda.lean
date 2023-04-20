@@ -1,6 +1,5 @@
 -- https://plfa.github.io/Lambda/
 
-import Mathlib.Data.Pi.Lex
 import Mathlib.Tactic
 
 open String
@@ -191,10 +190,24 @@ end Reduce
 
 -- https://plfa.github.io/Lambda/#confluence
 section confluence
-  def Confluence : Type := ∀ {l m n}, (l —↠ m) → (l —↠ n) → (Πₗ p, (m —↠ p) × (n —↠ p))
-  def Diamond : Type := ∀ {l m n}, (l —→ m) → (l —→ n) → (Πₗ p, (m —↠ p) × (n —↠ p))
-  def Deterministic : Prop := ∀ {l m n}, (l —→ m) → (l —→ n) → (m = n)
+  open Term.Reduce Term.Reduce.Clos
 
-  -- theorem deterministic_to_confluence : ∀ {l m n}, @Deterministic l m n → @Confluence l m n := by
-  --   sorry
+  -- `Σ` is used instead of `∃` because it's a `Type` that exists, not a `Prop`.
+  def Diamond : Type := ∀ ⦃l m n⦄, (l —→ m) → (l —→ n) → (Σ p, (m —↠ p) × (n —↠ p))
+  def Confluence : Type := ∀ ⦃l m n⦄, (l —↠ m) → (l —↠ n) → (Σ p, (m —↠ p) × (n —↠ p))
+  def Deterministic : Prop := ∀ ⦃l m n⦄, (l —→ m) → (l —→ n) → (m = n)
+
+  theorem Deterministic.to_diamond : Deterministic → Diamond := by
+    unfold Deterministic Diamond; intro h l m n lm ln
+    have heq := h lm ln; simp_all
+    exists n; exact ⟨nil, nil⟩
+
+  theorem Deterministic.to_confluence : Deterministic → Confluence
+  | h, l, m, n, lm, ln => by match lm, ln with
+    | nil, nil => exists n; exact ⟨ln, ln⟩
+    | nil, c@(cons _ _) => exists n; exact ⟨c, nil⟩
+    | c@(cons _ _), nil => exists m; exact ⟨nil, c⟩
+    | cons car cdr, cons car' cdr' =>
+      have := h car car'; subst this; simp_all
+      exact to_confluence h cdr cdr'
 end confluence
