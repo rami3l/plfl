@@ -26,25 +26,25 @@ namespace Term
   prefix:80 " ι " => succ
   prefix:90 " ` " => var
 
-  def o : Term := zero
+  @[simp] def o : Term := zero
 
   example : Term := `"foo"
   example : Term := ? `"bar" [zero: o |succ "n" : ι o]
 
-  def one : Term := ι o
-  def two : Term := ι ι o
+  @[simp] def one : Term := ι o
+  @[simp] def two : Term := ι ι o
 
-  def add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((`"+" $ `"m") $ `"n")]
+  @[simp] def add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((`"+" $ `"m") $ `"n")]
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended
-  def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": (`"+" $ `"n") $ ((`"*" $ `"m") $ `"n")]
+  @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": (`"+" $ `"n") $ ((`"*" $ `"m") $ `"n")]
 
   -- Church encoding...
-  def one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
-  def two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
-  def succ_c : Term := ƛ "n" : ι `"n"
-  def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : (`"m" $ `"s") $ ((`"n" $ `"s") $ `"z")
+  @[simp] def one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
+  @[simp] def two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
+  @[simp] def succ_c : Term := ƛ "n" : ι `"n"
+  @[simp] def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : (`"m" $ `"s") $ ((`"n" $ `"s") $ `"z")
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice
-  def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" $ (`"n" $ `"s") $ `"z"
+  @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" $ (`"n" $ `"s") $ `"z"
 end Term
 
 -- https://plfa.github.io/Lambda/#values
@@ -54,11 +54,20 @@ inductive Value : Term → Type where
 | succ: Value n → Value (ι n)
 deriving BEq, DecidableEq, Repr
 
+namespace Value
+  @[simp] def o : Value Term.o := zero
+
+  def of_nat : ℕ → Σ n, Value n
+  | 0 => ⟨Term.o, o⟩
+  | n + 1 => let ⟨tn, vn⟩ := of_nat n; ⟨ι tn, succ vn⟩
+end Value
+
 -- https://plfa.github.io/Lambda/#substitution
 namespace Term
   /--
   `x.subst y v` substitutes term `v` for all free occurrences of variable `y` in term `x`.
   -/
+  @[simp]
   def subst : Term → Sym → Term → Term
   | ` x, y, v => if x = y then v else ` x
   | ƛ x : n, y, v => if x = y then ƛ x : n else ƛ x : n.subst y v
@@ -136,13 +145,20 @@ namespace Term.Reduce
   infix:20 " —↠ " => Clos
 
   namespace Clos
-    def length : Clos m n → Nat
+    @[simp]
+    def length : (m —↠ n) → Nat
     | nil => 0
     | cons _ cdr => 1 + cdr.length
 
+    @[simp] def one (car : m —→ n) : (m —↠ n) := cons car nil
+
+    @[simp]
     def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
+
+    instance is_trans : Trans Clos Clos Clos where
+      trans := trans
   end Clos
 
   inductive Clos' : Term → Term → Type where 
@@ -152,40 +168,36 @@ namespace Term.Reduce
 
   infix:20 " —↠' " => Clos'
 
+  @[simp]
   def Clos.to_clos' : (m —↠ n) → (m —↠' n) := by
     intro
-    | Clos.nil => exact Clos'.refl
-    | Clos.cons h h' => exact Clos'.trans (Clos'.step h) h'.to_clos'
+    | nil => exact Clos'.refl
+    | cons h h' => exact Clos'.trans (Clos'.step h) h'.to_clos'
 
+  @[simp]
   def Clos'.to_clos : (m —↠' n) → (m —↠ n) := by
     intro
-    | Clos'.refl => exact Clos.nil
-    | Clos'.step h => exact Clos.cons h Clos.nil
-    | Clos'.trans h h' => apply Clos.trans <;> (apply Clos'.to_clos; assumption)
+    | refl => exact Clos.nil
+    | step h => exact Clos.one h
+    | trans h h' => apply Clos.trans <;> (apply to_clos; assumption)
   
   -- https://plfa.github.io/Lambda/#exercise-practice
   lemma Clos.to_clos'_left_inv : ∀ {x : m —↠ n}, x.to_clos'.to_clos = x := by
     intro
-    | Clos.nil => rfl
-    | Clos.cons car cdr =>
-      unfold Clos.to_clos' Clos'.to_clos Clos.trans
-      have hcdr := Clos.to_clos'_left_inv (x := cdr); split <;> rw [hcdr]
-      · contradiction -- m —→ m cannot exist.
-      · simp_all; rename_i k _ _ _ l h c heq; unfold Clos'.to_clos at heq
-        suffices hlk : l = k by subst hlk; simp_all; rw [←heq.2]; trivial
-        injection heq; simp_all
+    | nil => rfl
+    | cons car cdr => simp_all; exact to_clos'_left_inv (x := cdr)
 
   lemma Clos.to_clos'_inj
   : @Function.Injective (m —↠ n) (m —↠' n) Clos.to_clos'
   := by
     unfold Function.Injective
     intro a b h
-    suffices a.to_clos'.to_clos = b.to_clos'.to_clos by
-      rwa [←Clos.to_clos'_left_inv (x := a), ←Clos.to_clos'_left_inv (x := b)]
-    exact congr_arg Clos'.to_clos h
+    have : a.to_clos'.to_clos = b.to_clos'.to_clos := by simp_all
+    rwa [←Clos.to_clos'_left_inv (x := a), ←Clos.to_clos'_left_inv (x := b)]
 
-  theorem Clos.embeds_in_clos' : (m —↠ n) ↪ (m —↠' n) := open Clos in
-    {toFun := to_clos', inj' := to_clos'_inj}
+  instance Clos.embeds_in_clos' : (m —↠ n) ↪ (m —↠' n) where
+    toFun := to_clos'
+    inj' := to_clos'_inj
 end Reduce
 
 -- https://plfa.github.io/Lambda/#confluence
@@ -211,3 +223,35 @@ section confluence
       have := h car car'; subst this; simp_all
       exact to_confluence h cdr cdr'
 end confluence
+
+-- https://plfa.github.io/Lambda/#examples-1
+section examples
+  open Term.Reduce Term.Reduce.Clos
+
+  example : ((two_c $ succ_c) $ o) —↠ two := calc
+    (two_c $ succ_c) $ o
+    -- `Clos.one` means that we are reducing just by a single step.
+    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") $ o := Clos.one <| by apply ξ_ap₁; apply β_lam; exact Value.lam
+    _ —↠ succ_c $ succ_c $ o := Clos.one <| by apply β_lam; exact Value.zero
+    _ —↠ succ_c $ one := Clos.one <| by apply ξ_ap₂; apply Value.lam; apply β_lam; exact Value.zero
+    _ —↠ two := Clos.one <| by apply β_lam; exact (Value.of_nat 1).2
+
+  -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
+  example : ((add $ one) $ one) —↠ two := calc
+    (add $ one) $ one
+    _ —↠ ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ one) $ one
+      := Clos.one <| by apply ξ_ap₁; apply ξ_ap₁; apply β_mu
+    _ —↠ (ƛ "n" : ? one [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ one
+      := Clos.one <| by apply ξ_ap₁; apply β_lam; exact (Value.of_nat 1).2
+    _ —↠ ? one [zero: one |succ "m": ι ((add $ `"m") $ one)]
+      := Clos.one <| β_lam (Value.of_nat 1).2
+    _ —↠ ι ((add $ o) $ one)
+      := Clos.one <| β_succ Value.o
+    _ —↠ ι (((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ o) $ one)
+      := Clos.one <| by apply ξ_succ; apply ξ_ap₁; apply ξ_ap₁; apply β_mu
+    _ —↠ ι ((ƛ "n" : ? o [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ one)
+      := Clos.one <| by apply ξ_succ; apply ξ_ap₁; apply β_lam; exact Value.o
+    _ —↠ ι (? o [zero: one |succ "m": ι ((add $ `"m") $ one)])
+      := Clos.one <| by apply ξ_succ; apply β_lam; exact (Value.of_nat 1).2
+    _ —↠ ι one := Clos.one <| ξ_succ β_zero
+end examples
