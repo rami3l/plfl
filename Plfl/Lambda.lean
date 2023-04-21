@@ -252,9 +252,44 @@ end examples
 
 -- https://plfa.github.io/Lambda/#syntax-of-types
 inductive Ty where
-| Nat : Ty
-| Fun : Ty → Ty → Ty 
+| nat
+| fn : Ty → Ty → Ty 
 
 namespace Ty
-  infixr:70 " =⇒ " => Fun
+  notation "ℕt" => nat
+  infixr:70 " -→ " => fn
+
+  example : Ty := (ℕt -→ ℕt) -→ ℕt
+
+  -- TODO
+  -- https://plfa.github.io/Lambda/#quiz-2
+  example := ƛ "s" : `"s" $ `"s" $ o
 end Ty
+
+-- https://plfa.github.io/Lambda/#contexts
+def Context : Type := List (Sym × Ty)
+
+namespace Context
+  def nil : Context := []
+  def extend : Context → Sym → Ty → Context | c, s, t => ⟨s, t⟩ :: c
+
+  notation " ∅ " => nil
+
+  -- The goal is to make `_,_⦂_` work like an `infixl`.
+  -- https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html#From-Precedence-to-Binding-Power
+  notation:50 c " , " s:51 " ⦂ " t:51 => extend c s t
+
+  example {Γ : Context} {s : Sym} {t : Ty} : Context := Γ, s ⦂ t
+
+  -- https://plfa.github.io/Lambda/#lookup-judgment
+  /--
+  `Judgement c s t` means that `s` is of type `t` in the context `c`.
+  -/
+  inductive Judgement : Context → Sym → Ty → Type where
+  | z : Judgement (Γ, x ⦂ X) x X
+  | s : x ≠ y → Judgement Γ x X → Judgement (Γ, y ⦂ Y) x X 
+
+  notation:40 c " ∋ " s " ⦂ " t => Judgement c s t
+
+  example : ∅, "x" ⦂ ℕt -→ ℕt, "y" ⦂ ℕt, "z" ⦂ ℕt ∋ "x" ⦂ ℕt -→ ℕt := by sorry
+end Context
