@@ -2,6 +2,8 @@
 
 import Mathlib.Tactic
 
+set_option tactic.simp.trace true
+
 open String
 
 def Sym : Type := String deriving BEq, DecidableEq, Repr
@@ -36,7 +38,7 @@ namespace Term
 
   @[simp] def add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended
-  @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": `"+" □ `"n" $ `"*" □ `"m" □ `"n"]
+  @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
 
   -- Church encoding...
   @[simp] def succ_c : Term := ƛ "n" : ι `"n"
@@ -44,7 +46,7 @@ namespace Term
   @[simp] def two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
   @[simp] def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice
-  @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" $ `"n" □ `"s" □ `"z"
+  @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ (`"n" □ `"s") □ `"z"
 end Term
 
 -- https://plfa.github.io/Lambda/#values
@@ -192,7 +194,7 @@ namespace Term.Reduce
   instance Clos.embeds_in_clos' : (m —↠ n) ↪ (m —↠' n) where
     toFun := to_clos'
     inj' := to_clos'_inj
-end Reduce
+end Term.Reduce
 
 -- https://plfa.github.io/Lambda/#confluence
 section confluence
@@ -220,7 +222,7 @@ end confluence
 
 -- https://plfa.github.io/Lambda/#examples-1
 section examples
-  open Term.Reduce Term.Reduce.Clos
+  open Term Term.Reduce Term.Reduce.Clos
 
   example : two_c □ succ_c □ o —↠ two := calc
     two_c □ succ_c □ o
@@ -258,12 +260,12 @@ deriving BEq, DecidableEq, Repr
 
 namespace Ty
   notation "ℕt" => nat
-  infixr:70 " -→ " => fn
+  infixr:70 " =⇒ " => fn
 
-  example : Ty := (ℕt -→ ℕt) -→ ℕt
+  example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
 
   @[simp]
-  theorem t_to_t'_ne_t (t t' : Ty) : (t -→ t') ≠ t := by
+  theorem t_to_t'_ne_t (t t' : Ty) : (t =⇒ t') ≠ t := by
     by_contra h; match t with
     | nat => trivial
     | fn ta tb => injection h; have := t_to_t'_ne_t ta tb; contradiction
@@ -299,8 +301,8 @@ namespace Context
   notation:40 c " ∋ " s " ⦂ " t => Lookup c s t
 
   example
-  : ∅ :< "x" ⦂ ℕt -→ ℕt :< "y" ⦂ ℕt :< "z" ⦂ ℕt
-  ∋ "x" ⦂ ℕt -→ ℕt
+  : ∅ :< "x" ⦂ ℕt =⇒ ℕt :< "y" ⦂ ℕt :< "z" ⦂ ℕt
+  ∋ "x" ⦂ ℕt =⇒ ℕt
   := open Lookup in by
     apply s _; apply s _; apply z; repeat trivial
 
@@ -319,13 +321,13 @@ namespace Context
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
   inductive IsTy : Context → Term → Ty → Type where
-  | var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
-  | lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx -→ tn)
-  | ap : IsTy Γ l (tx -→ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
-  | zero : IsTy Γ o ℕt
-  | succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
-  | case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (? L [zero: m |succ x: n]) t
-  | mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
+  | ty_var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
+  | ty_lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
+  | ty_ap : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
+  | ty_zero : IsTy Γ o ℕt
+  | ty_succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
+  | ty_case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (? L [zero: m |succ x: n]) t
+  | ty_mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
   deriving DecidableEq
 
   notation:40 c " ⊢ " t " ⦂ " tt => IsTy c t tt
@@ -337,26 +339,71 @@ namespace Context
 
   infix:40 " ⊬ " => NoTy
 
+  -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/tactics.md#tactics-by-macro-expansion
+  /--
+  `lookup_var` validates the type of a variable by looking it up in the current context.
+  This tactic fails when the lookup fails.
+  -/
+  syntax "lookup_var" : tactic
+  macro_rules
+  | `(tactic| lookup_var) =>
+    `(tactic| apply IsTy.ty_var; repeat (first | apply Lookup.s (by trivial) | exact Lookup.z))
+
+  -- Inform `trivial` of our new tactic.
+  macro_rules | `(tactic| trivial) => `(tactic| lookup_var)
+
+  open IsTy
+
   -- https://plfa.github.io/Lambda/#quiz-2
-  lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) ⦂ ((ℕt -→ ℕt) -→ ℕt) := by
-    apply IsTy.lam; apply IsTy.ap <| IsTy.var Lookup.z
-    apply IsTy.ap; exact IsTy.var Lookup.z; exact IsTy.zero
+  lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) ⦂ ((ℕt =⇒ ℕt) =⇒ ℕt) := by
+    apply ty_lam; apply ty_ap
+    · trivial
+    · apply ty_ap
+      · trivial
+      · exact ty_zero
 
   theorem two_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) □ succ_c ⦂ ℕt := by
-    apply IsTy.ap twice_ty
-    apply IsTy.lam; apply IsTy.succ; exact IsTy.var Lookup.z
+    apply ty_ap twice_ty
+    · apply ty_lam; apply ty_succ; trivial
 
   -- https://plfa.github.io/Lambda/#derivation
-  theorem two_c_ty : Γ ⊢ two_c ⦂ (t -→ t) -→ t -→ t := open Lookup in by
-    apply IsTy.lam; apply IsTy.lam; apply IsTy.ap
-    · exact IsTy.var (s (by trivial) z)
-    · apply IsTy.ap
-      · exact IsTy.var (s (by trivial) z)
-      · exact IsTy.var z
+  @[simp] def NatC (t : Ty) : Ty := (t =⇒ t) =⇒ t =⇒ t
+
+  theorem two_c_ty : Γ ⊢ two_c ⦂ NatC t := by
+    apply ty_lam; apply ty_lam; apply ty_ap
+    · trivial
+    · apply ty_ap <;> trivial
+
+  theorem add_ty : Γ ⊢ add ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
+    apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case <;> try trivial
+    · apply ty_succ; apply ty_ap <;> try trivial
+      · apply ty_ap <;> trivial
+
+  theorem add_c_ty : Γ ⊢ add_c ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
+    repeat apply ty_lam <;> try trivial
+    · repeat apply ty_ap <;> try trivial
+
+  -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
+  theorem mul_ty : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
+    -- TODO: Can we simplify this?
+    apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case
+    · trivial
+    · exact ty_zero
+    · apply ty_ap
+      · apply ty_ap <;> try trivial
+        · apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case <;> try trivial
+          · apply ty_succ; apply ty_ap <;> try trivial
+            · apply ty_ap <;> trivial
+      · repeat apply ty_ap; repeat trivial
+
+  -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice-1
+  theorem mul_c_ty : Γ ⊢ mul_c ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
+    repeat apply ty_lam <;> try trivial
+    · repeat apply ty_ap <;> try trivial
 end Context
 
 section examples
-  open Context
+  open Term Context Lookup IsTy
 
   -- https://plfa.github.io/Lambda/#non-examples
   example : ∅ ⊬ o □ one := by
@@ -367,38 +414,34 @@ section examples
   example : ∅ ⊬ ƛ "x" : `"x" □ `"x" := by
     by_contra h; simp_all
     let ⟨t, ⟨ht⟩⟩ := h
-    let IsTy.lam (IsTy.ap (IsTy.var hx) (IsTy.var hx')) := ht
+    let ty_lam (ty_ap (ty_var hx) (ty_var hx')) := ht
     have := Lookup.functional hx hx'; simp_all
 
-    -- https://plfa.github.io/Lambda/#quiz-3
-    example : ∅ :< "y" ⦂ ℕt -→ ℕt :< "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := open Lookup in by
-      apply IsTy.ap
-      · exact IsTy.var (s (by trivial) z)
-      · exact IsTy.var z
+  -- https://plfa.github.io/Lambda/#quiz-3
+  example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := by
+    apply ty_ap <;> trivial
 
-    example : ∅ :< "y" ⦂ ℕt -→ ℕt :< "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
-      by_contra h; simp_all
-      let ⟨t, ⟨ht⟩⟩ := h
-      cases ht; rename_i hy hx; cases hx; rename_i ty hx; cases hx; contradiction
+  example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
+    by_contra h; simp_all
+    let ⟨t, ⟨ht⟩⟩ := h
+    cases ht; rename_i hy hx
+    · cases hx; rename_i ty hx
+      · cases hx; contradiction
 
-    example : ∅ :< "y" ⦂ ℕt -→ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt -→ ℕt := open Lookup in by
-      apply IsTy.lam; apply IsTy.ap
-      · exact IsTy.var (s (by trivial) z)
-      · exact IsTy.var z
+  example : ∅ :< "y" ⦂ ℕt =⇒ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt =⇒ ℕt := by
+    apply ty_lam; apply ty_ap <;> trivial
 
-    -- example : ∅ :< "x" ⦂ A ⊢ `"x" □ `"x" ⦂ B
+  example : ∅ :< "x" ⦂ tx ⊬ `"x" □ `"x" := by
+    by_contra h; simp_all
+    let ⟨t, ⟨ht⟩⟩ := h
+    cases ht; rename_i hx
+    · cases hx; rename_i hx
+      · cases hx <;> contradiction
 
-    example
-    : ∅ :< "x" ⦂ ℕt -→ ℕt :< "y" ⦂ ℕt -→ ℕt
-    ⊢ ƛ "z" : (`"x" $ `"y" $ `"z") ⦂ ℕt -→ ℕt
-    := open Lookup in by
-      apply IsTy.lam; apply IsTy.ap
-      · exact IsTy.var <| s (by trivial) <| s (by trivial) z
-      · apply IsTy.ap
-        · exact IsTy.var (s (by trivial) z)
-        · exact IsTy.var z
-
-    -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
-
-    -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice-1
+  example
+  : ∅ :< "x" ⦂ ℕt =⇒ ℕt :< "y" ⦂ ℕt =⇒ ℕt
+  ⊢ ƛ "z" : (`"x" $ `"y" $ `"z") ⦂ ℕt =⇒ ℕt
+  := by
+    apply ty_lam; apply ty_ap <;> try trivial
+    · apply ty_ap <;> trivial
 end examples
