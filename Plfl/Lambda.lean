@@ -21,8 +21,8 @@ namespace Term
   notation:50 " ƛ " v " : " d => lam v d
   notation:50 " μ " v " : " d => mu v d
   notation:max " ? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
-  -- " · " is `infixl` in the book, but here we choose to use `infixr`.
-  infixr:70 " $ " => ap
+  infixr:min " $ " => ap
+  infixl:70 " □ " => ap
   prefix:80 " ι " => succ
   prefix:90 " ` " => var
 
@@ -34,17 +34,17 @@ namespace Term
   @[simp] def one : Term := ι o
   @[simp] def two : Term := ι ι o
 
-  @[simp] def add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((`"+" $ `"m") $ `"n")]
+  @[simp] def add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended
-  @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": (`"+" $ `"n") $ ((`"*" $ `"m") $ `"n")]
+  @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": `"+" □ `"n" $ `"*" □ `"m" □ `"n"]
 
   -- Church encoding...
   @[simp] def one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
   @[simp] def two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
   @[simp] def succ_c : Term := ƛ "n" : ι `"n"
-  @[simp] def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : (`"m" $ `"s") $ ((`"n" $ `"s") $ `"z")
+  @[simp] def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice
-  @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" $ (`"n" $ `"s") $ `"z"
+  @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" $ `"n" □ `"s" □ `"z"
 end Term
 
 -- https://plfa.github.io/Lambda/#values
@@ -85,18 +85,18 @@ namespace Term
 
   -- https://plfa.github.io/Lambda/#examples
   example
-  : (ƛ "z" : (`"s" $ `"s") $ `"z")["s" := succ_c]
-  = (ƛ "z" : (succ_c $ succ_c) $ `"z") := rfl
+  : (ƛ "z" : `"s" □ `"s" □ `"z")["s" := succ_c]
+  = (ƛ "z" : succ_c □ succ_c □ `"z") := rfl
 
-  example : ((succ_c $ succ_c) $ `"z")["z" := o] = (succ_c $ succ_c) $ o := rfl
+  example : (succ_c □ succ_c □ `"z")["z" := o] = succ_c □ succ_c □ o := rfl
   example : (ƛ "x" : `"y")["y" := o] = (ƛ "x" : o) := rfl
   example : (ƛ "x" : `"x")["x" := o] = (ƛ "x" : `"x") := rfl
   example : (ƛ "y" : `"y")["x" := o] = (ƛ "y" : `"y") := rfl
 
   -- https://plfa.github.io/Lambda/#quiz
   example
-  : (ƛ "y" : `"x" $ (ƛ "x" : `"x"))["x" := o]
-  = (ƛ "y" : o $ (ƛ "x" : `"x"))
+  : (ƛ "y" : `"x" $ ƛ "x" : `"x")["x" := o]
+  = (ƛ "y" : o $ ƛ "x" : `"x")
   := rfl
 
   -- https://plfa.github.io/Lambda/#reduction
@@ -104,9 +104,9 @@ namespace Term
   `Reduce t t'` says that `t` reduces to `t'`.
   -/
   inductive Reduce : Term → Term → Type where
-  | ξ_ap₁ : Reduce l l' → Reduce (l $ m) (l' $ m)
-  | ξ_ap₂ : Value v → Reduce m m' → Reduce (v $ m) (v $ m')
-  | β_lam : Value v → Reduce ((ƛ x : n) $ v) (n[x := v])
+  | ξ_ap₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
+  | ξ_ap₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
+  | β_lam : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
   | ξ_succ : Reduce m m' → Reduce (ι m) (ι m')
   | ξ_case : Reduce l l' → Reduce (? l [zero: m |succ x : n]) (? l' [zero: m |succ x : n])
   | β_zero : Reduce (? o [zero: m |succ x : n]) m
@@ -118,19 +118,13 @@ end Term
 
 namespace Term.Reduce
   -- https://plfa.github.io/Lambda/#quiz-1
-  example : ((ƛ "x" : `"x") $ (ƛ "x" : `"x")) —→ (ƛ "x" : `"x") := by
+  example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") := by
     apply β_lam; exact Value.lam
 
-  example
-  : (((ƛ "x" : `"x") $ (ƛ "x" : `"x")) $ (ƛ "x" : `"x"))
-  —→ ((ƛ "x" : `"x") $ (ƛ "x" : `"x"))
-  := by
+  example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") □ (ƛ "x" : `"x") := by
     apply ξ_ap₁; apply β_lam; exact Value.lam
 
-  example
-  : ((two_c $ succ_c) $ o)
-  —→ ((ƛ "z" : succ_c $ succ_c $ `"z") $ o)
-  := by
+  example : two_c □ succ_c □ o —→ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := by
     unfold two_c; apply ξ_ap₁; apply β_lam; exact Value.lam
 
   -- https://plfa.github.io/Lambda/#reflexive-and-transitive-closure
@@ -228,30 +222,39 @@ end confluence
 section examples
   open Term.Reduce Term.Reduce.Clos
 
-  example : ((two_c $ succ_c) $ o) —↠ two := calc
-    (two_c $ succ_c) $ o
+  example : two_c □ succ_c □ o —↠ two := calc
+    two_c □ succ_c □ o
     -- `Clos.one` means that we are reducing just by a single step.
-    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") $ o := Clos.one <| by apply ξ_ap₁; apply β_lam; exact Value.lam
-    _ —↠ succ_c $ succ_c $ o := Clos.one <| by apply β_lam; exact Value.zero
-    _ —↠ succ_c $ one := Clos.one <| by apply ξ_ap₂; apply Value.lam; apply β_lam; exact Value.zero
+    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := Clos.one <| by apply ξ_ap₁; apply β_lam; exact Value.lam
+    _ —↠ (succ_c $ succ_c $ o) := Clos.one <| by apply β_lam; exact Value.zero
+    _ —↠ succ_c □ one := Clos.one <| by apply ξ_ap₂; apply Value.lam; apply β_lam; exact Value.zero
     _ —↠ two := Clos.one <| by apply β_lam; exact (Value.of_nat 1).2
 
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
-  example : ((add $ one) $ one) —↠ two := calc
-    (add $ one) $ one
-    _ —↠ ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ one) $ one
+  example : add □ one □ one —↠ two := calc
+    add □ one □ one
+    _ —↠ (ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one □ one
       := Clos.one <| by apply ξ_ap₁; apply ξ_ap₁; apply β_mu
-    _ —↠ (ƛ "n" : ? one [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ one
+    _ —↠ (ƛ "n" : ? one [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one
       := Clos.one <| by apply ξ_ap₁; apply β_lam; exact (Value.of_nat 1).2
-    _ —↠ ? one [zero: one |succ "m": ι ((add $ `"m") $ one)]
+    _ —↠ ? one [zero: one |succ "m": ι (add □ `"m" □ one)]
       := Clos.one <| β_lam (Value.of_nat 1).2
-    _ —↠ ι ((add $ o) $ one)
+    _ —↠ ι (add □ o □ one)
       := Clos.one <| β_succ Value.o
-    _ —↠ ι (((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ o) $ one)
+    _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ o □ one)
       := Clos.one <| by apply ξ_succ; apply ξ_ap₁; apply ξ_ap₁; apply β_mu
-    _ —↠ ι ((ƛ "n" : ? o [zero: `"n" |succ "m": ι ((add $ `"m") $ `"n")]) $ one)
+    _ —↠ ι ((ƛ "n" : ? o [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one)
       := Clos.one <| by apply ξ_succ; apply ξ_ap₁; apply β_lam; exact Value.o
-    _ —↠ ι (? o [zero: one |succ "m": ι ((add $ `"m") $ one)])
+    _ —↠ ι (? o [zero: one |succ "m": ι (add □ `"m" □ one)])
       := Clos.one <| by apply ξ_succ; apply β_lam; exact (Value.of_nat 1).2
     _ —↠ ι one := Clos.one <| ξ_succ β_zero
 end examples
+
+-- https://plfa.github.io/Lambda/#syntax-of-types
+inductive Ty where
+| Nat : Ty
+| Fun : Ty → Ty → Ty 
+
+namespace Ty
+  infixr:70 " =⇒ " => Fun
+end Ty
