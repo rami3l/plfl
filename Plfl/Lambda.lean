@@ -39,9 +39,9 @@ namespace Term
   @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": `"+" □ `"n" $ `"*" □ `"m" □ `"n"]
 
   -- Church encoding...
+  @[simp] def succ_c : Term := ƛ "n" : ι `"n"
   @[simp] def one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
   @[simp] def two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
-  @[simp] def succ_c : Term := ƛ "n" : ι `"n"
   @[simp] def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice
   @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" $ `"n" □ `"s" □ `"z"
@@ -74,7 +74,7 @@ namespace Term
   | ap l m, y, v => l.subst y v $ m.subst y v
   -- `.o` means that `o` is not a new binding, but a constant.
   -- See: https://leanprover.github.io/theorem_proving_in_lean4/induction_and_recursion.html?highlight=inac#inaccessible-patterns
-  | .o, _, _ => o 
+  | .o, _, _ => o
   | ι n, y, v => ι (n.subst y v)
   | ? l [zero: m |succ x: n], y, v => if x = y
       then ? l.subst y v [zero: m.subst y v |succ x: n]
@@ -104,14 +104,14 @@ namespace Term
   `Reduce t t'` says that `t` reduces to `t'`.
   -/
   inductive Reduce : Term → Term → Type where
-  | ξ_ap₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
-  | ξ_ap₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
-  | β_lam : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
-  | ξ_succ : Reduce m m' → Reduce (ι m) (ι m')
-  | ξ_case : Reduce l l' → Reduce (? l [zero: m |succ x : n]) (? l' [zero: m |succ x : n])
-  | β_zero : Reduce (? o [zero: m |succ x : n]) m
-  | β_succ : Value v → Reduce (? ι v [zero: m |succ x : n]) (n[x := v])
-  | β_mu : Reduce (μ x : m) (m[x := μ x : m])
+  | lam_β : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
+  | ap_ξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
+  | ap_ξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
+  | zero_β : Reduce (? o [zero: m |succ x : n]) m
+  | succ_β : Value v → Reduce (? ι v [zero: m |succ x : n]) (n[x := v])
+  | succ_ξ : Reduce m m' → Reduce (ι m) (ι m')
+  | case_ξ : Reduce l l' → Reduce (? l [zero: m |succ x : n]) (? l' [zero: m |succ x : n])
+  | mu_β : Reduce (μ x : m) (m[x := μ x : m])
 
   infix:40 " —→ " => Reduce
 end Term
@@ -119,13 +119,13 @@ end Term
 namespace Term.Reduce
   -- https://plfa.github.io/Lambda/#quiz-1
   example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") := by
-    apply β_lam; exact Value.lam
+    apply lam_β; exact Value.lam
 
   example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") □ (ƛ "x" : `"x") := by
-    apply ξ_ap₁; apply β_lam; exact Value.lam
+    apply ap_ξ₁; apply lam_β; exact Value.lam
 
   example : two_c □ succ_c □ o —→ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := by
-    unfold two_c; apply ξ_ap₁; apply β_lam; exact Value.lam
+    unfold two_c; apply ap_ξ₁; apply lam_β; exact Value.lam
 
   -- https://plfa.github.io/Lambda/#reflexive-and-transitive-closure
   /--
@@ -155,7 +155,7 @@ namespace Term.Reduce
       trans := trans
   end Clos
 
-  inductive Clos' : Term → Term → Type where 
+  inductive Clos' : Term → Term → Type where
   | refl : Clos' m m
   | step : (m —→ n) → Clos' m n
   | trans : Clos' l m → Clos' m n → Clos' l n
@@ -174,7 +174,7 @@ namespace Term.Reduce
     | refl => exact Clos.nil
     | step h => exact Clos.one h
     | trans h h' => apply Clos.trans <;> (apply to_clos; assumption)
-  
+
   -- https://plfa.github.io/Lambda/#exercise-practice
   lemma Clos.to_clos'_left_inv : ∀ {x : m —↠ n}, x.to_clos'.to_clos = x := by
     intro
@@ -225,71 +225,115 @@ section examples
   example : two_c □ succ_c □ o —↠ two := calc
     two_c □ succ_c □ o
     -- `Clos.one` means that we are reducing just by a single step.
-    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := Clos.one <| by apply ξ_ap₁; apply β_lam; exact Value.lam
-    _ —↠ (succ_c $ succ_c $ o) := Clos.one <| by apply β_lam; exact Value.zero
-    _ —↠ succ_c □ one := Clos.one <| by apply ξ_ap₂; apply Value.lam; apply β_lam; exact Value.zero
-    _ —↠ two := Clos.one <| by apply β_lam; exact (Value.of_nat 1).2
+    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
+    _ —↠ (succ_c $ succ_c $ o) := Clos.one <| by apply lam_β; exact Value.zero
+    _ —↠ succ_c □ one := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
+    _ —↠ two := Clos.one <| by apply lam_β; exact (Value.of_nat 1).2
 
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
   example : add □ one □ one —↠ two := calc
     add □ one □ one
     _ —↠ (ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one □ one
-      := Clos.one <| by apply ξ_ap₁; apply ξ_ap₁; apply β_mu
+      := Clos.one <| by apply ap_ξ₁; apply ap_ξ₁; apply mu_β
     _ —↠ (ƛ "n" : ? one [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one
-      := Clos.one <| by apply ξ_ap₁; apply β_lam; exact (Value.of_nat 1).2
+      := Clos.one <| by apply ap_ξ₁; apply lam_β; exact (Value.of_nat 1).2
     _ —↠ ? one [zero: one |succ "m": ι (add □ `"m" □ one)]
-      := Clos.one <| β_lam (Value.of_nat 1).2
+      := Clos.one <| lam_β (Value.of_nat 1).2
     _ —↠ ι (add □ o □ one)
-      := Clos.one <| β_succ Value.o
+      := Clos.one <| succ_β Value.o
     _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ o □ one)
-      := Clos.one <| by apply ξ_succ; apply ξ_ap₁; apply ξ_ap₁; apply β_mu
+      := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
     _ —↠ ι ((ƛ "n" : ? o [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one)
-      := Clos.one <| by apply ξ_succ; apply ξ_ap₁; apply β_lam; exact Value.o
+      := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact Value.o
     _ —↠ ι (? o [zero: one |succ "m": ι (add □ `"m" □ one)])
-      := Clos.one <| by apply ξ_succ; apply β_lam; exact (Value.of_nat 1).2
-    _ —↠ ι one := Clos.one <| ξ_succ β_zero
+      := Clos.one <| by apply succ_ξ; apply lam_β; exact (Value.of_nat 1).2
+    _ —↠ ι one := Clos.one <| succ_ξ zero_β
 end examples
 
 -- https://plfa.github.io/Lambda/#syntax-of-types
 inductive Ty where
 | nat
-| fn : Ty → Ty → Ty 
+| fn : Ty → Ty → Ty
 
 namespace Ty
   notation "ℕt" => nat
   infixr:70 " -→ " => fn
 
   example : Ty := (ℕt -→ ℕt) -→ ℕt
-
-  -- TODO
-  -- https://plfa.github.io/Lambda/#quiz-2
-  example := ƛ "s" : `"s" $ `"s" $ o
 end Ty
 
 -- https://plfa.github.io/Lambda/#contexts
 def Context : Type := List (Sym × Ty)
 
 namespace Context
+  open Term
+
   def nil : Context := []
   def extend : Context → Sym → Ty → Context | c, s, t => ⟨s, t⟩ :: c
 
   notation " ∅ " => nil
 
-  -- The goal is to make `_,_⦂_` work like an `infixl`.
+  -- The goal is to make `_:<_⦂_` work like an `infixl`.
   -- https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html#From-Precedence-to-Binding-Power
-  notation:50 c " , " s:51 " ⦂ " t:51 => extend c s t
+  notation:50 c " :< " s:51 " ⦂ " t:51 => extend c s t
 
-  example {Γ : Context} {s : Sym} {t : Ty} : Context := Γ, s ⦂ t
+  example {Γ : Context} {s : Sym} {t : Ty} : Context := Γ :< s ⦂ t
 
   -- https://plfa.github.io/Lambda/#lookup-judgment
   /--
-  `Judgement c s t` means that `s` is of type `t` in the context `c`.
+  A lookup judgement.
+  `Lookup c s t` means that `s` is of type `t` by _looking up_ the context `c`.
   -/
-  inductive Judgement : Context → Sym → Ty → Type where
-  | z : Judgement (Γ, x ⦂ X) x X
-  | s : x ≠ y → Judgement Γ x X → Judgement (Γ, y ⦂ Y) x X 
+  inductive Lookup : Context → Sym → Ty → Prop where
+  | z : Lookup (Γ :< x ⦂ tx) x tx
+  | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
 
-  notation:40 c " ∋ " s " ⦂ " t => Judgement c s t
+  notation:40 c " ∋ " s " ⦂ " t => Lookup c s t
 
-  example : ∅, "x" ⦂ ℕt -→ ℕt, "y" ⦂ ℕt, "z" ⦂ ℕt ∋ "x" ⦂ ℕt -→ ℕt := by sorry
+  example
+  : ∅ :< "x" ⦂ ℕt -→ ℕt :< "y" ⦂ ℕt :< "z" ⦂ ℕt
+  ∋ "x" ⦂ ℕt -→ ℕt
+  := open Lookup in by
+    apply s _; apply s _; apply z; repeat trivial
+
+  -- https://plfa.github.io/Lambda/#lookup-is-functional
+  theorem Lookup.functional : (Γ ∋ x ⦂ tx) → (Γ ∋ x ⦂ tx') → tx = tx' := by
+    intro
+    | z, z => rfl
+    | z, s _ e => trivial
+    | s _ e, z => trivial
+    | s _ e, s _ e' => exact functional e e'
+
+  -- https://plfa.github.io/Lambda/#typing-judgment
+  /--
+  A general typing judgement.
+  `IsTy c s t` means that `s` can be inferred to be of type `t` in the context `c`.
+  -/
+  inductive IsTy : Context → Term → Ty → Prop where
+  | var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
+  | lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx -→ tn)
+  | ap : IsTy Γ l (tx -→ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
+  | zero : IsTy Γ o ℕt
+  | succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
+  | case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (? L [zero: m |succ x: n]) t
+  | mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
+
+  notation:40 c " ⊢ " s " ⦂ " t => IsTy c s t
+
+  -- https://plfa.github.io/Lambda/#quiz-2
+  lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) ⦂ ((ℕt -→ ℕt) -→ ℕt) := by
+    apply IsTy.lam; apply IsTy.ap <| IsTy.var Lookup.z
+    apply IsTy.ap; exact IsTy.var Lookup.z; exact IsTy.zero
+
+  theorem two_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) □ succ_c ⦂ ℕt := by
+    apply IsTy.ap twice_ty
+    apply IsTy.lam; apply IsTy.succ; exact IsTy.var Lookup.z
+
+  -- https://plfa.github.io/Lambda/#derivation
+  theorem two_c_ty : Γ ⊢ two_c ⦂ (t -→ t) -→ t -→ t := open Lookup in by
+    apply IsTy.lam; apply IsTy.lam; apply IsTy.ap
+    · exact IsTy.var (s (by trivial) z)
+    · apply IsTy.ap
+      · exact IsTy.var (s (by trivial) z)
+      · exact IsTy.var z
 end Context
