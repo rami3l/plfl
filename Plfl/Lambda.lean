@@ -254,12 +254,19 @@ end examples
 inductive Ty where
 | nat
 | fn : Ty → Ty → Ty
+deriving BEq, DecidableEq, Repr
 
 namespace Ty
   notation "ℕt" => nat
   infixr:70 " -→ " => fn
 
   example : Ty := (ℕt -→ ℕt) -→ ℕt
+
+  @[simp]
+  theorem t_to_t'_ne_t (t t' : Ty) : (t -→ t') ≠ t := by
+    by_contra h; match t with
+    | nat => trivial
+    | fn ta tb => injection h; have := t_to_t'_ne_t ta tb; contradiction
 end Ty
 
 -- https://plfa.github.io/Lambda/#contexts
@@ -269,7 +276,7 @@ namespace Context
   open Term
 
   def nil : Context := []
-  def extend : Context → Sym → Ty → Context | c, s, t => ⟨s, t⟩ :: c
+  def extend : Context → Sym → Ty → Context | c, s, ts => ⟨s, ts⟩ :: c
 
   notation " ∅ " => nil
 
@@ -277,16 +284,17 @@ namespace Context
   -- https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html#From-Precedence-to-Binding-Power
   notation:50 c " :< " s:51 " ⦂ " t:51 => extend c s t
 
-  example {Γ : Context} {s : Sym} {t : Ty} : Context := Γ :< s ⦂ t
+  example {Γ : Context} {s : Sym} {ts : Ty} : Context := Γ :< s ⦂ ts
 
   -- https://plfa.github.io/Lambda/#lookup-judgment
   /--
   A lookup judgement.
-  `Lookup c s t` means that `s` is of type `t` by _looking up_ the context `c`.
+  `Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
   -/
-  inductive Lookup : Context → Sym → Ty → Prop where
+  inductive Lookup : Context → Sym → Ty → Type where
   | z : Lookup (Γ :< x ⦂ tx) x tx
   | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
+  deriving DecidableEq
 
   notation:40 c " ∋ " s " ⦂ " t => Lookup c s t
 
@@ -297,6 +305,7 @@ namespace Context
     apply s _; apply s _; apply z; repeat trivial
 
   -- https://plfa.github.io/Lambda/#lookup-is-functional
+  @[simp]
   theorem Lookup.functional : (Γ ∋ x ⦂ tx) → (Γ ∋ x ⦂ tx') → tx = tx' := by
     intro
     | z, z => rfl
@@ -307,9 +316,9 @@ namespace Context
   -- https://plfa.github.io/Lambda/#typing-judgment
   /--
   A general typing judgement.
-  `IsTy c s t` means that `s` can be inferred to be of type `t` in the context `c`.
+  `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
-  inductive IsTy : Context → Term → Ty → Prop where
+  inductive IsTy : Context → Term → Ty → Type where
   | var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
   | lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx -→ tn)
   | ap : IsTy Γ l (tx -→ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
@@ -317,8 +326,16 @@ namespace Context
   | succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
   | case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (? L [zero: m |succ x: n]) t
   | mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
+  deriving DecidableEq
 
-  notation:40 c " ⊢ " s " ⦂ " t => IsTy c s t
+  notation:40 c " ⊢ " t " ⦂ " tt => IsTy c t tt
+
+  /--
+  `NoTy c t` means that `t` cannot be inferred to be any type in the context `c`.
+  -/
+  @[simp] def NoTy (c : Context) (t : Term) : Prop := IsEmpty (Σ tt, c ⊢ t ⦂ tt)
+
+  infix:40 " ⊬ " => NoTy
 
   -- https://plfa.github.io/Lambda/#quiz-2
   lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) ⦂ ((ℕt -→ ℕt) -→ ℕt) := by
@@ -337,3 +354,51 @@ namespace Context
       · exact IsTy.var (s (by trivial) z)
       · exact IsTy.var z
 end Context
+
+section examples
+  open Context
+
+  -- https://plfa.github.io/Lambda/#non-examples
+  example : ∅ ⊬ o □ one := by
+    by_contra h; simp_all
+    let ⟨t, ht⟩ := h; cases ht.some
+    contradiction
+
+  example : ∅ ⊬ ƛ "x" : `"x" □ `"x" := by
+    by_contra h; simp_all
+    let ⟨t, ⟨ht⟩⟩ := h
+    let IsTy.lam (IsTy.ap (IsTy.var hx) (IsTy.var hx')) := ht
+    have := Lookup.functional hx hx'; simp_all
+
+    -- https://plfa.github.io/Lambda/#quiz-3
+    example : ∅ :< "y" ⦂ ℕt -→ ℕt :< "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := open Lookup in by
+      apply IsTy.ap
+      · exact IsTy.var (s (by trivial) z)
+      · exact IsTy.var z
+
+    example : ∅ :< "y" ⦂ ℕt -→ ℕt :< "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
+      by_contra h; simp_all
+      let ⟨t, ⟨ht⟩⟩ := h
+      cases ht; rename_i hy hx; cases hx; rename_i ty hx; cases hx; contradiction
+
+    example : ∅ :< "y" ⦂ ℕt -→ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt -→ ℕt := open Lookup in by
+      apply IsTy.lam; apply IsTy.ap
+      · exact IsTy.var (s (by trivial) z)
+      · exact IsTy.var z
+
+    -- example : ∅ :< "x" ⦂ A ⊢ `"x" □ `"x" ⦂ B
+
+    example
+    : ∅ :< "x" ⦂ ℕt -→ ℕt :< "y" ⦂ ℕt -→ ℕt
+    ⊢ ƛ "z" : (`"x" $ `"y" $ `"z") ⦂ ℕt -→ ℕt
+    := open Lookup in by
+      apply IsTy.lam; apply IsTy.ap
+      · exact IsTy.var <| s (by trivial) <| s (by trivial) z
+      · apply IsTy.ap
+        · exact IsTy.var (s (by trivial) z)
+        · exact IsTy.var z
+
+    -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
+
+    -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice-1
+end examples
