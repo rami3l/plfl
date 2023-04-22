@@ -38,4 +38,6 @@ jobs:
             build-${{ runner.os }}-${{ hashFiles('lean-toolchain') }}
 
       - name: Test native build
-        run: lake build
+        run: |
+          lake exe cache get
+          lake build
