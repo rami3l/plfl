@@ -27,40 +27,39 @@ namespace Term
   infixl:70 " □ " => ap
   prefix:80 " ι " => succ
   prefix:90 " ` " => var
-
-  @[simp] def o : Term := zero
+  notation " 𝟘 " => zero
 
   example : Term := `"foo"
-  example : Term := ? `"bar" [zero: o |succ "n" : ι o]
+  example : Term := ? `"bar" [zero: 𝟘 |succ "n" : ι 𝟘]
 
-  @[simp] def one : Term := ι o
-  @[simp] def two : Term := ι ι o
+  abbrev one : Term := ι 𝟘
+  abbrev two : Term := ι ι 𝟘
 
-  @[simp] def add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
+  abbrev add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended
-  @[simp] def mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: o |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
+  abbrev mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: 𝟘 |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
 
   -- Church encoding...
-  @[simp] def succ_c : Term := ƛ "n" : ι `"n"
-  @[simp] def one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
-  @[simp] def two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
-  @[simp] def add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
+  abbrev succ_c : Term := ƛ "n" : ι `"n"
+  abbrev one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
+  abbrev two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
+  abbrev add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice
-  @[simp] def mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ (`"n" □ `"s") □ `"z"
+  abbrev mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ (`"n" □ `"s") □ `"z"
 end Term
 
 -- https://plfa.github.io/Lambda/#values
 inductive Value : Term → Type where
 | lam : Value (ƛ v : d)
-| zero: Value o
+| zero: Value 𝟘
 | succ: Value n → Value (ι n)
 deriving BEq, DecidableEq, Repr
 
 namespace Value
-  @[simp] def o : Value Term.o := zero
+  notation " V𝟘 " => zero
 
   def of_nat : ℕ → Σ n, Value n
-  | 0 => ⟨Term.o, o⟩
+  | 0 => ⟨𝟘, V𝟘⟩
   | n + 1 => let ⟨tn, vn⟩ := of_nat n; ⟨ι tn, succ vn⟩
 end Value
 
@@ -74,9 +73,7 @@ namespace Term
   | ` x, y, v => if x = y then v else ` x
   | ƛ x : n, y, v => if x = y then ƛ x : n else ƛ x : n.subst y v
   | ap l m, y, v => l.subst y v $ m.subst y v
-  -- `.o` means that `o` is not a new binding, but a constant.
-  -- See: https://leanprover.github.io/theorem_proving_in_lean4/induction_and_recursion.html?highlight=inac#inaccessible-patterns
-  | .o, _, _ => o
+  | 𝟘, _, _ => 𝟘
   | ι n, y, v => ι (n.subst y v)
   | ? l [zero: m |succ x: n], y, v => if x = y
       then ? l.subst y v [zero: m.subst y v |succ x: n]
@@ -90,15 +87,15 @@ namespace Term
   : (ƛ "z" : `"s" □ `"s" □ `"z")["s" := succ_c]
   = (ƛ "z" : succ_c □ succ_c □ `"z") := rfl
 
-  example : (succ_c □ succ_c □ `"z")["z" := o] = succ_c □ succ_c □ o := rfl
-  example : (ƛ "x" : `"y")["y" := o] = (ƛ "x" : o) := rfl
-  example : (ƛ "x" : `"x")["x" := o] = (ƛ "x" : `"x") := rfl
-  example : (ƛ "y" : `"y")["x" := o] = (ƛ "y" : `"y") := rfl
+  example : (succ_c □ succ_c □ `"z")["z" := 𝟘] = succ_c □ succ_c □ 𝟘 := rfl
+  example : (ƛ "x" : `"y")["y" := 𝟘] = (ƛ "x" : 𝟘) := rfl
+  example : (ƛ "x" : `"x")["x" := 𝟘] = (ƛ "x" : `"x") := rfl
+  example : (ƛ "y" : `"y")["x" := 𝟘] = (ƛ "y" : `"y") := rfl
 
   -- https://plfa.github.io/Lambda/#quiz
   example
-  : (ƛ "y" : `"x" $ ƛ "x" : `"x")["x" := o]
-  = (ƛ "y" : o $ ƛ "x" : `"x")
+  : (ƛ "y" : `"x" $ ƛ "x" : `"x")["x" := 𝟘]
+  = (ƛ "y" : 𝟘 $ ƛ "x" : `"x")
   := rfl
 
   -- https://plfa.github.io/Lambda/#reduction
@@ -109,7 +106,7 @@ namespace Term
   | lam_β : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
   | ap_ξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
   | ap_ξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
-  | zero_β : Reduce (? o [zero: m |succ x : n]) m
+  | zero_β : Reduce (? 𝟘 [zero: m |succ x : n]) m
   | succ_β : Value v → Reduce (? ι v [zero: m |succ x : n]) (n[x := v])
   | succ_ξ : Reduce m m' → Reduce (ι m) (ι m')
   | case_ξ : Reduce l l' → Reduce (? l [zero: m |succ x : n]) (? l' [zero: m |succ x : n])
@@ -126,7 +123,7 @@ namespace Term.Reduce
   example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") □ (ƛ "x" : `"x") := by
     apply ap_ξ₁; apply lam_β; exact Value.lam
 
-  example : two_c □ succ_c □ o —→ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := by
+  example : two_c □ succ_c □ 𝟘 —→ (ƛ "z" : succ_c $ succ_c $ `"z") □ 𝟘 := by
     unfold two_c; apply ap_ξ₁; apply lam_β; exact Value.lam
 
   -- https://plfa.github.io/Lambda/#reflexive-and-transitive-closure
@@ -146,7 +143,7 @@ namespace Term.Reduce
     | nil => 0
     | cons _ cdr => 1 + cdr.length
 
-    @[simp] def one (car : m —→ n) : (m —↠ n) := cons car nil
+    abbrev one (car : m —→ n) : (m —↠ n) := cons car nil
 
     @[simp]
     def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
@@ -188,8 +185,8 @@ namespace Term.Reduce
   := by
     unfold Function.Injective
     intro a b h
-    have : a.to_clos'.to_clos = b.to_clos'.to_clos := by simp_all
-    rwa [←Clos.to_clos'_left_inv (x := a), ←Clos.to_clos'_left_inv (x := b)]
+    apply_fun Clos'.to_clos at h
+    rwa [←to_clos'_left_inv (x := a), ←to_clos'_left_inv (x := b)]
 
   instance Clos.embeds_in_clos' : (m —↠ n) ↪ (m —↠' n) where
     toFun := to_clos'
@@ -216,7 +213,7 @@ section confluence
     | nil, c@(cons _ _) => exists n; exact ⟨c, nil⟩
     | c@(cons _ _), nil => exists m; exact ⟨nil, c⟩
     | cons car cdr, cons car' cdr' =>
-      have := h car car'; subst this; simp_all
+      have := h car car'; subst this
       exact to_confluence h cdr cdr'
 end confluence
 
@@ -224,11 +221,11 @@ end confluence
 section examples
   open Term Term.Reduce Term.Reduce.Clos
 
-  example : two_c □ succ_c □ o —↠ two := calc
-    two_c □ succ_c □ o
+  example : two_c □ succ_c □ 𝟘 —↠ two := calc
+    two_c □ succ_c □ 𝟘
     -- `Clos.one` means that we are reducing just by a single step.
-    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ o := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
-    _ —↠ (succ_c $ succ_c $ o) := Clos.one <| by apply lam_β; exact Value.zero
+    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ 𝟘 := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
+    _ —↠ (succ_c $ succ_c $ 𝟘) := Clos.one <| by apply lam_β; exact Value.zero
     _ —↠ succ_c □ one := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
     _ —↠ two := Clos.one <| by apply lam_β; exact (Value.of_nat 1).2
 
@@ -241,13 +238,13 @@ section examples
       := Clos.one <| by apply ap_ξ₁; apply lam_β; exact (Value.of_nat 1).2
     _ —↠ ? one [zero: one |succ "m": ι (add □ `"m" □ one)]
       := Clos.one <| lam_β (Value.of_nat 1).2
-    _ —↠ ι (add □ o □ one)
-      := Clos.one <| succ_β Value.o
-    _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ o □ one)
+    _ —↠ ι (add □ 𝟘 □ one)
+      := Clos.one <| succ_β V𝟘
+    _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ one)
       := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
-    _ —↠ ι ((ƛ "n" : ? o [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one)
-      := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact Value.o
-    _ —↠ ι (? o [zero: one |succ "m": ι (add □ `"m" □ one)])
+    _ —↠ ι ((ƛ "n" : ? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one)
+      := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact V𝟘
+    _ —↠ ι (? 𝟘 [zero: one |succ "m": ι (add □ `"m" □ one)])
       := Clos.one <| by apply succ_ξ; apply lam_β; exact (Value.of_nat 1).2
     _ —↠ ι one := Clos.one <| succ_ξ zero_β
 end examples
@@ -324,7 +321,7 @@ namespace Context
   | ty_var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
   | ty_lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
   | ty_ap : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
-  | ty_zero : IsTy Γ o ℕt
+  | ty_zero : IsTy Γ 𝟘 ℕt
   | ty_succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
   | ty_case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (? L [zero: m |succ x: n]) t
   | ty_mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
@@ -335,7 +332,7 @@ namespace Context
   /--
   `NoTy c t` means that `t` cannot be inferred to be any type in the context `c`.
   -/
-  @[simp] def NoTy (c : Context) (t : Term) : Prop := IsEmpty (Σ tt, c ⊢ t ⦂ tt)
+  abbrev NoTy (c : Context) (t : Term) : Prop := IsEmpty (Σ tt, c ⊢ t ⦂ tt)
 
   infix:40 " ⊬ " => NoTy
 
@@ -355,19 +352,19 @@ namespace Context
   open IsTy
 
   -- https://plfa.github.io/Lambda/#quiz-2
-  lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) ⦂ ((ℕt =⇒ ℕt) =⇒ ℕt) := by
+  lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ 𝟘) ⦂ ((ℕt =⇒ ℕt) =⇒ ℕt) := by
     apply ty_lam; apply ty_ap
     · trivial
     · apply ty_ap
       · trivial
       · exact ty_zero
 
-  theorem two_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ o) □ succ_c ⦂ ℕt := by
+  theorem two_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ 𝟘) □ succ_c ⦂ ℕt := by
     apply ty_ap twice_ty
     · apply ty_lam; apply ty_succ; trivial
 
   -- https://plfa.github.io/Lambda/#derivation
-  @[simp] def NatC (t : Ty) : Ty := (t =⇒ t) =⇒ t =⇒ t
+  abbrev NatC (t : Ty) : Ty := (t =⇒ t) =⇒ t =⇒ t
 
   theorem two_c_ty : Γ ⊢ two_c ⦂ NatC t := by
     apply ty_lam; apply ty_lam; apply ty_ap
@@ -406,7 +403,7 @@ section examples
   open Term Context Lookup IsTy
 
   -- https://plfa.github.io/Lambda/#non-examples
-  example : ∅ ⊬ o □ one := by
+  example : ∅ ⊬ 𝟘 □ one := by
     by_contra h; simp_all
     let ⟨t, ht⟩ := h; cases ht.some
     contradiction
