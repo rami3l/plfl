@@ -45,16 +45,17 @@ namespace Canonical
     | ⟨ty_zero, Value.zero⟩ => exact can_zero
     | ⟨ty_succ ty, Value.succ v⟩ => apply can_succ; exact well_typed_inv ⟨ty, v⟩
 
-  def hom_inv_id {v t} : @well_typed_inv v t ∘ well_typed_hom = id := by
+  def well_typed_hom_inv_id {v t} : @well_typed_inv v t ∘ well_typed_hom = id := by
     funext c; cases c <;> simp_all
-    · rename_i v' c'; have := @hom_inv_id v' ℕt; apply_fun (· c') at this; trivial
+    · rename_i v' c'; have := @well_typed_hom_inv_id v' ℕt
+      apply_fun (· c') at this; trivial
 
-  def inv_hom_id {v t} : @well_typed_hom v t ∘ well_typed_inv = id := by
+  def well_typed_inv_hom_id {v t} : @well_typed_hom v t ∘ well_typed_inv = id := by
     funext c; match c with
     | ⟨ty_lam ty, Value.lam⟩ => simp_all
     | ⟨ty_zero, Value.zero⟩ => simp_all
     | ⟨ty_succ ty, Value.succ n⟩ =>
-        rename_i v'; have := @inv_hom_id v' ℕt;
+        rename_i v'; have := @well_typed_inv_hom_id v' ℕt;
         rw [Function.comp_apply, well_typed_inv, well_typed_hom]; split
         · simp_all; apply_fun (· (ty, n)) at this; simp_all
 
@@ -64,8 +65,8 @@ namespace Canonical
   instance well_typed : Canonical v t ≅ (∅ ⊢ v ⦂ t) × Value v where
     hom := well_typed_hom
     inv := well_typed_inv
-    hom_inv_id := hom_inv_id
-    inv_hom_id := inv_hom_id
+    hom_inv_id := well_typed_hom_inv_id
+    inv_hom_id := well_typed_inv_hom_id
 end Canonical
 
 -- https://plfa.github.io/Properties/#progress
