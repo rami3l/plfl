@@ -170,6 +170,7 @@ namespace Renaming
   /--
   If one context maps to another, the mapping holds after adding the same variable to both contexts.
   -/
+  @[simp]
   lemma ext
   : (∀ {x tx}, (Γ ∋ x ⦂ tx) → (Δ ∋ x ⦂ tx))
   → (∀ {x y tx ty}, (Γ :< y ⦂ ty ∋ x ⦂ tx) → (Δ :< y ⦂ ty ∋ x ⦂ tx))
@@ -178,6 +179,7 @@ namespace Renaming
     | z => exact z
     | s nxy lx => exact s nxy <| ρ lx
 
+  @[simp]
   theorem rename
   : (∀ {x t}, (Γ ∋ x ⦂ t) → (Δ ∋ x ⦂ t))
   → (∀ {m t}, (Γ ⊢ m ⦂ t) → (Δ ⊢ m ⦂ t))
@@ -197,4 +199,96 @@ namespace Renaming
         · exact rename ρ jm
         · exact rename (ext ρ) jn
     | ty_mu j => apply ty_mu; exact rename (ext ρ) j
+
+  @[simp]
+  theorem Lookup.weaken : (∅ ∋ m ⦂ t) → (Γ ∋ m ⦂ t) := by
+    intro j; cases j
+
+  @[simp]
+  theorem weaken : (∅ ⊢ m ⦂ t) → (Γ ⊢ m ⦂ t) := by
+    intro j; refine rename ?_ j; exact Lookup.weaken
+
+  @[simp]
+  theorem drop
+  : (Γ :< x ⦂ t' :< x ⦂ t ⊢ y ⦂ u)
+  → (Γ :< x ⦂ t ⊢ y ⦂ u)
+  := by
+    intro j; refine rename ?_ j
+    intro y u j; cases j
+    · exact z
+    · case s j =>
+      cases j
+      · contradiction
+      · case s j => refine s ?_ j; trivial
+
+  @[simp]
+  theorem Lookup.swap
+  : (x ≠ x') → (Γ :< x' ⦂ t' :< x ⦂ t ∋ y ⦂ u)
+  → (Γ :< x ⦂ t :< x' ⦂ t' ∋ y ⦂ u)
+  := by
+    intro n j; cases j
+    · exact s n z
+    · case s j =>
+      cases j
+      · exact z
+      · apply s
+        · trivial
+        · apply s <;> trivial
+
+  @[simp]
+  theorem swap
+  : (x ≠ x') → (Γ :< x' ⦂ t' :< x ⦂ t ⊢ y ⦂ u)
+  → (Γ :< x ⦂ t :< x' ⦂ t' ⊢ y ⦂ u)
+  := by
+    intro n j; refine rename ?_ j; intro _ _; exact Lookup.swap n
 end Renaming
+
+-- https://plfa.github.io/Properties/#substitution
+@[simp]
+theorem subst
+: (∅ ⊢ y ⦂ t) → (Γ :< x ⦂ t ⊢ n ⦂ u)
+→ (Γ ⊢ n[x := y] ⦂ u)
+:= open Renaming in by
+  intro j k; cases k <;> simp_all
+  · case ty_var y k =>
+    by_cases y = x <;> simp_all
+    · have := weaken (Γ := Γ) j; cases k <;> try trivial
+    · cases k <;> simp_all; · repeat trivial
+  · case ty_lam y _ _ _ k =>
+    by_cases y = x <;> (simp_all; apply ty_lam)
+    · subst h; apply drop; trivial
+    · apply subst j; exact swap (by trivial) k
+  · case ty_ap y k l => apply ty_ap <;> (apply subst j; trivial)
+  · case ty_zero => exact ty_zero
+  · case ty_succ => apply ty_succ; apply subst j; trivial
+  · case ty_case y _ k l m =>
+    by_cases y = x <;> simp_all
+    · apply ty_case
+      · apply subst j; exact k
+      · apply subst j; exact l
+      · subst h; exact drop m
+    · apply ty_case <;> (apply subst j; try trivial)
+      · exact swap (by trivial) m
+  · case ty_mu y _ k =>
+    by_cases y = x <;> simp_all
+    · subst h; apply ty_mu; exact drop k
+    · apply ty_mu; apply subst j; exact swap (by trivial) k
+
+-- https://plfa.github.io/Properties/#preservation
+@[simp]
+theorem preserve : (∅ ⊢ m ⦂ t) → (m —→ n) → (∅ ⊢ n ⦂ t) := by
+  intro
+  | ty_ap jl jm, lam_β _ => apply subst jm; cases jl; · trivial
+  | ty_ap jl jm, ap_ξ₁ _ =>
+    apply ty_ap <;> try trivial
+    · apply preserve jl; trivial
+  | ty_ap jl jm, ap_ξ₂ _ _ =>
+    apply ty_ap <;> try trivial
+    · apply preserve jm; trivial
+  | ty_succ j, succ_ξ r => apply ty_succ; exact preserve j r
+  | ty_case k l m, zero_β => trivial
+  | ty_case k l m, succ_β _ => refine subst ?_ m; cases k; · trivial
+  | ty_case k l m, case_ξ _ =>
+      apply ty_case <;> try trivial
+      · apply preserve k; trivial
+  | ty_mu j, mu_β => refine subst ?_ j; apply ty_mu; trivial

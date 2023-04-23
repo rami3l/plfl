@@ -299,6 +299,7 @@ namespace Context
   A lookup judgement.
   `Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
   -/
+  @[aesop safe [constructors, cases]]
   inductive Lookup : Context → Sym → Ty → Type where
   | z : Lookup (Γ :< x ⦂ tx) x tx
   | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
