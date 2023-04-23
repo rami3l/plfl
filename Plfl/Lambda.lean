@@ -9,7 +9,6 @@ open String
 def Sym : Type := String deriving BEq, DecidableEq, Repr
 
 -- https://plfa.github.io/Lambda/#syntax-of-terms
-@[aesop safe [constructors, cases]]
 inductive Term where
 | var : Sym → Term
 | lam : Sym → Term → Term
@@ -23,7 +22,7 @@ deriving BEq, DecidableEq, Repr
 namespace Term
   notation:50 " ƛ " v " : " d => lam v d
   notation:50 " μ " v " : " d => mu v d
-  notation:max " ? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
+  notation:max " 𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
   prefix:80 " ι " => succ
@@ -31,7 +30,7 @@ namespace Term
   notation " 𝟘 " => zero
 
   example : Term := `"foo"
-  example : Term := ? `"bar" [zero: 𝟘 |succ "n" : ι 𝟘]
+  example : Term := 𝟘? `"bar" [zero: 𝟘 |succ "n" : ι 𝟘]
 
   @[simp]
   def ofNat | 0 => zero | n + 1 => succ <| ofNat n
@@ -41,9 +40,9 @@ namespace Term
   example : Term := 1
   example : Term := 42
 
-  abbrev add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
+  abbrev add : Term := μ "+" : ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended
-  abbrev mul : Term := μ "*" : ƛ "m" : ƛ "n" : ? `"m" [zero: 𝟘 |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
+  abbrev mul : Term := μ "*" : ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: 𝟘 |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
 
   -- Church encoding...
   abbrev succ_c : Term := ƛ "n" : ι `"n"
@@ -55,7 +54,6 @@ namespace Term
 end Term
 
 -- https://plfa.github.io/Lambda/#values
-@[aesop safe [constructors, cases]]
 inductive Value : Term → Type where
 | lam : Value (ƛ v : d)
 | zero: Value 𝟘
@@ -86,9 +84,9 @@ namespace Term
   | ap l m, y, v => l.subst y v $ m.subst y v
   | 𝟘, _, _ => 𝟘
   | ι n, y, v => ι (n.subst y v)
-  | ? l [zero: m |succ x: n], y, v => if x = y
-      then ? l.subst y v [zero: m.subst y v |succ x: n]
-      else ? l.subst y v [zero: m.subst y v |succ x: n.subst y v]
+  | 𝟘? l [zero: m |succ x: n], y, v => if x = y
+      then 𝟘? l.subst y v [zero: m.subst y v |succ x: n]
+      else 𝟘? l.subst y v [zero: m.subst y v |succ x: n.subst y v]
   | μ x : n, y, v => if x = y then μ x : n else μ x : n.subst y v
 
   notation:90 x " [ " y " := " v " ] " => subst x y v
@@ -113,15 +111,14 @@ namespace Term
   /--
   `Reduce t t'` says that `t` reduces to `t'`.
   -/
-  @[aesop safe [constructors, cases]]
   inductive Reduce : Term → Term → Type where
   | lam_β : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
   | ap_ξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
   | ap_ξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
-  | zero_β : Reduce (? 𝟘 [zero: m |succ x : n]) m
-  | succ_β : Value v → Reduce (? ι v [zero: m |succ x : n]) (n[x := v])
+  | zero_β : Reduce (𝟘? 𝟘 [zero: m |succ x : n]) m
+  | succ_β : Value v → Reduce (𝟘? ι v [zero: m |succ x : n]) (n[x := v])
   | succ_ξ : Reduce m m' → Reduce (ι m) (ι m')
-  | case_ξ : Reduce l l' → Reduce (? l [zero: m |succ x : n]) (? l' [zero: m |succ x : n])
+  | case_ξ : Reduce l l' → Reduce (𝟘? l [zero: m |succ x : n]) (𝟘? l' [zero: m |succ x : n])
   | mu_β : Reduce (μ x : m) (m[x := μ x : m])
 
   infix:40 " —→ " => Reduce
@@ -143,7 +140,6 @@ namespace Term.Reduce
   A reflexive and transitive closure,
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
-  @[aesop safe [constructors, cases]]
   inductive Clos : Term → Term → Type where
   | nil : Clos m m
   | cons : (l —→ m) → Clos m n → Clos l n
@@ -167,7 +163,6 @@ namespace Term.Reduce
       trans := trans
   end Clos
 
-  @[aesop safe [constructors, cases]]
   inductive Clos' : Term → Term → Type where
   | refl : Clos' m m
   | step : (m —→ n) → Clos' m n
@@ -246,25 +241,24 @@ section examples
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
   example : add □ 1 □ 1 —↠ 2 := calc
     add □ 1 □ 1
-    _ —↠ (ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1 □ 1
+    _ —↠ (ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1 □ 1
       := Clos.one <| by apply ap_ξ₁; apply ap_ξ₁; apply mu_β
-    _ —↠ (ƛ "n" : ? 1 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1
+    _ —↠ (ƛ "n" : 𝟘? 1 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1
       := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.ofNat 1
-    _ —↠ ? 1 [zero: 1 |succ "m": ι (add □ `"m" □ 1)]
+    _ —↠ 𝟘? 1 [zero: 1 |succ "m": ι (add □ `"m" □ 1)]
       := Clos.one <| lam_β <| Value.ofNat 1
     _ —↠ ι (add □ 𝟘 □ 1)
       := Clos.one <| succ_β Value.zero
-    _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ 1)
+    _ —↠ ι ((ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ 1)
       := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
-    _ —↠ ι ((ƛ "n" : ? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1)
+    _ —↠ ι ((ƛ "n" : 𝟘? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1)
       := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact V𝟘
-    _ —↠ ι (? 𝟘 [zero: 1 |succ "m": ι (add □ `"m" □ 1)])
+    _ —↠ ι (𝟘? 𝟘 [zero: 1 |succ "m": ι (add □ `"m" □ 1)])
       := Clos.one <| by apply succ_ξ; apply lam_β; exact Value.ofNat 1
     _ —↠ 2 := Clos.one <| succ_ξ zero_β
 end examples
 
 -- https://plfa.github.io/Lambda/#syntax-of-types
-@[aesop safe [constructors, cases]]
 inductive Ty where
 | nat
 | fn : Ty → Ty → Ty
@@ -305,7 +299,6 @@ namespace Context
   A lookup judgement.
   `Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
   -/
-  @[aesop safe [constructors, cases]]
   inductive Lookup : Context → Sym → Ty → Type where
   | z : Lookup (Γ :< x ⦂ tx) x tx
   | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
@@ -333,14 +326,13 @@ namespace Context
   A general typing judgement.
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
-  @[aesop safe [constructors, cases]]
   inductive IsTy : Context → Term → Ty → Type where
   | ty_var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
   | ty_lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
   | ty_ap : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
   | ty_zero : IsTy Γ 𝟘 ℕt
   | ty_succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
-  | ty_case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (? L [zero: m |succ x: n]) t
+  | ty_case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
   | ty_mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
   deriving DecidableEq
 
@@ -399,7 +391,7 @@ namespace Context
 
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
   theorem mul_ty : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
-    -- TODO: Can we simplify this?
+    -- TODO: Can we simplify this𝟘?
     apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case
     · trivial
     · exact ty_zero
