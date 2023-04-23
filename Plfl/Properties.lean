@@ -9,7 +9,7 @@ set_option tactic.simp.trace true
 open Context Context.IsTy
 
 -- https://plfa.github.io/Properties/#values-do-not-reduce
-theorem Value.not_reduce' : Value m → (Σ n, m —→ n) → False := by
+private lemma Value.not_reduce' : Value m → (Σ n, m —→ n) → False := by
   intro v; intro ⟨n, hn⟩
   cases v <;> try contradiction
   · rename_i v'; cases hn
@@ -25,6 +25,7 @@ theorem Reduce.not_value : m —→ n → IsEmpty (Value m) := by
   · exact ⟨n, h⟩
 
 -- https://plfa.github.io/Properties/#exercise-canonical--practice
+@[aesop safe [constructors, cases]]
 inductive Canonical : Term → Ty → Type where
 | can_lam : (∅ :< x ⦂ tx ⊢ n ⦂ tn) → Canonical (ƛ x : n) (tx =⇒ tn)
 | can_zero : Canonical 𝟘 ℕt
@@ -62,6 +63,7 @@ namespace Canonical
   /--
   The Canonical forms are exactly the well-typed values.
   -/
+  @[simp]
   instance well_typed : Canonical v t ≅ (∅ ⊢ v ⦂ t) × Value v where
     hom := well_typed_hom
     inv := well_typed_inv
@@ -70,3 +72,7 @@ namespace Canonical
 end Canonical
 
 -- https://plfa.github.io/Properties/#progress
+@[aesop safe [constructors, cases]]
+inductive Progress (m : Term) where
+| step : m —→ n → Progress m
+| done : Value m → Progress m

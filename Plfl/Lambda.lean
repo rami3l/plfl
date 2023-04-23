@@ -9,6 +9,7 @@ open String
 def Sym : Type := String deriving BEq, DecidableEq, Repr
 
 -- https://plfa.github.io/Lambda/#syntax-of-terms
+@[aesop safe [constructors, cases]]
 inductive Term where
 | var : Sym → Term
 | lam : Sym → Term → Term
@@ -32,8 +33,13 @@ namespace Term
   example : Term := `"foo"
   example : Term := ? `"bar" [zero: 𝟘 |succ "n" : ι 𝟘]
 
-  abbrev one : Term := ι 𝟘
-  abbrev two : Term := ι ι 𝟘
+  @[simp]
+  def ofNat | 0 => zero | n + 1 => succ <| ofNat n
+  instance : Coe ℕ Term where coe := ofNat
+  instance : OfNat Term n where ofNat := ofNat n
+
+  example : Term := 1
+  example : Term := 42
 
   abbrev add : Term := μ "+" : ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (`"+" □ `"m" □ `"n")]
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended
@@ -49,6 +55,7 @@ namespace Term
 end Term
 
 -- https://plfa.github.io/Lambda/#values
+@[aesop safe [constructors, cases]]
 inductive Value : Term → Type where
 | lam : Value (ƛ v : d)
 | zero: Value 𝟘
@@ -58,9 +65,13 @@ deriving BEq, DecidableEq, Repr
 namespace Value
   notation " V𝟘 " => zero
 
-  def of_nat : ℕ → Σ n, Value n
-  | 0 => ⟨𝟘, V𝟘⟩
-  | n + 1 => let ⟨tn, vn⟩ := of_nat n; ⟨ι tn, succ vn⟩
+  @[simp]
+  def ofNat : (n : ℕ) → Value (Term.ofNat n)
+  | 0 => V𝟘
+  | n + 1 => succ <| ofNat n
+
+  -- instance : CoeDep ℕ n (Value ↑n) where coe := ofNat n
+  -- instance : OfNat (Value (Term.ofNat n)) n where ofNat := ofNat n
 end Value
 
 -- https://plfa.github.io/Lambda/#substitution
@@ -102,6 +113,7 @@ namespace Term
   /--
   `Reduce t t'` says that `t` reduces to `t'`.
   -/
+  @[aesop safe [constructors, cases]]
   inductive Reduce : Term → Term → Type where
   | lam_β : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
   | ap_ξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
@@ -131,6 +143,7 @@ namespace Term.Reduce
   A reflexive and transitive closure,
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
+  @[aesop safe [constructors, cases]]
   inductive Clos : Term → Term → Type where
   | nil : Clos m m
   | cons : (l —→ m) → Clos m n → Clos l n
@@ -154,6 +167,7 @@ namespace Term.Reduce
       trans := trans
   end Clos
 
+  @[aesop safe [constructors, cases]]
   inductive Clos' : Term → Term → Type where
   | refl : Clos' m m
   | step : (m —→ n) → Clos' m n
@@ -221,35 +235,36 @@ end confluence
 section examples
   open Term Term.Reduce Term.Reduce.Clos
 
-  example : two_c □ succ_c □ 𝟘 —↠ two := calc
+  example : two_c □ succ_c □ 𝟘 —↠ 2 := calc
     two_c □ succ_c □ 𝟘
     -- `Clos.one` means that we are reducing just by a single step.
     _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ 𝟘 := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
     _ —↠ (succ_c $ succ_c $ 𝟘) := Clos.one <| by apply lam_β; exact Value.zero
-    _ —↠ succ_c □ one := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
-    _ —↠ two := Clos.one <| by apply lam_β; exact (Value.of_nat 1).2
+    _ —↠ succ_c □ 1 := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
+    _ —↠ 2 := Clos.one <| by apply lam_β; exact Value.ofNat 1
 
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
-  example : add □ one □ one —↠ two := calc
-    add □ one □ one
-    _ —↠ (ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one □ one
+  example : add □ 1 □ 1 —↠ 2 := calc
+    add □ 1 □ 1
+    _ —↠ (ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1 □ 1
       := Clos.one <| by apply ap_ξ₁; apply ap_ξ₁; apply mu_β
-    _ —↠ (ƛ "n" : ? one [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one
-      := Clos.one <| by apply ap_ξ₁; apply lam_β; exact (Value.of_nat 1).2
-    _ —↠ ? one [zero: one |succ "m": ι (add □ `"m" □ one)]
-      := Clos.one <| lam_β (Value.of_nat 1).2
-    _ —↠ ι (add □ 𝟘 □ one)
-      := Clos.one <| succ_β V𝟘
-    _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ one)
+    _ —↠ (ƛ "n" : ? 1 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1
+      := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.ofNat 1
+    _ —↠ ? 1 [zero: 1 |succ "m": ι (add □ `"m" □ 1)]
+      := Clos.one <| lam_β <| Value.ofNat 1
+    _ —↠ ι (add □ 𝟘 □ 1)
+      := Clos.one <| succ_β Value.zero
+    _ —↠ ι ((ƛ "m" : ƛ "n" : ? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ 1)
       := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
-    _ —↠ ι ((ƛ "n" : ? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ one)
+    _ —↠ ι ((ƛ "n" : ? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1)
       := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact V𝟘
-    _ —↠ ι (? 𝟘 [zero: one |succ "m": ι (add □ `"m" □ one)])
-      := Clos.one <| by apply succ_ξ; apply lam_β; exact (Value.of_nat 1).2
-    _ —↠ ι one := Clos.one <| succ_ξ zero_β
+    _ —↠ ι (? 𝟘 [zero: 1 |succ "m": ι (add □ `"m" □ 1)])
+      := Clos.one <| by apply succ_ξ; apply lam_β; exact Value.ofNat 1
+    _ —↠ 2 := Clos.one <| succ_ξ zero_β
 end examples
 
 -- https://plfa.github.io/Lambda/#syntax-of-types
+@[aesop safe [constructors, cases]]
 inductive Ty where
 | nat
 | fn : Ty → Ty → Ty
@@ -290,6 +305,7 @@ namespace Context
   A lookup judgement.
   `Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
   -/
+  @[aesop safe [constructors, cases]]
   inductive Lookup : Context → Sym → Ty → Type where
   | z : Lookup (Γ :< x ⦂ tx) x tx
   | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
@@ -317,6 +333,7 @@ namespace Context
   A general typing judgement.
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
+  @[aesop safe [constructors, cases]]
   inductive IsTy : Context → Term → Ty → Type where
   | ty_var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
   | ty_lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
