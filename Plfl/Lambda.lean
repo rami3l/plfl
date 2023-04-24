@@ -120,6 +120,7 @@ namespace Term
   | succ_ξ : Reduce m m' → Reduce (ι m) (ι m')
   | case_ξ : Reduce l l' → Reduce (𝟘? l [zero: m |succ x : n]) (𝟘? l' [zero: m |succ x : n])
   | mu_β : Reduce (μ x : m) (m[x := μ x : m])
+  deriving Repr
 
   infix:40 " —→ " => Reduce
 end Term
@@ -143,6 +144,7 @@ namespace Term.Reduce
   inductive Clos : Term → Term → Type where
   | nil : Clos m m
   | cons : (l —→ m) → Clos m n → Clos l n
+  deriving Repr
 
   infix:20 " —↠ " => Clos
 
@@ -153,13 +155,14 @@ namespace Term.Reduce
     | cons _ cdr => 1 + cdr.length
 
     abbrev one (car : m —→ n) : (m —↠ n) := cons car nil
+    instance : Coe (m —→ n) (m —↠ n) where coe := one
 
     @[simp]
     def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
 
-    instance is_trans : Trans Clos Clos Clos where
+    instance isTrans : Trans Clos Clos Clos where
       trans := trans
   end Clos
 
@@ -180,7 +183,7 @@ namespace Term.Reduce
   def Clos'.to_clos : (m —↠' n) → (m —↠ n) := by
     intro
     | refl => exact Clos.nil
-    | step h => exact Clos.one h
+    | step h => exact ↑h
     | trans h h' => apply Clos.trans <;> (apply to_clos; assumption)
 
   -- https://plfa.github.io/Lambda/#exercise-practice
@@ -342,7 +345,7 @@ namespace Context
   /--
   `NoTy c t` means that `t` cannot be inferred to be any type in the context `c`.
   -/
-  abbrev NoTy (c : Context) (t : Term) : Prop := IsEmpty (Σ tt, c ⊢ t ⦂ tt)
+  abbrev NoTy (c : Context) (t : Term) : Prop := ∀ {tt}, IsEmpty (c ⊢ t ⦂ tt)
 
   infix:40 " ⊬ " => NoTy
 
@@ -381,7 +384,7 @@ namespace Context
     · trivial
     · apply ty_ap <;> trivial
 
-  theorem add_ty : Γ ⊢ add ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
+  def add_ty : Γ ⊢ add ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
     apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case <;> try trivial
     · apply ty_succ; apply ty_ap <;> try trivial
       · apply ty_ap <;> trivial
@@ -391,7 +394,7 @@ namespace Context
     · repeat apply ty_ap <;> try trivial
 
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
-  theorem mul_ty : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
+  def mul_ty : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
     -- TODO: Can we simplify this𝟘?
     apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case
     · trivial
@@ -413,15 +416,14 @@ section examples
   open Term Context Lookup IsTy
 
   -- https://plfa.github.io/Lambda/#non-examples
-  example : ∅ ⊬ 𝟘 □ one := by
-    by_contra h; simp_all
-    let ⟨t, ht⟩ := h; cases ht.some
-    contradiction
+  example : ∅ ⊬ 𝟘 □ 1 := by
+    by_contra h; simp_all; cases h.some; contradiction
 
-  example : ∅ ⊬ ƛ "x" : `"x" □ `"x" := by
+  abbrev ill_lam := ƛ "x" : `"x" □ `"x"
+
+  lemma nty_ill_lam : ∅ ⊬ ill_lam := by
     by_contra h; simp_all
-    let ⟨t, ⟨ht⟩⟩ := h
-    let ty_lam (ty_ap (ty_var hx) (ty_var hx')) := ht
+    let ty_lam (ty_ap (ty_var hx) (ty_var hx')) := h.some
     have := Lookup.functional hx hx'; simp_all
 
   -- https://plfa.github.io/Lambda/#quiz-3
@@ -430,7 +432,7 @@ section examples
 
   example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
     by_contra h; simp_all
-    let ⟨t, ⟨ht⟩⟩ := h
+    let ⟨ht⟩ := h
     cases ht; rename_i hy hx
     · cases hx; rename_i ty hx
       · cases hx; contradiction
@@ -440,7 +442,7 @@ section examples
 
   example : ∅ :< "x" ⦂ tx ⊬ `"x" □ `"x" := by
     by_contra h; simp_all
-    let ⟨t, ⟨ht⟩⟩ := h
+    let ⟨ht⟩ := h
     cases ht; rename_i hx
     · cases hx; rename_i hx
       · cases hx <;> contradiction
