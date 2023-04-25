@@ -442,9 +442,112 @@ def Reduce.det : (m —→ n) → (m —→ n') → n = n' := by
   · case mu_β => cases r'; try trivial
 
 -- https://plfa.github.io/Properties/#quiz
+/-
+Suppose we add a new term zap with the following reduction rule
+
+-------- β-zap
+M —→ zap
+and the following typing rule:
+
+----------- ⊢zap
+Γ ⊢ zap ⦂ A
+Which of the following properties remain true in the presence of these rules? For each property, write either "remains true" or "becomes false." If a property becomes false, give a counterexample:
+
+* Determinism
+
+Becomes false.
+The term `(ƛ x ⇒ `"x") □ 𝟘` can both be reduced via:
+· ap_ξ₁, to zap □ 𝟘
+· zep_β, to zap
+... and they're not equal.
+
+* Progress/Preservation
+
+Remains true.
+-/
+
 
 -- https://plfa.github.io/Properties/#quiz-1
+/-
+Suppose instead that we add a new term foo with the following reduction rules:
+
+------------------ β-foo₁
+(λ x ⇒ ` x) —→ foo
+
+----------- β-foo₂
+foo —→ zero
+Which of the following properties remain true in the presence of this rule? For each one, write either "remains true" or else "becomes false." If a property becomes false, give a counterexample:
+
+* Determinism
+
+Becomes false.
+
+The term `(ƛ x ⇒ `"x") □ 𝟘` can both be reduced via:
+· ap_ξ₁, to foo □ 𝟘
+· lam_β, to `"x"
+... and they're not equal.
+
+* Progress
+
+Becomes false.
+The term `(ƛ x ⇒ `"x") □ 𝟘` can be reduced via:
+· ap_ξ₁ foo_β₁, to foo □ 𝟘
+· then ap_ξ₁ foo_β₂, to 𝟘 □ 𝟘
+... and now the term get's stuck.
+
+* Preservation
+
+Becomes false.
+The term `(ƛ x ⇒ `"x") ⦂ ℕt =⇒ ℕt` can be reduced via:
+· foo_β₁, to foo
+· then foo_β₂, 𝟘 ⦂ ℕt
+... and (ℕt =⇒ ℕt) ≠ ℕt
+
+-/
 
 -- https://plfa.github.io/Properties/#quiz-2
+/-
+Suppose instead that we remove the rule ξ·₁ from the step relation. Which of the following properties remain true in the absence of this rule? For each one, write either "remains true" or else "becomes false." If a property becomes false, give a counterexample:
+
+* Determinism/Preservation
+
+Remains true.
+
+* Progress
+
+Becomes false.
+The term `(ƛ x ⇒ `"x") □ 𝟘` is well-typed but gets stucked.
+-/
 
 -- https://plfa.github.io/Properties/#quiz-3
+/-
+We can enumerate all the computable function from naturals to naturals, by writing out all programs of type `ℕ ⇒ `ℕ in lexical order. Write fᵢ for the i’th function in this list.
+
+NB: A ℕ → ℕ function can be seen as a stream of ℕ's, where the i'th ℕ stands for f(i).
+
+Say we add a typing rule that applies the above enumeration to interpret a natural as a function from naturals to naturals:
+
+Γ ⊢ L ⦂ `ℕ
+Γ ⊢ M ⦂ `ℕ
+-------------- _·ℕ_
+Γ ⊢ L · M ⦂ `ℕ
+And that we add the corresponding reduction rule:
+
+fᵢ(m) —→ n
+---------- δ
+i · m —→ n
+Which of the following properties remain true in the presence of these rules? For each one, write either "remains true" or else "becomes false." If a property becomes false, give a counterexample:
+
+* Determinism/Preservation
+
+Remains true.
+The only change is that the terms that were once stuck now might continue to progress.
+
+* Progress
+
+Becomes false.
+Since a computable function can be partial, the reduction might not halt.
+<https://en.wikipedia.org/wiki/Computable_function>
+
+Are all properties preserved in this case? Are there any other alterations we would wish to make to the system?
+-/
