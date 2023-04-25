@@ -6,19 +6,6 @@ set_option tactic.simp.trace true
 
 -- Sorry, nothing is inherited from previous chapters here. We have to start over.
 
-
--- infix  4 _⊢_
--- infix  4 _∋_
--- infixl 5 _,_
--- infixr 7 _⇒_
--- infix  5 ƛ_
--- infix  5 μ_
--- infixl 7 _·_
--- infix  8 `suc_
--- infix  9 `_
--- infix  9 S_
--- infix  9 #_
-
 -- https://plfa.github.io/DeBruijn/#types
 inductive Ty where
 | nat : Ty
@@ -47,8 +34,8 @@ namespace Context
   abbrev snoc : Context → Ty → Context := flip (· :: ·)
   infixl:50 " :< " => snoc
 
-  abbrev has_member (ts : Context) (t : Ty) : Prop := t ∈ ts
-  infix:40 " ∋ " => has_member
+  abbrev hasMember (ts : Context) (t : Ty) : Prop := t ∈ ts
+  infix:40 " ∋ " => hasMember
 end Context
 
 -- https://plfa.github.io/DeBruijn/#variables-and-the-lookup-judgment

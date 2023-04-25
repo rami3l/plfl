@@ -45,12 +45,12 @@ namespace Term
   abbrev mul : Term := μ "*" : ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: 𝟘 |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
 
   -- Church encoding...
-  abbrev succ_c : Term := ƛ "n" : ι `"n"
-  abbrev one_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
-  abbrev two_c : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
-  abbrev add_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
+  abbrev succC : Term := ƛ "n" : ι `"n"
+  abbrev oneC : Term := ƛ "s" : ƛ "z" : `"s" $ `"z"
+  abbrev twoC : Term := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
+  abbrev addC : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice
-  abbrev mul_c : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ (`"n" □ `"s") □ `"z"
+  abbrev mulC : Term := ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ (`"n" □ `"s") □ `"z"
 end Term
 
 -- https://plfa.github.io/Lambda/#values
@@ -93,10 +93,10 @@ namespace Term
 
   -- https://plfa.github.io/Lambda/#examples
   example
-  : (ƛ "z" : `"s" □ `"s" □ `"z")["s" := succ_c]
-  = (ƛ "z" : succ_c □ succ_c □ `"z") := rfl
+  : (ƛ "z" : `"s" □ `"s" □ `"z")["s" := succC]
+  = (ƛ "z" : succC □ succC □ `"z") := rfl
 
-  example : (succ_c □ succ_c □ `"z")["z" := 𝟘] = succ_c □ succ_c □ 𝟘 := rfl
+  example : (succC □ succC □ `"z")["z" := 𝟘] = succC □ succC □ 𝟘 := rfl
   example : (ƛ "x" : `"y")["y" := 𝟘] = (ƛ "x" : 𝟘) := rfl
   example : (ƛ "x" : `"x")["x" := 𝟘] = (ƛ "x" : `"x") := rfl
   example : (ƛ "y" : `"y")["x" := 𝟘] = (ƛ "y" : `"y") := rfl
@@ -133,8 +133,8 @@ namespace Term.Reduce
   example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") □ (ƛ "x" : `"x") := by
     apply ap_ξ₁; apply lam_β; exact Value.lam
 
-  example : two_c □ succ_c □ 𝟘 —→ (ƛ "z" : succ_c $ succ_c $ `"z") □ 𝟘 := by
-    unfold two_c; apply ap_ξ₁; apply lam_β; exact Value.lam
+  example : twoC □ succC □ 𝟘 —→ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := by
+    unfold twoC; apply ap_ξ₁; apply lam_β; exact Value.lam
 
   -- https://plfa.github.io/Lambda/#reflexive-and-transitive-closure
   /--
@@ -174,35 +174,35 @@ namespace Term.Reduce
   infix:20 " —↠' " => Clos'
 
   @[simp]
-  def Clos.to_clos' : (m —↠ n) → (m —↠' n) := by
+  def Clos.toClos' : (m —↠ n) → (m —↠' n) := by
     intro
     | nil => exact Clos'.refl
-    | cons h h' => exact Clos'.trans (Clos'.step h) h'.to_clos'
+    | cons h h' => exact Clos'.trans (Clos'.step h) h'.toClos'
 
   @[simp]
-  def Clos'.to_clos : (m —↠' n) → (m —↠ n) := by
+  def Clos'.toClos : (m —↠' n) → (m —↠ n) := by
     intro
     | refl => exact Clos.nil
     | step h => exact ↑h
-    | trans h h' => apply Clos.trans <;> (apply to_clos; assumption)
+    | trans h h' => apply Clos.trans <;> (apply toClos; assumption)
 
   -- https://plfa.github.io/Lambda/#exercise-practice
-  lemma Clos.to_clos'_left_inv : ∀ {x : m —↠ n}, x.to_clos'.to_clos = x := by
+  lemma Clos.toClos'_left_inv : ∀ {x : m —↠ n}, x.toClos'.toClos = x := by
     intro
     | nil => rfl
-    | cons car cdr => simp_all; exact to_clos'_left_inv (x := cdr)
+    | cons car cdr => simp_all; exact toClos'_left_inv (x := cdr)
 
-  lemma Clos.to_clos'_inj
-  : @Function.Injective (m —↠ n) (m —↠' n) Clos.to_clos'
+  lemma Clos.toClos'_inj
+  : @Function.Injective (m —↠ n) (m —↠' n) Clos.toClos'
   := by
     unfold Function.Injective
     intro a b h
-    apply_fun Clos'.to_clos at h
-    rwa [←to_clos'_left_inv (x := a), ←to_clos'_left_inv (x := b)]
+    apply_fun Clos'.toClos at h
+    rwa [←toClos'_left_inv (x := a), ←toClos'_left_inv (x := b)]
 
-  instance Clos.embeds_in_clos' : (m —↠ n) ↪ (m —↠' n) where
-    toFun := to_clos'
-    inj' := to_clos'_inj
+  instance Clos.embedsInClos' : (m —↠ n) ↪ (m —↠' n) where
+    toFun := toClos'
+    inj' := toClos'_inj
 end Term.Reduce
 
 -- https://plfa.github.io/Lambda/#confluence
@@ -214,31 +214,31 @@ section confluence
   def Confluence : Type := ∀ ⦃l m n⦄, (l —↠ m) → (l —↠ n) → (Σ p, (m —↠ p) × (n —↠ p))
   def Deterministic : Prop := ∀ ⦃l m n⦄, (l —→ m) → (l —→ n) → (m = n)
 
-  theorem Deterministic.to_diamond : Deterministic → Diamond := by
+  def Deterministic.toDiamond : Deterministic → Diamond := by
     unfold Deterministic Diamond; intro h l m n lm ln
     have heq := h lm ln; simp_all
     exists n; exact ⟨nil, nil⟩
 
-  theorem Deterministic.to_confluence : Deterministic → Confluence
+  def Deterministic.toConfluence : Deterministic → Confluence
   | h, l, m, n, lm, ln => by match lm, ln with
     | nil, nil => exists n; exact ⟨ln, ln⟩
     | nil, c@(cons _ _) => exists n; exact ⟨c, nil⟩
     | c@(cons _ _), nil => exists m; exact ⟨nil, c⟩
     | cons car cdr, cons car' cdr' =>
       have := h car car'; subst this
-      exact to_confluence h cdr cdr'
+      exact toConfluence h cdr cdr'
 end confluence
 
 -- https://plfa.github.io/Lambda/#examples-1
 section examples
   open Term Term.Reduce Term.Reduce.Clos
 
-  example : two_c □ succ_c □ 𝟘 —↠ 2 := calc
-    two_c □ succ_c □ 𝟘
+  example : twoC □ succC □ 𝟘 —↠ 2 := calc
+    twoC □ succC □ 𝟘
     -- `Clos.one` means that we are reducing just by a single step.
-    _ —↠ (ƛ "z" : succ_c $ succ_c $ `"z") □ 𝟘 := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
-    _ —↠ (succ_c $ succ_c $ 𝟘) := Clos.one <| by apply lam_β; exact Value.zero
-    _ —↠ succ_c □ 1 := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
+    _ —↠ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
+    _ —↠ (succC $ succC $ 𝟘) := Clos.one <| by apply lam_β; exact Value.zero
+    _ —↠ succC □ 1 := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
     _ —↠ 2 := Clos.one <| by apply lam_β; exact Value.ofNat 1
 
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
@@ -331,13 +331,13 @@ namespace Context
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
   inductive IsTy : Context → Term → Ty → Type where
-  | ty_var : Γ ∋ x ⦂ tx → IsTy Γ (` x) tx
-  | ty_lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
-  | ty_ap : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
-  | ty_zero : IsTy Γ 𝟘 ℕt
-  | ty_succ : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
-  | ty_case : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
-  | ty_mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
+  | tyVar : Γ ∋ x ⦂ tx → IsTy Γ (` x) tx
+  | tyLam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
+  | tyAp : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
+  | tyZero : IsTy Γ 𝟘 ℕt
+  | tySucc : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
+  | tyCase : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
+  | tyMu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
   deriving DecidableEq
 
   notation:40 c " ⊢ " t " ⦂ " tt:51 => IsTy c t tt
@@ -357,7 +357,7 @@ namespace Context
   syntax "lookup_var" : tactic
   macro_rules
   | `(tactic| lookup_var) =>
-    `(tactic| apply IsTy.ty_var; repeat (first | apply Lookup.s (by trivial) | exact Lookup.z))
+    `(tactic| apply IsTy.tyVar; repeat (first | apply Lookup.s (by trivial) | exact Lookup.z))
 
   -- Inform `trivial` of our new tactic.
   macro_rules | `(tactic| trivial) => `(tactic| lookup_var)
@@ -366,50 +366,50 @@ namespace Context
 
   -- https://plfa.github.io/Lambda/#quiz-2
   lemma twice_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ 𝟘) ⦂ ((ℕt =⇒ ℕt) =⇒ ℕt) := by
-    apply ty_lam; apply ty_ap
+    apply tyLam; apply tyAp
     · trivial
-    · apply ty_ap
+    · apply tyAp
       · trivial
-      · exact ty_zero
+      · exact tyZero
 
-  theorem two_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ 𝟘) □ succ_c ⦂ ℕt := by
-    apply ty_ap twice_ty
-    · apply ty_lam; apply ty_succ; trivial
+  theorem two_ty : Γ ⊢ (ƛ "s" : `"s" $ `"s" $ 𝟘) □ succC ⦂ ℕt := by
+    apply tyAp twice_ty
+    · apply tyLam; apply tySucc; trivial
 
   -- https://plfa.github.io/Lambda/#derivation
   abbrev NatC (t : Ty) : Ty := (t =⇒ t) =⇒ t =⇒ t
 
-  theorem two_c_ty : Γ ⊢ two_c ⦂ NatC t := by
-    apply ty_lam; apply ty_lam; apply ty_ap
+  theorem twoC_ty : Γ ⊢ twoC ⦂ NatC t := by
+    apply tyLam; apply tyLam; apply tyAp
     · trivial
-    · apply ty_ap <;> trivial
+    · apply tyAp <;> trivial
 
-  def add_ty : Γ ⊢ add ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
-    apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case <;> try trivial
-    · apply ty_succ; apply ty_ap <;> try trivial
-      · apply ty_ap <;> trivial
+  def addTy : Γ ⊢ add ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
+    apply tyMu; apply tyLam; apply tyLam; apply tyCase <;> try trivial
+    · apply tySucc; apply tyAp <;> try trivial
+      · apply tyAp <;> trivial
 
-  theorem add_c_ty : Γ ⊢ add_c ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
-    repeat apply ty_lam <;> try trivial
-    · repeat apply ty_ap <;> try trivial
+  theorem addC_ty : Γ ⊢ addC ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
+    repeat apply tyLam <;> try trivial
+    · repeat apply tyAp <;> try trivial
 
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
-  def mul_ty : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
+  def mulTy : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
     -- TODO: Can we simplify this𝟘?
-    apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case
+    apply tyMu; apply tyLam; apply tyLam; apply tyCase
     · trivial
-    · exact ty_zero
-    · apply ty_ap
-      · apply ty_ap <;> try trivial
-        · apply ty_mu; apply ty_lam; apply ty_lam; apply ty_case <;> try trivial
-          · apply ty_succ; apply ty_ap <;> try trivial
-            · apply ty_ap <;> trivial
-      · repeat apply ty_ap; repeat trivial
+    · exact tyZero
+    · apply tyAp
+      · apply tyAp <;> try trivial
+        · apply tyMu; apply tyLam; apply tyLam; apply tyCase <;> try trivial
+          · apply tySucc; apply tyAp <;> try trivial
+            · apply tyAp <;> trivial
+      · repeat apply tyAp; repeat trivial
 
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice-1
-  theorem mul_c_ty : Γ ⊢ mul_c ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
-    repeat apply ty_lam <;> try trivial
-    · repeat apply ty_ap <;> try trivial
+  theorem mulC_ty : Γ ⊢ mulC ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
+    repeat apply tyLam <;> try trivial
+    · repeat apply tyAp <;> try trivial
 end Context
 
 section examples
@@ -419,16 +419,16 @@ section examples
   example : ∅ ⊬ 𝟘 □ 1 := by
     by_contra h; simp_all; cases h.some; contradiction
 
-  abbrev ill_lam := ƛ "x" : `"x" □ `"x"
+  abbrev illLam := ƛ "x" : `"x" □ `"x"
 
-  lemma nty_ill_lam : ∅ ⊬ ill_lam := by
+  lemma nty_illLam : ∅ ⊬ illLam := by
     by_contra h; simp_all
-    let ty_lam (ty_ap (ty_var hx) (ty_var hx')) := h.some
+    let tyLam (tyAp (tyVar hx) (tyVar hx')) := h.some
     have := Lookup.functional hx hx'; simp_all
 
   -- https://plfa.github.io/Lambda/#quiz-3
   example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := by
-    apply ty_ap <;> trivial
+    apply tyAp <;> trivial
 
   example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
     by_contra h; simp_all
@@ -438,7 +438,7 @@ section examples
       · cases hx; contradiction
 
   example : ∅ :< "y" ⦂ ℕt =⇒ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt =⇒ ℕt := by
-    apply ty_lam; apply ty_ap <;> trivial
+    apply tyLam; apply tyAp <;> trivial
 
   example : ∅ :< "x" ⦂ tx ⊬ `"x" □ `"x" := by
     by_contra h; simp_all
@@ -451,6 +451,6 @@ section examples
   : ∅ :< "x" ⦂ ℕt =⇒ ℕt :< "y" ⦂ ℕt =⇒ ℕt
   ⊢ ƛ "z" : (`"x" $ `"y" $ `"z") ⦂ ℕt =⇒ ℕt
   := by
-    apply ty_lam; apply ty_ap <;> try trivial
-    · apply ty_ap <;> trivial
+    apply tyLam; apply tyAp <;> try trivial
+    · apply tyAp <;> trivial
 end examples
