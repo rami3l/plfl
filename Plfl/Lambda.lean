@@ -32,8 +32,7 @@ namespace Term
   example : Term := `"foo"
   example : Term := 𝟘? `"bar" [zero: 𝟘 |succ "n" : ι 𝟘]
 
-  @[simp]
-  def ofNat | 0 => zero | n + 1 => succ <| ofNat n
+  @[simp] def ofNat | 0 => zero | n + 1 => succ <| ofNat n
   instance : Coe ℕ Term where coe := ofNat
   instance : OfNat Term n where ofNat := ofNat n
 
@@ -236,29 +235,29 @@ section examples
   example : twoC □ succC □ 𝟘 —↠ 2 := calc
     twoC □ succC □ 𝟘
     -- `Clos.one` means that we are reducing just by a single step.
-    _ —↠ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
-    _ —↠ (succC $ succC $ 𝟘) := Clos.one <| by apply lam_β; exact Value.zero
-    _ —↠ succC □ 1 := Clos.one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
-    _ —↠ 2 := Clos.one <| by apply lam_β; exact Value.ofNat 1
+    _ —↠ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := .one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
+    _ —↠ (succC $ succC $ 𝟘) := .one <| by apply lam_β; exact Value.zero
+    _ —↠ succC □ 1 := .one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
+    _ —↠ 2 := .one <| by apply lam_β; exact Value.ofNat 1
 
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
   example : add □ 1 □ 1 —↠ 2 := calc
     add □ 1 □ 1
     _ —↠ (ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1 □ 1
-      := Clos.one <| by apply ap_ξ₁; apply ap_ξ₁; apply mu_β
+      := .one <| by apply ap_ξ₁; apply ap_ξ₁; apply mu_β
     _ —↠ (ƛ "n" : 𝟘? 1 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1
-      := Clos.one <| by apply ap_ξ₁; apply lam_β; exact Value.ofNat 1
+      := .one <| by apply ap_ξ₁; apply lam_β; exact Value.ofNat 1
     _ —↠ 𝟘? 1 [zero: 1 |succ "m": ι (add □ `"m" □ 1)]
-      := Clos.one <| lam_β <| Value.ofNat 1
+      := .one <| lam_β <| Value.ofNat 1
     _ —↠ ι (add □ 𝟘 □ 1)
-      := Clos.one <| succ_β Value.zero
+      := .one <| succ_β Value.zero
     _ —↠ ι ((ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ 1)
-      := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
+      := .one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
     _ —↠ ι ((ƛ "n" : 𝟘? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1)
-      := Clos.one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact V𝟘
+      := .one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact V𝟘
     _ —↠ ι (𝟘? 𝟘 [zero: 1 |succ "m": ι (add □ `"m" □ 1)])
-      := Clos.one <| by apply succ_ξ; apply lam_β; exact Value.ofNat 1
-    _ —↠ 2 := Clos.one <| succ_ξ zero_β
+      := .one <| by apply succ_ξ; apply lam_β; exact Value.ofNat 1
+    _ —↠ 2 := .one <| succ_ξ zero_β
 end examples
 
 -- https://plfa.github.io/Lambda/#syntax-of-types
