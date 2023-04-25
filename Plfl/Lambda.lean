@@ -308,7 +308,7 @@ namespace Context
   | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
   deriving DecidableEq
 
-  notation:40 c " ∋ " s " ⦂ " t => Lookup c s t
+  notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
 
   example
   : ∅ :< "x" ⦂ ℕt =⇒ ℕt :< "y" ⦂ ℕt :< "z" ⦂ ℕt
@@ -318,7 +318,7 @@ namespace Context
 
   -- https://plfa.github.io/Lambda/#lookup-is-functional
   @[simp]
-  theorem Lookup.functional : (Γ ∋ x ⦂ tx) → (Γ ∋ x ⦂ tx') → tx = tx' := by
+  theorem Lookup.functional : Γ ∋ x ⦂ tx → Γ ∋ x ⦂ tx' → tx = tx' := by
     intro
     | z, z => rfl
     | z, s _ e => trivial
@@ -331,7 +331,7 @@ namespace Context
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
   inductive IsTy : Context → Term → Ty → Type where
-  | ty_var : (Γ ∋ x ⦂ tx) → IsTy Γ (` x) tx
+  | ty_var : Γ ∋ x ⦂ tx → IsTy Γ (` x) tx
   | ty_lam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
   | ty_ap : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
   | ty_zero : IsTy Γ 𝟘 ℕt
@@ -340,7 +340,7 @@ namespace Context
   | ty_mu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
   deriving DecidableEq
 
-  notation:40 c " ⊢ " t " ⦂ " tt => IsTy c t tt
+  notation:40 c " ⊢ " t " ⦂ " tt:51 => IsTy c t tt
 
   /--
   `NoTy c t` means that `t` cannot be inferred to be any type in the context `c`.

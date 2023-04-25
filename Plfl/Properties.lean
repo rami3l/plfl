@@ -30,26 +30,26 @@ def Reduce.not_value : m —→ n → IsEmpty (Value m) := by
 
 -- https://plfa.github.io/Properties/#exercise-canonical--practice
 inductive Canonical : Term → Ty → Type where
-| can_lam : (∅ :< x ⦂ tx ⊢ n ⦂ tn) → Canonical (ƛ x : n) (tx =⇒ tn)
+| can_lam : ∅ :< x ⦂ tx ⊢ n ⦂ tn → Canonical (ƛ x : n) (tx =⇒ tn)
 | can_zero : Canonical 𝟘 ℕt
 | can_succ : Canonical n ℕt → Canonical (ι n) ℕt
 
 namespace Canonical
   @[simp]
-  def ofIsTy : (∅ ⊢ m ⦂ t) → Value m → Canonical m t
+  def ofIsTy : ∅ ⊢ m ⦂ t → Value m → Canonical m t
   | ty_lam l, Value.lam => can_lam l
   | ty_zero, V𝟘 => can_zero
   | ty_succ t, Value.succ m => can_succ <| ofIsTy t m
 
   @[simp]
-  def well_typed_hom : Canonical v t → (∅ ⊢ v ⦂ t) × Value v := by
+  def well_typed_hom : Canonical v t → ∅ ⊢ v ⦂ t × Value v := by
     intro
     | can_lam h => exact ⟨ty_lam h, Value.lam⟩
     | can_zero => exact ⟨ty_zero, V𝟘⟩
     | can_succ h => have ⟨ty, v⟩ := well_typed_hom h; exact ⟨ty_succ ty, Value.succ v⟩
 
   @[simp]
-  def well_typed_inv : (∅ ⊢ v ⦂ t) × Value v → Canonical v t := by
+  def well_typed_inv : ∅ ⊢ v ⦂ t × Value v → Canonical v t := by
     intro
     | ⟨ty_lam ty, Value.lam⟩ => exact can_lam ty
     | ⟨ty_zero, Value.zero⟩ => exact can_zero
@@ -80,7 +80,7 @@ namespace Canonical
     inv_hom_id := well_typed_inv_hom_id
 end Canonical
 
-def canonical : (∅ ⊢ m ⦂ t) → Value m → Canonical m t := Canonical.ofIsTy
+def canonical : ∅ ⊢ m ⦂ t → Value m → Canonical m t := Canonical.ofIsTy
 
 -- https://plfa.github.io/Properties/#progress
 /--
@@ -94,7 +94,7 @@ inductive Progress (m : Term) where
 
 namespace Progress
   @[simp]
-  def ofIsTy : (∅ ⊢ m ⦂ t) → Progress m := by
+  def ofIsTy : ∅ ⊢ m ⦂ t → Progress m := by
     intro
     | ty_var _ => contradiction
     | ty_lam _ => exact done Value.lam
@@ -118,11 +118,11 @@ namespace Progress
     | ty_mu _ => exact step mu_β
 end Progress
 
-def progress : (∅ ⊢ m ⦂ t) → Progress m := Progress.ofIsTy
+def progress : ∅ ⊢ m ⦂ t → Progress m := Progress.ofIsTy
 
 -- https://plfa.github.io/Properties/#exercise-value-practice
 @[simp]
-def IsTy.is_value : (∅ ⊢ m ⦂ t) → Decidable (Nonempty (Value m)) := by
+def IsTy.is_value : ∅ ⊢ m ⦂ t → Decidable (Nonempty (Value m)) := by
   intro j; cases progress j
   · rename_i n r; have := Reduce.not_value r; apply isFalse; simp_all
   · exact isTrue ⟨by trivial⟩
@@ -133,7 +133,7 @@ def Progress' (m : Term) : Type := Value m ⊕ Σ n, m —→ n
 namespace Progress'
   -- https://plfa.github.io/Properties/#exercise-progress-practice
   @[simp]
-  def ofIsTy : (∅ ⊢ m ⦂ t) → Progress' m := by
+  def ofIsTy : ∅ ⊢ m ⦂ t → Progress' m := by
     intro
     | ty_var _ => contradiction
     | ty_lam _ => exact inl Value.lam
@@ -177,8 +177,8 @@ namespace Renaming
   -/
   @[simp]
   def ext
-  : (∀ {x tx}, (Γ ∋ x ⦂ tx) → (Δ ∋ x ⦂ tx))
-  → (∀ {x y tx ty}, (Γ :< y ⦂ ty ∋ x ⦂ tx) → (Δ :< y ⦂ ty ∋ x ⦂ tx))
+  : (∀ {x tx}, Γ ∋ x ⦂ tx → Δ ∋ x ⦂ tx)
+  → (∀ {x y tx ty}, Γ :< y ⦂ ty ∋ x ⦂ tx → Δ :< y ⦂ ty ∋ x ⦂ tx)
   := by
     introv ρ; intro
     | z => exact z
@@ -186,8 +186,8 @@ namespace Renaming
 
   @[simp]
   def rename
-  : (∀ {x t}, (Γ ∋ x ⦂ t) → (Δ ∋ x ⦂ t))
-  → (∀ {m t}, (Γ ⊢ m ⦂ t) → (Δ ⊢ m ⦂ t))
+  : (∀ {x t}, Γ ∋ x ⦂ t → Δ ∋ x ⦂ t)
+  → (∀ {m t}, Γ ⊢ m ⦂ t → Δ ⊢ m ⦂ t)
   := by
     introv ρ; intro
     | ty_var j => apply ty_var; exact ρ j
@@ -206,17 +206,17 @@ namespace Renaming
     | ty_mu j => apply ty_mu; exact rename (ext ρ) j
 
   @[simp]
-  def Lookup.weaken : (∅ ∋ m ⦂ t) → (Γ ∋ m ⦂ t) := by
+  def Lookup.weaken : ∅ ∋ m ⦂ t → Γ ∋ m ⦂ t := by
     intro.
 
   @[simp]
-  def weaken : (∅ ⊢ m ⦂ t) → (Γ ⊢ m ⦂ t) := by
+  def weaken : ∅ ⊢ m ⦂ t → Γ ⊢ m ⦂ t := by
     intro j; refine rename ?_ j; exact Lookup.weaken
 
   @[simp]
   def drop
-  : (Γ :< x ⦂ t' :< x ⦂ t ⊢ y ⦂ u)
-  → (Γ :< x ⦂ t ⊢ y ⦂ u)
+  : Γ :< x ⦂ t' :< x ⦂ t ⊢ y ⦂ u
+  → Γ :< x ⦂ t ⊢ y ⦂ u
   := by
     intro j; refine rename ?_ j
     intro y u j; cases j
@@ -242,8 +242,8 @@ namespace Renaming
 
   @[simp]
   def swap
-  : (x ≠ x') → (Γ :< x' ⦂ t' :< x ⦂ t ⊢ y ⦂ u)
-  → (Γ :< x ⦂ t :< x' ⦂ t' ⊢ y ⦂ u)
+  : x ≠ x' → Γ :< x' ⦂ t' :< x ⦂ t ⊢ y ⦂ u
+  → Γ :< x ⦂ t :< x' ⦂ t' ⊢ y ⦂ u
   := by
     intro n j; refine rename ?_ j; introv; exact Lookup.swap n
 end Renaming
@@ -251,8 +251,8 @@ end Renaming
 -- https://plfa.github.io/Properties/#substitution
 @[simp]
 def subst
-: (∅ ⊢ y ⦂ t) → (Γ :< x ⦂ t ⊢ n ⦂ u)
-→ (Γ ⊢ n[x := y] ⦂ u)
+: ∅ ⊢ y ⦂ t → Γ :< x ⦂ t ⊢ n ⦂ u
+→ Γ ⊢ n[x := y] ⦂ u
 := open Renaming in by
   intro j; intro
   | ty_var k =>
@@ -281,7 +281,7 @@ def subst
 
 -- https://plfa.github.io/Properties/#preservation
 @[simp]
-def preserve : (∅ ⊢ m ⦂ t) → (m —→ n) → (∅ ⊢ n ⦂ t) := by
+def preserve : ∅ ⊢ m ⦂ t → (m —→ n) → ∅ ⊢ n ⦂ t := by
   intro
   | ty_ap jl jm, lam_β _ => apply subst jm; cases jl; · trivial
   | ty_ap jl jm, ap_ξ₁ _ =>
@@ -354,7 +354,7 @@ section subject_expansion
   open Term
 
   -- https://plfa.github.io/Properties/#exercise-subject_expansion-practice
-  example : IsEmpty (∀ {n t m}, (∅ ⊢ n ⦂ t) → (m —→ n) → (∅ ⊢ m ⦂ t)) := by
+  example : IsEmpty (∀ {n t m}, ∅ ⊢ n ⦂ t → (m —→ n) → ∅ ⊢ m ⦂ t) := by
     by_contra; simp_all
     let ill_case := 𝟘? 𝟘 [zero: 𝟘 |succ "x" : add]
     have nty_ill : ∅ ⊬ ill_case := by
@@ -363,7 +363,7 @@ section subject_expansion
     rename_i f; have := f 𝟘 ℕt ill_case ty_zero zero_β
     exact nty_ill.false this.some
 
-  example : IsEmpty (∀ {n t m}, (∅ ⊢ n ⦂ t) → (m —→ n) → (∅ ⊢ m ⦂ t)) := by
+  example : IsEmpty (∀ {n t m}, ∅ ⊢ n ⦂ t → (m —→ n) → ∅ ⊢ m ⦂ t) := by
     by_contra; simp_all
     let ill_ap := (ƛ "x" : 𝟘) □ ill_lam
     have nty_ill : ∅ ⊬ ill_ap := by
@@ -391,7 +391,7 @@ example : Stuck (` "x") := by
 No well-typed term can be stuck.
 -/
 @[simp]
-def unstuck : (∅ ⊢ m ⦂ t) → IsEmpty (Stuck m) := by
+def unstuck : ∅ ⊢ m ⦂ t → IsEmpty (Stuck m) := by
   intro j; is_empty; simp_all
   intro n ns; cases progress j
   · case step s => exact n.false s
@@ -401,7 +401,7 @@ def unstuck : (∅ ⊢ m ⦂ t) → IsEmpty (Stuck m) := by
 After any number of steps, a well-typed term remains well typed.
 -/
 @[simp]
-def preserves : (∅ ⊢ m ⦂ t) → (m —↠ n) → (∅ ⊢ n ⦂ t) := by
+def preserves : ∅ ⊢ m ⦂ t → (m —↠ n) → ∅ ⊢ n ⦂ t := by
   intro j; intro
   | Clos.nil => trivial
   | Clos.cons car cdr => refine preserves ?_ cdr; exact preserve j car
@@ -411,7 +411,7 @@ _Well-typed terms don't get stuck_ (WTTDGS):
 starting from a well-typed term, taking any number of reduction steps leads to a term that is not stuck.
 -/
 @[simp]
-def preserves_unstuck : (∅ ⊢ m ⦂ t) → (m —↠ n) → IsEmpty (Stuck n) := by
+def preserves_unstuck : ∅ ⊢ m ⦂ t → (m —↠ n) → IsEmpty (Stuck n) := by
   intro j r; have := preserves j r; exact unstuck this
 
 -- https://plfa.github.io/Properties/#reduction-is-deterministic
