@@ -1,26 +1,21 @@
 -- https://plfa.github.io/Properties/
 
-import Mathlib.CategoryTheory.Iso
-
+import Plfl
 import Plfl.Lambda
+
+import Mathlib.CategoryTheory.Iso
 
 set_option tactic.simp.trace true
 
 open Context Context.IsTy Term.Reduce
 open Sum
 
-/--
-`is_empty` converts `IsEmpty α` to `α → False`.
--/
-syntax "is_empty" : tactic
-macro_rules | `(tactic| is_empty) => `(tactic| apply Function.isEmpty (β := False))
-
 -- https://plfa.github.io/Properties/#values-do-not-reduce
 @[simp]
 def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
-  · case succ v => cases r; · case succ_ξ => apply (emptyReduce v).false; trivial
+  · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
 
 @[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
@@ -99,23 +94,23 @@ namespace Progress
     | tyVar _ => contradiction
     | tyLam _ => exact done Value.lam
     | tyAp jl jm => cases ofIsTy jl with
-      | step => apply step; · apply ap_ξ₁; trivial
+      | step => apply step; · apply apξ₁; trivial
       | done vl => cases ofIsTy jm with
-        | step => apply step; apply ap_ξ₂ <;> trivial
+        | step => apply step; apply apξ₂ <;> trivial
         | done => cases vl with
-          | lam => apply step; apply lam_β; trivial
+          | lam => apply step; apply lamβ; trivial
           | _ => contradiction
     | tyZero => exact done V𝟘
     | tySucc j => cases ofIsTy j with
-      | step => apply step; apply succ_ξ; trivial
+      | step => apply step; apply succξ; trivial
       | done => apply done; apply Value.succ; trivial
     | tyCase jl jm jn => cases ofIsTy jl with
-      | step => apply step; apply case_ξ; trivial
+      | step => apply step; apply caseξ; trivial
       | done vl => cases vl with
         | lam => trivial
-        | zero => exact step zero_β
-        | succ => apply step; apply succ_β; trivial
-    | tyMu _ => exact step mu_β
+        | zero => exact step zeroβ
+        | succ => apply step; apply succβ; trivial
+    | tyMu _ => exact step muβ
 end Progress
 
 def progress : ∅ ⊢ m ⦂ t → Progress m := Progress.ofIsTy
@@ -138,22 +133,22 @@ namespace Progress'
     | tyVar _ => contradiction
     | tyLam _ => exact inl Value.lam
     | tyAp jl jm => match ofIsTy jl with
-      | inr ⟨n, r⟩ => exact inr ⟨_, ap_ξ₁ r⟩
+      | inr ⟨n, r⟩ => exact inr ⟨_, apξ₁ r⟩
       | inl vl => match ofIsTy jm with
-        | inr ⟨n, r⟩ => apply inr; exact ⟨_, ap_ξ₂ vl r⟩
+        | inr ⟨n, r⟩ => apply inr; exact ⟨_, apξ₂ vl r⟩
         | inl _ => cases canonical jl vl with
-          | canLam => apply inr; refine ⟨_, lam_β ?_⟩; trivial
+          | canLam => apply inr; refine ⟨_, lamβ ?_⟩; trivial
     | tyZero => exact inl V𝟘
     | tySucc j => match ofIsTy j with
       | inl v => apply inl; exact Value.succ v
-      | inr ⟨n, r⟩ => exact inr ⟨_, succ_ξ r⟩
+      | inr ⟨n, r⟩ => exact inr ⟨_, succξ r⟩
     | tyCase jl jm jn => match ofIsTy jl with
-      | inr ⟨n, r⟩ => exact inr ⟨_, case_ξ r⟩
+      | inr ⟨n, r⟩ => exact inr ⟨_, caseξ r⟩
       | inl vl => cases vl with
         | lam => trivial
-        | zero => exact inr ⟨_, zero_β⟩
-        | succ v => exact inr ⟨_, succ_β v⟩
-    | tyMu _ => exact inr ⟨_, mu_β⟩
+        | zero => exact inr ⟨_, zeroβ⟩
+        | succ v => exact inr ⟨_, succβ v⟩
+    | tyMu _ => exact inr ⟨_, muβ⟩
 end Progress'
 
 namespace Progress
@@ -283,20 +278,20 @@ def subst
 @[simp]
 def preserve : ∅ ⊢ m ⦂ t → (m —→ n) → ∅ ⊢ n ⦂ t := by
   intro
-  | tyAp jl jm, lam_β _ => apply subst jm; cases jl; · trivial
-  | tyAp jl jm, ap_ξ₁ _ =>
+  | tyAp jl jm, lamβ _ => apply subst jm; cases jl; · trivial
+  | tyAp jl jm, apξ₁ _ =>
     apply tyAp <;> try trivial
     · apply preserve jl; trivial
-  | tyAp jl jm, ap_ξ₂ _ _ =>
+  | tyAp jl jm, apξ₂ _ _ =>
     apply tyAp <;> try trivial
     · apply preserve jm; trivial
-  | tySucc j, succ_ξ r => apply tySucc; exact preserve j r
-  | tyCase k l m, zero_β => trivial
-  | tyCase k l m, succ_β _ => refine subst ?_ m; cases k; · trivial
-  | tyCase k l m, case_ξ _ =>
+  | tySucc j, succξ r => apply tySucc; exact preserve j r
+  | tyCase k l m, zeroβ => trivial
+  | tyCase k l m, succβ _ => refine subst ?_ m; cases k; · trivial
+  | tyCase k l m, caseξ _ =>
       apply tyCase <;> try trivial
       · apply preserve k; trivial
-  | tyMu j, mu_β => refine subst ?_ j; apply tyMu; trivial
+  | tyMu j, muβ => refine subst ?_ j; apply tyMu; trivial
 
 -- https://plfa.github.io/Properties/#evaluation
 inductive Result n where
@@ -325,12 +320,12 @@ section examples
   open Term
 
   -- def x : ℕ := x + 1
-  abbrev succ_μ := μ "x" : ι `"x"
+  abbrev succμ := μ "x" : ι `"x"
 
-  abbrev tySucc_μ : ∅ ⊢ succ_μ ⦂ ℕt := by
+  abbrev tySuccμ : ∅ ⊢ succμ ⦂ ℕt := by
     apply tyMu; apply tySucc; trivial
 
-  #eval eval 3 tySucc_μ |> (·.3)
+  #eval eval 3 tySuccμ |> (·.3)
 
   abbrev add_2_2 := add □ 2 □ 2
 
@@ -360,7 +355,7 @@ section subject_expansion
     have nty_ill : ∅ ⊬ illCase := by
       by_contra; simp_all; rename_i t _ j
       cases t <;> (cases j; · contradiction)
-    rename_i f; have := f 𝟘 ℕt illCase tyZero zero_β
+    rename_i f; have := f 𝟘 ℕt illCase tyZero zeroβ
     exact nty_ill.false this.some
 
   example : IsEmpty (∀ {n t m}, ∅ ⊢ n ⦂ t → (m —→ n) → ∅ ⊢ m ⦂ t) := by
@@ -373,7 +368,7 @@ section subject_expansion
           · rename_i j; cases j
             · apply nty_illLam.false <;> trivial
       )
-    rename_i f; have := f 𝟘 ℕt illAp tyZero (lam_β Value.lam)
+    rename_i f; have := f 𝟘 ℕt illAp tyZero (lamβ Value.lam)
     exact nty_ill.false this.some
 end subject_expansion
 
@@ -418,28 +413,28 @@ def preserves_unstuck : ∅ ⊢ m ⦂ t → (m —↠ n) → IsEmpty (Stuck n) :
 @[simp]
 def Reduce.det : (m —→ n) → (m —→ n') → n = n' := by
   intro r r'; cases r
-  · case lam_β =>
+  · case lamβ =>
     cases r' <;> try trivial
-    · case ap_ξ₂ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
-  · case ap_ξ₁ =>
+    · case apξ₂ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
+  · case apξ₁ =>
     cases r' <;> try trivial
-    · case ap_ξ₁ => simp_all; apply det <;> trivial
-    · case ap_ξ₂ => exfalso; rename_i r _ v _; exact (Value.emptyReduce v).false r
-  · case ap_ξ₂ =>
+    · case apξ₁ => simp_all; apply det <;> trivial
+    · case apξ₂ => exfalso; rename_i r _ v _; exact (Value.emptyReduce v).false r
+  · case apξ₂ =>
     cases r' <;> try trivial
-    · case lam_β => exfalso; rename_i r _ _ _ v; exact (Value.emptyReduce v).false r
-    · case ap_ξ₁ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
-    · case ap_ξ₂ => simp_all; apply det <;> trivial
-  · case zero_β => cases r' <;> try trivial
-  · case succ_β =>
+    · case lamβ => exfalso; rename_i r _ _ _ v; exact (Value.emptyReduce v).false r
+    · case apξ₁ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
+    · case apξ₂ => simp_all; apply det <;> trivial
+  · case zeroβ => cases r' <;> try trivial
+  · case succβ =>
     cases r' <;> try trivial
-    · case case_ξ => exfalso; rename_i v _ r; exact (Value.emptyReduce (Value.succ v)).false r
-  · case succ_ξ => cases r'; · case succ_ξ => simp_all; apply det <;> trivial
-  · case case_ξ =>
+    · case caseξ => exfalso; rename_i v _ r; exact (Value.emptyReduce (Value.succ v)).false r
+  · case succξ => cases r'; · case succξ => simp_all; apply det <;> trivial
+  · case caseξ =>
     cases r' <;> try trivial
-    · case succ_β => exfalso; rename_i v r; exact (Value.emptyReduce (Value.succ v)).false r
-    · case case_ξ => simp_all; apply det <;> trivial
-  · case mu_β => cases r'; try trivial
+    · case succβ => exfalso; rename_i v r; exact (Value.emptyReduce (Value.succ v)).false r
+    · case caseξ => simp_all; apply det <;> trivial
+  · case muβ => cases r'; try trivial
 
 -- https://plfa.github.io/Properties/#quiz
 /-
@@ -457,8 +452,8 @@ Which of the following properties remain true in the presence of these rules? Fo
 
 Becomes false.
 The term `(ƛ x ⇒ `"x") □ 𝟘` can both be reduced via:
-· ap_ξ₁, to zap □ 𝟘
-· zep_β, to zap
+· apξ₁, to zap □ 𝟘
+· zepβ, to zap
 ... and they're not equal.
 
 * Progress/Preservation
@@ -483,24 +478,24 @@ Which of the following properties remain true in the presence of this rule? For 
 Becomes false.
 
 The term `(ƛ x ⇒ `"x") □ 𝟘` can both be reduced via:
-· ap_ξ₁, to foo □ 𝟘
-· lam_β, to `"x"
+· apξ₁, to foo □ 𝟘
+· lamβ, to `"x"
 ... and they're not equal.
 
 * Progress
 
 Becomes false.
 The term `(ƛ x ⇒ `"x") □ 𝟘` can be reduced via:
-· ap_ξ₁ foo_β₁, to foo □ 𝟘
-· then ap_ξ₁ foo_β₂, to 𝟘 □ 𝟘
+· apξ₁ fooβ₁, to foo □ 𝟘
+· then apξ₁ fooβ₂, to 𝟘 □ 𝟘
 ... and now the term get's stuck.
 
 * Preservation
 
 Becomes false.
 The term `(ƛ x ⇒ `"x") ⦂ ℕt =⇒ ℕt` can be reduced via:
-· foo_β₁, to foo
-· then foo_β₂, 𝟘 ⦂ ℕt
+· fooβ₁, to foo
+· then fooβ₂, 𝟘 ⦂ ℕt
 ... and (ℕt =⇒ ℕt) ≠ ℕt
 
 -/

@@ -111,14 +111,14 @@ namespace Term
   `Reduce t t'` says that `t` reduces to `t'`.
   -/
   inductive Reduce : Term → Term → Type where
-  | lam_β : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
-  | ap_ξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
-  | ap_ξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
-  | zero_β : Reduce (𝟘? 𝟘 [zero: m |succ x : n]) m
-  | succ_β : Value v → Reduce (𝟘? ι v [zero: m |succ x : n]) (n[x := v])
-  | succ_ξ : Reduce m m' → Reduce (ι m) (ι m')
-  | case_ξ : Reduce l l' → Reduce (𝟘? l [zero: m |succ x : n]) (𝟘? l' [zero: m |succ x : n])
-  | mu_β : Reduce (μ x : m) (m[x := μ x : m])
+  | lamβ : Value v → Reduce ((ƛ x : n) □ v) (n[x := v])
+  | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
+  | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
+  | zeroβ : Reduce (𝟘? 𝟘 [zero: m |succ x : n]) m
+  | succβ : Value v → Reduce (𝟘? ι v [zero: m |succ x : n]) (n[x := v])
+  | succξ : Reduce m m' → Reduce (ι m) (ι m')
+  | caseξ : Reduce l l' → Reduce (𝟘? l [zero: m |succ x : n]) (𝟘? l' [zero: m |succ x : n])
+  | muβ : Reduce (μ x : m) (m[x := μ x : m])
   deriving Repr
 
   infix:40 " —→ " => Reduce
@@ -127,13 +127,13 @@ end Term
 namespace Term.Reduce
   -- https://plfa.github.io/Lambda/#quiz-1
   example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") := by
-    apply lam_β; exact Value.lam
+    apply lamβ; exact Value.lam
 
   example : (ƛ "x" : `"x") □ (ƛ "x" : `"x") □ (ƛ "x" : `"x") —→ (ƛ "x" : `"x") □ (ƛ "x" : `"x") := by
-    apply ap_ξ₁; apply lam_β; exact Value.lam
+    apply apξ₁; apply lamβ; exact Value.lam
 
   example : twoC □ succC □ 𝟘 —→ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := by
-    unfold twoC; apply ap_ξ₁; apply lam_β; exact Value.lam
+    unfold twoC; apply apξ₁; apply lamβ; exact Value.lam
 
   -- https://plfa.github.io/Lambda/#reflexive-and-transitive-closure
   /--
@@ -161,8 +161,22 @@ namespace Term.Reduce
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
 
-    instance isTrans : Trans Clos Clos Clos where
+    instance : Trans Clos Clos Clos where
       trans := trans
+
+    instance : Trans Reduce Clos Clos where
+      trans := cons
+
+    instance : Trans Reduce Reduce Clos where
+      trans c c' := cons c <| cons c' nil
+
+    @[simp]
+    def transOne : (l —↠ m) → (m —→ n) → (l —↠ n)
+    | nil, c => c
+    | cons h c, c' => cons h <| c.trans c'
+
+    instance : Trans Clos Reduce Clos where
+      trans := transOne
   end Clos
 
   inductive Clos' : Term → Term → Type where
@@ -234,30 +248,29 @@ section examples
 
   example : twoC □ succC □ 𝟘 —↠ 2 := calc
     twoC □ succC □ 𝟘
-    -- `Clos.one` means that we are reducing just by a single step.
-    _ —↠ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := .one <| by apply ap_ξ₁; apply lam_β; exact Value.lam
-    _ —↠ (succC $ succC $ 𝟘) := .one <| by apply lam_β; exact Value.zero
-    _ —↠ succC □ 1 := .one <| by apply ap_ξ₂; apply Value.lam; apply lam_β; exact Value.zero
-    _ —↠ 2 := .one <| by apply lam_β; exact Value.ofNat 1
+    _ —→ (ƛ "z" : succC $ succC $ `"z") □ 𝟘 := by apply apξ₁; apply lamβ; exact Value.lam
+    _ —→ (succC $ succC $ 𝟘) := by apply lamβ; exact Value.zero
+    _ —→ succC □ 1 := by apply apξ₂; apply Value.lam; apply lamβ; exact Value.zero
+    _ —→ 2 := by apply lamβ; exact Value.ofNat 1
 
   -- https://plfa.github.io/Lambda/#exercise-plus-example-practice
   example : add □ 1 □ 1 —↠ 2 := calc
     add □ 1 □ 1
-    _ —↠ (ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1 □ 1
-      := .one <| by apply ap_ξ₁; apply ap_ξ₁; apply mu_β
+    _ —→ (ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1 □ 1
+      := by apply apξ₁; apply apξ₁; apply muβ
     _ —↠ (ƛ "n" : 𝟘? 1 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1
-      := .one <| by apply ap_ξ₁; apply lam_β; exact Value.ofNat 1
-    _ —↠ 𝟘? 1 [zero: 1 |succ "m": ι (add □ `"m" □ 1)]
-      := .one <| lam_β <| Value.ofNat 1
-    _ —↠ ι (add □ 𝟘 □ 1)
-      := .one <| succ_β Value.zero
-    _ —↠ ι ((ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ 1)
-      := .one <| by apply succ_ξ; apply ap_ξ₁; apply ap_ξ₁; apply mu_β
-    _ —↠ ι ((ƛ "n" : 𝟘? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1)
-      := .one <| by apply succ_ξ; apply ap_ξ₁; apply lam_β; exact V𝟘
-    _ —↠ ι (𝟘? 𝟘 [zero: 1 |succ "m": ι (add □ `"m" □ 1)])
-      := .one <| by apply succ_ξ; apply lam_β; exact Value.ofNat 1
-    _ —↠ 2 := .one <| succ_ξ zero_β
+      := .one <| by apply apξ₁; apply lamβ; exact Value.ofNat 1
+    _ —→ 𝟘? 1 [zero: 1 |succ "m": ι (add □ `"m" □ 1)]
+      := lamβ <| Value.ofNat 1
+    _ —→ ι (add □ 𝟘 □ 1)
+      := succβ Value.zero
+    _ —→ ι ((ƛ "m" : ƛ "n" : 𝟘? `"m" [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 𝟘 □ 1)
+      := by apply succξ; apply apξ₁; apply apξ₁; apply muβ
+    _ —→ ι ((ƛ "n" : 𝟘? 𝟘 [zero: `"n" |succ "m": ι (add □ `"m" □ `"n")]) □ 1)
+      := by apply succξ; apply apξ₁; apply lamβ; exact V𝟘
+    _ —→ ι (𝟘? 𝟘 [zero: 1 |succ "m": ι (add □ `"m" □ 1)])
+      := by apply succξ; apply lamβ; exact Value.ofNat 1
+    _ —→ 2 := succξ zeroβ
 end examples
 
 -- https://plfa.github.io/Lambda/#syntax-of-types
