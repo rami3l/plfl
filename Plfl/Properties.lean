@@ -25,7 +25,7 @@ def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
 
 -- https://plfa.github.io/Properties/#exercise-canonical--practice
 inductive Canonical : Term → Ty → Type where
-| canLam : ∅ :< x ⦂ tx ⊢ n ⦂ tn → Canonical (ƛ x : n) (tx =⇒ tn)
+| canLam : ∅‚ x ⦂ tx ⊢ n ⦂ tn → Canonical (ƛ x : n) (tx =⇒ tn)
 | canZero : Canonical 𝟘 ℕt
 | canSucc : Canonical n ℕt → Canonical (ι n) ℕt
 
@@ -173,7 +173,7 @@ namespace Renaming
   @[simp]
   def ext
   : (∀ {x tx}, Γ ∋ x ⦂ tx → Δ ∋ x ⦂ tx)
-  → (∀ {x y tx ty}, Γ :< y ⦂ ty ∋ x ⦂ tx → Δ :< y ⦂ ty ∋ x ⦂ tx)
+  → (∀ {x y tx ty}, Γ‚ y ⦂ ty ∋ x ⦂ tx → Δ‚ y ⦂ ty ∋ x ⦂ tx)
   := by
     introv ρ; intro
     | z => exact z
@@ -210,8 +210,8 @@ namespace Renaming
 
   @[simp]
   def drop
-  : Γ :< x ⦂ t' :< x ⦂ t ⊢ y ⦂ u
-  → Γ :< x ⦂ t ⊢ y ⦂ u
+  : Γ‚ x ⦂ t'‚ x ⦂ t ⊢ y ⦂ u
+  → Γ‚ x ⦂ t ⊢ y ⦂ u
   := by
     intro j; refine rename ?_ j
     intro y u j; cases j
@@ -223,8 +223,8 @@ namespace Renaming
 
   @[simp]
   def Lookup.swap
-  : (x ≠ x') → (Γ :< x' ⦂ t' :< x ⦂ t ∋ y ⦂ u)
-  → (Γ :< x ⦂ t :< x' ⦂ t' ∋ y ⦂ u)
+  : (x ≠ x') → (Γ‚ x' ⦂ t'‚ x ⦂ t ∋ y ⦂ u)
+  → (Γ‚ x ⦂ t‚ x' ⦂ t' ∋ y ⦂ u)
   := by
     intro n j; cases j
     · exact s n z
@@ -237,8 +237,8 @@ namespace Renaming
 
   @[simp]
   def swap
-  : x ≠ x' → Γ :< x' ⦂ t' :< x ⦂ t ⊢ y ⦂ u
-  → Γ :< x ⦂ t :< x' ⦂ t' ⊢ y ⦂ u
+  : x ≠ x' → Γ‚ x' ⦂ t'‚ x ⦂ t ⊢ y ⦂ u
+  → Γ‚ x ⦂ t‚ x' ⦂ t' ⊢ y ⦂ u
   := by
     intro n j; refine rename ?_ j; introv; exact Lookup.swap n
 end Renaming
@@ -246,7 +246,7 @@ end Renaming
 -- https://plfa.github.io/Properties/#substitution
 @[simp]
 def subst
-: ∅ ⊢ y ⦂ t → Γ :< x ⦂ t ⊢ n ⦂ u
+: ∅ ⊢ y ⦂ t → Γ‚ x ⦂ t ⊢ n ⦂ u
 → Γ ⊢ n[x := y] ⦂ u
 := open Renaming in by
   intro j; intro

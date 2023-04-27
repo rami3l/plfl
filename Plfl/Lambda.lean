@@ -303,11 +303,12 @@ namespace Context
 
   notation " ∅ " => nil
 
-  -- The goal is to make `_:<_⦂_` work like an `infixl`.
+  -- The goal is to make `_‚_⦂_` work like an `infixl`.
   -- https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html#From-Precedence-to-Binding-Power
-  notation:50 c " :< " s:51 " ⦂ " t:51 => extend c s t
+  -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
+  notation:50 c " ‚ " s:51 " ⦂ " t:51 => extend c s t
 
-  example {Γ : Context} {s : Sym} {ts : Ty} : Context := Γ :< s ⦂ ts
+  example {Γ : Context} {s : Sym} {ts : Ty} : Context := Γ‚ s ⦂ ts
 
   -- https://plfa.github.io/Lambda/#lookup-judgment
   /--
@@ -316,14 +317,14 @@ namespace Context
   -/
   @[aesop safe [constructors, cases]]
   inductive Lookup : Context → Sym → Ty → Type where
-  | z : Lookup (Γ :< x ⦂ tx) x tx
-  | s : x ≠ y → Lookup Γ x tx → Lookup (Γ :< y ⦂ ty) x tx
+  | z : Lookup (Γ‚ x ⦂ tx) x tx
+  | s : x ≠ y → Lookup Γ x tx → Lookup (Γ‚ y ⦂ ty) x tx
   deriving DecidableEq
 
   notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
 
   example
-  : ∅ :< "x" ⦂ ℕt =⇒ ℕt :< "y" ⦂ ℕt :< "z" ⦂ ℕt
+  : ∅‚ "x" ⦂ ℕt =⇒ ℕt‚ "y" ⦂ ℕt‚ "z" ⦂ ℕt
   ∋ "x" ⦂ ℕt =⇒ ℕt
   := open Lookup in by
     apply s _; apply s _; apply z; repeat trivial
@@ -344,12 +345,12 @@ namespace Context
   -/
   inductive IsTy : Context → Term → Ty → Type where
   | tyVar : Γ ∋ x ⦂ tx → IsTy Γ (` x) tx
-  | tyLam : IsTy (Γ :< x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
+  | tyLam : IsTy (Γ‚ x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
   | tyAp : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
   | tyZero : IsTy Γ 𝟘 ℕt
   | tySucc : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
-  | tyCase : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ :< x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
-  | tyMu : IsTy (Γ :< x ⦂ t) m t → IsTy Γ (μ x : m) t
+  | tyCase : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ‚ x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
+  | tyMu : IsTy (Γ‚ x ⦂ t) m t → IsTy Γ (μ x : m) t
   deriving DecidableEq
 
   notation:40 c " ⊢ " t " ⦂ " tt:51 => IsTy c t tt
@@ -439,20 +440,20 @@ section examples
     have := Lookup.functional hx hx'; simp_all
 
   -- https://plfa.github.io/Lambda/#quiz-3
-  example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := by
+  example : ∅‚ "y" ⦂ ℕt =⇒ ℕt‚ "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := by
     apply tyAp <;> trivial
 
-  example : ∅ :< "y" ⦂ ℕt =⇒ ℕt :< "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
+  example : ∅‚ "y" ⦂ ℕt =⇒ ℕt‚ "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
     by_contra h; simp_all
     let ⟨ht⟩ := h
     cases ht; rename_i hy hx
     · cases hx; rename_i ty hx
       · cases hx; contradiction
 
-  example : ∅ :< "y" ⦂ ℕt =⇒ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt =⇒ ℕt := by
+  example : ∅‚ "y" ⦂ ℕt =⇒ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt =⇒ ℕt := by
     apply tyLam; apply tyAp <;> trivial
 
-  example : ∅ :< "x" ⦂ tx ⊬ `"x" □ `"x" := by
+  example : ∅‚ "x" ⦂ tx ⊬ `"x" □ `"x" := by
     by_contra h; simp_all
     let ⟨ht⟩ := h
     cases ht; rename_i hx
@@ -460,7 +461,7 @@ section examples
       · cases hx <;> contradiction
 
   example
-  : ∅ :< "x" ⦂ ℕt =⇒ ℕt :< "y" ⦂ ℕt =⇒ ℕt
+  : ∅‚ "x" ⦂ ℕt =⇒ ℕt‚ "y" ⦂ ℕt =⇒ ℕt
   ⊢ ƛ "z" : (`"x" $ `"y" $ `"z") ⦂ ℕt =⇒ ℕt
   := by
     apply tyLam; apply tyAp <;> try trivial

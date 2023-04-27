@@ -1,4 +1,4 @@
--- https://plfa.github.io/DeBruijn/
+-- https://plfa.github.io/More/
 
 import Plfl
 
@@ -6,19 +6,42 @@ import Mathlib.Tactic
 
 set_option tactic.simp.trace true
 
--- Sorry, nothing is inherited from previous chapters here. We have to start over.
+-- This module was adapted based on the original one for <https://plfa.github.io/DeBruijn/>.
 
--- https://plfa.github.io/DeBruijn/#types
+-- https://plfa.github.io/More/#types
 inductive Ty where
+/-- Native natural type made of 𝟘 and ι. -/
 | nat : Ty
+/-- Primitive natural type, a simple wrapper around LEAN's own ℕ type. -/
+| natP : Ty
+/-- Product type. -/
+| prod : Ty → Ty → Ty
+/-- Sum type. -/
+| sum : Ty → Ty → Ty
+/-- Arrow type. -/
 | fn : Ty → Ty → Ty
+/-- List type. -/
+| list : Ty → Ty
+/-- Unit type. -/
+| unit : Ty
+/-- Void type. -/
+| void : Ty
 deriving BEq, DecidableEq, Repr
 
 namespace Ty
   notation "ℕt" => nat
+  notation "ℕp" => natP
+
+  -- Operator overloadings for `prod` and `sum` types.
+  instance : HMul Ty Ty Ty where hMul := prod
+  instance : HAdd Ty Ty Ty where hAdd := sum
+
   infixr:70 " =⇒ " => fn
+  notation " 𝕌 " => unit
+  notation " ∅ " => void
 
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
+  example : Ty := ℕp * ℕt
 
   @[simp]
   theorem t_to_t'_ne_t (t t' : Ty) : (t =⇒ t') ≠ t := by
@@ -71,6 +94,13 @@ inductive Term : Context → Ty → Type where
 | succ : Term Γ ℕt → Term Γ ℕt
 | case : Term Γ ℕt → Term Γ a → Term (Γ‚ ℕt) a → Term Γ a
 | mu : Term (Γ‚ a) a → Term Γ a
+| con : ℕ → Term Γ ℕp
+| let : Term Γ a → Term (Γ‚ a) b → Term Γ b
+| prod : Term Γ a → Term Γ b → Term Γ (a * b)
+| fst : Term Γ (a * b) → Term Γ a
+| snd : Term Γ (a * b) → Term Γ b
+-- Alternative formulation of products
+| caseProd : Term Γ (a * b) → Term (Γ‚ a‚ b) c → Term Γ c
 deriving DecidableEq, Repr
 
 namespace Term

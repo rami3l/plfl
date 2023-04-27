@@ -1,14 +1,15 @@
 {
   "lean4.input.customTranslations": {
     ":": "⦂",
+    "Fun": "ƛ",
+    "Np": "ℕp",
+    "Nt": "ℕt",
     "Red": "—→",
     "Reds": "—↠",
     "To": "=⇒",
-    "Nt": "ℕt",
-    "Fun": "ƛ",
     "ap": "□",
-    "subst": "⇴",
     "lsubst": "⬰",
-    "snoc": ":<"
+    "snoc": "‚",
+    "subst": "⇴"
   }
 }
