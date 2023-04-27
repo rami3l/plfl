@@ -22,10 +22,10 @@ inductive Ty where
 | fn : Ty → Ty → Ty
 /-- List type. -/
 | list : Ty → Ty
-/-- Unit type. -/
-| unit : Ty
 /-- Void type. -/
 | void : Ty
+/-- Unit type. -/
+| unit : Ty
 deriving BEq, DecidableEq, Repr
 
 namespace Ty
@@ -37,7 +37,7 @@ namespace Ty
   instance : HAdd Ty Ty Ty where hAdd := sum
 
   infixr:70 " =⇒ " => fn
-  notation " 𝕌 " => unit
+  notation " ◯ " => unit
   notation " ∅ " => void
 
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
@@ -87,20 +87,35 @@ end Lookup
 A term with typing judgement embedded in itself.
 -/
 inductive Term : Context → Ty → Type where
+-- Lookup
 | var : Γ ∋ a → Term Γ a
+-- Lambda
 | lam : Term (Γ‚ a) b → Term Γ (a =⇒ b)
 | ap : Term Γ (a =⇒ b) → Term Γ a → Term Γ b
+-- Native natural
 | zero : Term Γ ℕt
 | succ : Term Γ ℕt → Term Γ ℕt
 | case : Term Γ ℕt → Term Γ a → Term (Γ‚ ℕt) a → Term Γ a
+-- Fixpoint
 | mu : Term (Γ‚ a) a → Term Γ a
-| con : ℕ → Term Γ ℕp
+-- Primitive natural
+| prim : ℕ → Term Γ ℕp
+| mulP : Term Γ ℕp → Term Γ ℕp → Term Γ ℕp
+-- Let expression
 | let : Term Γ a → Term (Γ‚ a) b → Term Γ b
+-- Product
 | prod : Term Γ a → Term Γ b → Term Γ (a * b)
 | fst : Term Γ (a * b) → Term Γ a
 | snd : Term Γ (a * b) → Term Γ b
--- Alternative formulation of products
+-- Product (alternative formulation)
 | caseProd : Term Γ (a * b) → Term (Γ‚ a‚ b) c → Term Γ c
+-- Sum
+| left : Term Γ a → Term Γ (a + b)
+| right : Term Γ b → Term Γ (a + b)
+-- Void
+| absurd : Term Γ ∅ → Term Γ a
+-- Unit
+| unit : Term Γ ◯
 deriving DecidableEq, Repr
 
 namespace Term
@@ -111,9 +126,12 @@ namespace Term
   notation " 𝟘? " => case
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
+  infixl:70 " *p "   => mulP
   prefix:80 " ι " => succ
   prefix:90 " ` " => var
+
   notation " 𝟘 " => zero
+  notation " ◯ " => unit
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
   macro " # " n:term:90 : term => `(`♯$n)
@@ -416,3 +434,6 @@ section examples
   #eval eval 100 (add □ 2 □ 2) |> (·.3)
   #eval eval 100 (mul □ 2 □ 3) |> (·.3)
 end examples
+
+-- https://plfa.github.io/More/#exercise-double-subst-stretch
+-- TODO
