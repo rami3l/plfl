@@ -201,19 +201,26 @@ then the type judgements are the same in both contexts.
 def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
   intro ρ; intro
   | ` x => exact ` (ρ x)
-  | ƛ n => refine .lam ?_; refine rename ?_ n; exact ext ρ
-  | l □ m =>
-    apply Term.ap
-    · exact rename ρ l
-    · exact rename ρ m
+  | ƛ n => exact ƛ (rename (ext ρ) n)
+  | l □ m => exact rename ρ l □ rename ρ m
   | 𝟘 => exact 𝟘
-  | ι n => refine ι ?_; exact rename ρ n
-  | 𝟘? l m n =>
-    apply Term.case
-    · exact rename ρ l
-    · exact rename ρ m
-    · refine rename ?_ n; exact ext ρ
-  | μ n => refine .mu ?_; refine rename ?_ n; exact ext ρ
+  | ι n => exact ι (rename ρ n)
+  | 𝟘? l m n => exact 𝟘? (rename ρ l) (rename ρ m) (rename (ext ρ) n)
+  | μ n => exact μ (rename (ext ρ) n)
+  | .prim n => exact .prim n
+  | m ⋄ n => exact rename ρ m ⋄ rename ρ n
+  | .let m n => exact .let (rename ρ m) (rename (ext ρ) n)
+  | .prod m n => exact .prod (rename ρ m) (rename ρ n)
+  | .fst n => exact .fst (rename ρ n)
+  | .snd n => exact .snd (rename ρ n)
+  | .left n => exact .left (rename ρ n)
+  | .right n => exact .right (rename ρ n)
+  | .caseSum s l r => exact .caseSum (rename ρ s) (rename (ext ρ) l) (rename (ext ρ) r)
+  | .caseVoid v => exact .caseVoid (rename ρ v)
+  | ◯ => exact ◯
+  | .nil => exact .nil
+  | .cons m n => exact .cons (rename ρ m) (rename ρ n)
+  | .caseList l m n => exact .caseList (rename ρ l) (rename ρ m) (rename (ext (ext ρ)) n)
 
 example
 : let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
@@ -242,19 +249,26 @@ i.e. after replacing the free variables in the former with (expanded) terms.
 def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
   intro σ; intro
   | ` x => exact σ x
-  | ƛ n => refine .lam ?_; refine subst ?_ n; exact exts σ
-  | l □ m =>
-    apply Term.ap
-    · exact subst σ l
-    · exact subst σ m
+  | ƛ n => exact ƛ (subst (exts σ) n)
+  | l □ m => exact subst σ l □ subst σ m
   | 𝟘 => exact 𝟘
-  | ι n => refine ι ?_; exact subst σ n
-  | 𝟘? l m n =>
-    apply Term.case
-    · exact subst σ l
-    · exact subst σ m
-    · refine subst ?_ n; exact exts σ
-  | μ n => refine .mu ?_; refine subst ?_ n; exact exts σ
+  | ι n => exact ι (subst σ n)
+  | 𝟘? l m n => exact 𝟘? (subst σ l) (subst σ m) (subst (exts σ) n)
+  | μ n => exact μ (subst (exts σ) n)
+  | .prim n => exact .prim n
+  | m ⋄ n => exact subst σ m ⋄ subst σ n
+  | .let m n => exact .let (subst σ m) (subst (exts σ) n)
+  | .prod m n => exact .prod (subst σ m) (subst σ n)
+  | .fst n => exact .fst (subst σ n)
+  | .snd n => exact .snd (subst σ n)
+  | .left n => exact .left (subst σ n)
+  | .right n => exact .right (subst σ n)
+  | .caseSum s l r => exact .caseSum (subst σ s) (subst (exts σ) l) (subst (exts σ) r)
+  | .caseVoid v => exact .caseVoid (subst σ v)
+  | ◯ => exact ◯
+  | .nil => exact .nil
+  | .cons m n => exact .cons (subst σ m) (subst σ n)
+  | .caseList l m n => exact .caseList (subst σ l) (subst σ m) (subst (exts (exts σ)) n)
 
 /--
 Substitution for one free variable `v` in the term `n`.
@@ -330,7 +344,7 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | muβ : Reduce (μ n) (n ⬰ (μ n))
 -- https://plfa.github.io/More/#reduction
 | mulPξ₁ : Reduce l l' → Reduce (l ⋄ m) (l' ⋄ m)
-| mulPξ₂ : Reduce m m' → Reduce (l ⋄ m') (l ⋄ m')
+| mulPξ₂ : Reduce m m' → Reduce (l ⋄ m) (l ⋄ m')
 | mulPδ : Reduce ((.prim c) ⋄ (.prim d)) (.prim (c * d))
 -- https://plfa.github.io/More/#reduction-1
 | letξ : Reduce m m' → Reduce (.let m n) (.let m' n)
@@ -445,23 +459,41 @@ inductive Progress (m : ∅ ⊢ a) where
 def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
   intro
   | ` _ => contradiction
-  | ƛ _ => exact .done Value.lam
-  | jl □ jm => cases progress jl with
-    | step => apply step; · apply apξ₁; trivial
-    | done vl => cases progress jm with
+  | ƛ _ => exact .done .lam
+  | l □ m => cases progress l with
+    | step => apply step; apply apξ₁; trivial
+    | done l => cases progress m with
       | step => apply step; apply apξ₂ <;> trivial
-      | done => cases vl with
+      | done => cases l with
         | lam => apply step; apply lamβ; trivial
-  | 𝟘 => exact done V𝟘
-  | ι j => cases progress j with
+  | 𝟘 => exact .done V𝟘
+  | ι n => cases progress n with
     | step => apply step; apply succξ; trivial
     | done => apply done; apply Value.succ; trivial
-  | 𝟘? jl jm jn => cases progress jl with
+  | 𝟘? l m n => cases progress l with
     | step => apply step; apply caseξ; trivial
-    | done vl => cases vl with
-      | zero => exact step zeroβ
+    | done v => cases v with
+      | zero => exact .step zeroβ
       | succ => apply step; apply succβ; trivial
-  | μ _ => exact step muβ
+  | μ _ => exact .step muβ
+  | .prim n => exact .done (.prim n)
+  | m ⋄ n => cases progress m with
+    | step => apply step; apply mulPξ₁; trivial
+    | done m => cases progress n with
+      | step => apply step; apply mulPξ₂; trivial
+      | done n => cases m; cases n; exact .step mulPδ
+  | .let m n => sorry
+  | .prod m n => sorry
+  | .fst n => sorry
+  | .snd n => sorry
+  | .left n => sorry
+  | .right n => sorry
+  | .caseSum s l r => sorry
+  | .caseVoid v => sorry
+  | ◯ => exact .done .unit
+  | .nil => exact .done .nil
+  | .cons m n => sorry
+  | .caseList l m n => sorry
 
 inductive Result (n : Γ ⊢ a) where
 | done (val : Value n)
