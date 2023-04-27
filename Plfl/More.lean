@@ -20,12 +20,12 @@ inductive Ty where
 | sum : Ty → Ty → Ty
 /-- Arrow type. -/
 | fn : Ty → Ty → Ty
-/-- List type. -/
-| list : Ty → Ty
-/-- Void type. -/
-| void : Ty
 /-- Unit type. -/
 | unit : Ty
+/-- Void type. -/
+| void : Ty
+/-- List type. -/
+| list : Ty → Ty
 deriving BEq, DecidableEq, Repr
 
 namespace Ty
@@ -108,14 +108,19 @@ inductive Term : Context → Ty → Type where
 | fst : Term Γ (a * b) → Term Γ a
 | snd : Term Γ (a * b) → Term Γ b
 -- Product (alternative formulation)
-| caseProd : Term Γ (a * b) → Term (Γ‚ a‚ b) c → Term Γ c
+-- | caseProd : Term Γ (a * b) → Term (Γ‚ a‚ b) c → Term Γ c
 -- Sum
 | left : Term Γ a → Term Γ (a + b)
 | right : Term Γ b → Term Γ (a + b)
+| caseSum : Term Γ (a + b) → Term (Γ‚ a) c → Term (Γ‚ b) c → Term Γ c
 -- Void
-| absurd : Term Γ ∅ → Term Γ a
+| caseVoid : Term Γ ∅ → Term Γ a
 -- Unit
 | unit : Term Γ ◯
+-- List
+| nil : Term Γ (.list a)
+| cons : Term Γ a → Term Γ (.list a) → Term Γ (.list a)
+| caseList : Term Γ (.list a) → Term Γ b → Term (Γ‚ a‚ .list a) b → Term Γ b
 deriving DecidableEq, Repr
 
 namespace Term
@@ -126,7 +131,7 @@ namespace Term
   notation " 𝟘? " => case
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
-  infixl:70 " *p "   => mulP
+  infixl:70 " ⋄ "   => mulP
   prefix:80 " ι " => succ
   prefix:90 " ` " => var
 
@@ -172,6 +177,9 @@ namespace Term
 
   -- https://plfa.github.io/DeBruijn/#exercise-mul-recommended
   @[simp] abbrev mulC : Γ ⊢ Ch a =⇒ Ch a =⇒ Ch a := ƛ ƛ ƛ ƛ (#3 □ (#2 □ #1) □ #0)
+
+  -- https://plfa.github.io/More/#example
+  example : ∅ ⊢ ℕp =⇒ ℕp := ƛ #0 ⋄ #0 ⋄ #0
 end Term
 
 -- https://plfa.github.io/DeBruijn/#renaming
@@ -249,15 +257,27 @@ def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
   | μ n => refine .mu ?_; refine subst ?_ n; exact exts σ
 
 /--
-Substitution for one free variable `m` in the term `n`.
+Substitution for one free variable `v` in the term `n`.
 -/
-abbrev subst₁ (m : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
+abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
   refine subst ?_ n; introv; intro
-  | .z => exact m
+  | .z => exact v
   | .s x => exact ` x
 
-infix:90 " ⇴ " => subst₁
-infix:90 " ⬰ " => flip subst₁
+/--
+Substitution for one two variable `v` and `w'` in the term `n`.
+-/
+abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ a := by
+  refine subst ?_ n; introv; intro
+  | .z => exact w
+  | .s .z => exact v
+  | .s (.s x) => exact ` x
+
+infixr:90 " ⇴ " => subst₁
+infixl:90 " ⬰ " => flip subst₁
+
+-- https://plfa.github.io/More/#exercise-double-subst-stretch
+theorem double_subst : subst₂ v w n = n ⬰ rename .s w ⬰ v := sorry
 
 example
 : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
@@ -275,9 +295,16 @@ example
 
 inductive Value : Γ ⊢ a → Type where
 | lam : Value (ƛ (n : Γ‚ a ⊢ b))
-| zero: Value 𝟘
-| succ: Value n → Value (ι n)
-deriving BEq, DecidableEq, Repr
+| zero : Value 𝟘
+| succ : Value n → Value (ι n)
+| prim : (n : ℕ) → Value (@Term.prim Γ n)
+| prod : Value (v : Γ ⊢ a) → Value (w : Γ ⊢ b) → Value (.prod v w)
+| left : Value v → Value (.left a)
+| right : Value v → Value (.right a)
+| unit : Value ◯
+| nil : Value .nil
+| cons : Value (v : Γ ⊢ a) → Value (vs : Γ ⊢ .list a) → Value (.cons v vs)
+deriving DecidableEq, Repr
 
 namespace Value
   notation " V𝟘 " => zero
@@ -293,7 +320,7 @@ end Value
 `Reduce t t'` says that `t` reduces to `t'`.
 -/
 inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-| lamβ : Value w → Reduce ((ƛ n) □ w) (n ⬰ w)
+| lamβ : Value v → Reduce ((ƛ n) □ v) (n ⬰ v)
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
 | zeroβ : Reduce (𝟘? 𝟘 m n) m
@@ -301,6 +328,38 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | succξ : Reduce m m' → Reduce (ι m) (ι m')
 | caseξ : Reduce l l' → Reduce (𝟘? l m n) (𝟘? l' m n)
 | muβ : Reduce (μ n) (n ⬰ (μ n))
+-- https://plfa.github.io/More/#reduction
+| mulPξ₁ : Reduce l l' → Reduce (l ⋄ m) (l' ⋄ m)
+| mulPξ₂ : Reduce m m' → Reduce (l ⋄ m') (l ⋄ m')
+| mulPδ : Reduce ((.prim c) ⋄ (.prim d)) (.prim (c * d))
+-- https://plfa.github.io/More/#reduction-1
+| letξ : Reduce m m' → Reduce (.let m n) (.let m' n)
+| letβ : Value w → Reduce (.let v n) (n ⬰ v)
+-- https://plfa.github.io/More/#reduction-2
+| prodξ₁ : Reduce m m' → Reduce (.prod m n) (.prod m' n)
+| prodξ₂ : Reduce n n' → Reduce (.prod m n) (.prod m n')
+| fstξ : Reduce l l' → Reduce (.fst l) (.fst l')
+| fstβ : Value v → Value w → Reduce (.fst (.prod v w)) v
+| sndξ : Reduce l l' → Reduce (.snd l) (.snd l')
+| sndβ : Value v → Value w → Reduce (.snd (.prod v w)) w
+-- https://plfa.github.io/More/#reduction-3
+-- | caseProdξ : Reduce l l' → Reduce (.caseProd l m) (.caseProd l' m)
+-- | caseProdβ
+-- : Value (v : Γ ⊢ a)
+-- → Value (w : Γ ⊢ b)
+-- → Reduce (.caseProd (.prod v w) (m : Γ‚ a‚ b ⊢ c)) (subst₂ v w m)
+-- https://plfa.github.io/More/#reduction-4
+| caseSumξ : Reduce s s' → Reduce (.caseSum s l r) (.caseSum s' l r)
+| leftξ : Reduce m m' → Reduce (.left m) (.left m')
+| leftβ : Value v → Reduce (.caseSum (.left v) l r) (l ⬰ v)
+| rightξ : Reduce m m' → Reduce (.right m) (.right m')
+| rightβ : Value v → Reduce (.caseSum (.right v) l r) (l ⬰ v)
+-- https://plfa.github.io/More/#reduction-8
+| caseListξ : Reduce l l' → Reduce (.caseList l m n) (.caseList l' m n)
+| nilβ : Reduce (.caseList .nil m n) m
+| consξ₁ : Reduce m m' → Reduce (.cons m n) (.cons m' n)
+| consξ₂ : Reduce n n' → Reduce (.cons v n) (.cons v n')
+| consβ : Reduce (.caseList (.cons v w) m n) (subst₂ v w n)
 deriving Repr
 
 infix:40 " —→ " => Reduce
@@ -434,6 +493,3 @@ section examples
   #eval eval 100 (add □ 2 □ 2) |> (·.3)
   #eval eval 100 (mul □ 2 □ 3) |> (·.3)
 end examples
-
--- https://plfa.github.io/More/#exercise-double-subst-stretch
--- TODO
