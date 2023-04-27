@@ -273,6 +273,7 @@ def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
 /--
 Substitution for one free variable `v` in the term `n`.
 -/
+@[simp]
 abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
   refine subst ?_ n; introv; intro
   | .z => exact v
@@ -281,6 +282,7 @@ abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
 /--
 Substitution for one two variable `v` and `w'` in the term `n`.
 -/
+@[simp]
 abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ a := by
   refine subst ?_ n; introv; intro
   | .z => exact w
@@ -291,7 +293,8 @@ infixr:90 " ⇴ " => subst₁
 infixl:90 " ⬰ " => flip subst₁
 
 -- https://plfa.github.io/More/#exercise-double-subst-stretch
-theorem double_subst : subst₂ v w n = n ⬰ rename .s w ⬰ v := sorry
+theorem double_subst : subst₂ v w n = v ⇴ rename .s w ⇴ n := by
+  sorry
 
 example
 : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
@@ -313,8 +316,8 @@ inductive Value : Γ ⊢ a → Type where
 | succ : Value n → Value (ι n)
 | prim : (n : ℕ) → Value (@Term.prim Γ n)
 | prod : Value (v : Γ ⊢ a) → Value (w : Γ ⊢ b) → Value (.prod v w)
-| left : Value v → Value (.left a)
-| right : Value v → Value (.right a)
+| left : Value v → Value (.left v)
+| right : Value v → Value (.right v)
 | unit : Value ◯
 | nil : Value .nil
 | cons : Value (v : Γ ⊢ a) → Value (vs : Γ ⊢ .list a) → Value (.cons v vs)
@@ -348,7 +351,7 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | mulPδ : Reduce ((.prim c) ⋄ (.prim d)) (.prim (c * d))
 -- https://plfa.github.io/More/#reduction-1
 | letξ : Reduce m m' → Reduce (.let m n) (.let m' n)
-| letβ : Value w → Reduce (.let v n) (n ⬰ v)
+| letβ : Value v → Reduce (.let v n) (n ⬰ v)
 -- https://plfa.github.io/More/#reduction-2
 | prodξ₁ : Reduce m m' → Reduce (.prod m n) (.prod m' n)
 | prodξ₂ : Reduce n n' → Reduce (.prod m n) (.prod m n')
@@ -367,7 +370,9 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | leftξ : Reduce m m' → Reduce (.left m) (.left m')
 | leftβ : Value v → Reduce (.caseSum (.left v) l r) (l ⬰ v)
 | rightξ : Reduce m m' → Reduce (.right m) (.right m')
-| rightβ : Value v → Reduce (.caseSum (.right v) l r) (l ⬰ v)
+| rightβ : Value v → Reduce (.caseSum (.right v) l r) (r ⬰ v)
+-- https://plfa.github.io/More/#reduction-7
+| caseVoidξ : Reduce l l' → Reduce (.caseVoid l) (.caseVoid l')
 -- https://plfa.github.io/More/#reduction-8
 | caseListξ : Reduce l l' → Reduce (.caseList l m n) (.caseList l' m n)
 | nilβ : Reduce (.caseList .nil m n) m
@@ -440,6 +445,14 @@ def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
   · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
+  · case prod => cases r with
+    | prodξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
+    | prodξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
+  · case left v => cases r; · case leftξ => apply (emptyReduce v).false; trivial
+  · case right v => cases r; · case rightξ => apply (emptyReduce v).false; trivial
+  · case cons => cases r with
+    | consξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
+    | consξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
 
 @[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
@@ -460,40 +473,70 @@ def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
   intro
   | ` _ => contradiction
   | ƛ _ => exact .done .lam
-  | l □ m => cases progress l with
-    | step => apply step; apply apξ₁; trivial
-    | done l => cases progress m with
-      | step => apply step; apply apξ₂ <;> trivial
-      | done => cases l with
-        | lam => apply step; apply lamβ; trivial
+  | l □ m => match progress l with
+    | .step _ => apply step; apply apξ₁; trivial
+    | .done l => match progress m with
+      | .step _ => apply step; apply apξ₂ <;> trivial
+      | .done _ => match l with
+        | .lam => apply step; apply lamβ; trivial
   | 𝟘 => exact .done V𝟘
-  | ι n => cases progress n with
-    | step => apply step; apply succξ; trivial
-    | done => apply done; apply Value.succ; trivial
-  | 𝟘? l m n => cases progress l with
-    | step => apply step; apply caseξ; trivial
-    | done v => cases v with
-      | zero => exact .step zeroβ
-      | succ => apply step; apply succβ; trivial
+  | ι n => match progress n with
+    | .step _ => apply step; apply succξ; trivial
+    | .done _ => apply done; apply Value.succ; trivial
+  | 𝟘? l m n => match progress l with
+    | .step _ => apply step; apply caseξ; trivial
+    | .done v => match v with
+      | .zero => exact .step zeroβ
+      | .succ _ => apply step; apply succβ; trivial
   | μ _ => exact .step muβ
   | .prim n => exact .done (.prim n)
-  | m ⋄ n => cases progress m with
-    | step => apply step; apply mulPξ₁; trivial
-    | done m => cases progress n with
-      | step => apply step; apply mulPξ₂; trivial
-      | done n => cases m; cases n; exact .step mulPδ
-  | .let m n => sorry
-  | .prod m n => sorry
-  | .fst n => sorry
-  | .snd n => sorry
-  | .left n => sorry
-  | .right n => sorry
-  | .caseSum s l r => sorry
-  | .caseVoid v => sorry
+  | m ⋄ n => match progress m with
+    | .step _ => apply step; apply mulPξ₁; trivial
+    | .done m => match progress n with
+      | .step _ => apply step; apply mulPξ₂; trivial
+      | .done n => cases m; cases n; exact .step mulPδ
+  | .let m n => match progress m with
+    | .step _ => apply step; apply letξ; trivial
+    | .done m => apply step; apply letβ; trivial
+  | .prod m n => match progress m with
+    | .step _ => apply step; apply prodξ₁; trivial
+    | .done m => match progress n with
+      | .step _ => apply step; apply prodξ₂; trivial
+      | .done n => exact .done (.prod m n)
+  | .fst n => match progress n with
+    | .step _ => apply step; apply fstξ; trivial
+    | .done n => match n with
+      | .prod v w => apply step; apply fstβ <;> trivial
+  | .snd n => match progress n with
+    | .step _ => apply step; apply sndξ; trivial
+    | .done n => match n with
+      | .prod v w => apply step; apply sndβ <;> trivial
+  | .left n => match progress n with
+    | .step _ => apply step; apply leftξ; trivial
+    | .done n => exact .done (.left n)
+  | .right n => match progress n with
+    | .step _ => apply step; apply rightξ; trivial
+    | .done n => exact .done (.right n)
+  | .caseSum s l r => match progress s with
+    | .step _ => apply step; apply caseSumξ; trivial
+    | .done s => match s with
+      | .left _ => apply step; apply leftβ; trivial
+      | .right _ => apply step; apply rightβ; trivial
+  | .caseVoid v => match progress v with
+    | .step _ => apply step; apply caseVoidξ; trivial
+    | .done _ => contradiction
   | ◯ => exact .done .unit
   | .nil => exact .done .nil
-  | .cons m n => sorry
-  | .caseList l m n => sorry
+  | .cons m n => match progress m with
+    | .step _ => apply step; apply consξ₁; trivial
+    | .done _ => match progress n with
+      | .step _ => apply step; apply consξ₂; trivial
+      | .done _ => refine .done (.cons ?_ ?_); repeat trivial
+  | .caseList l m n => match progress l with
+    | .step _ => apply step; apply caseListξ; trivial
+    | .done l => match l with
+      | .nil => apply step; exact nilβ
+      | .cons _ w => apply step; exact consβ
 
 inductive Result (n : Γ ⊢ a) where
 | done (val : Value n)
