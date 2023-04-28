@@ -245,7 +245,6 @@ If the variables in one context maps to some terms in another,
 then the type judgements are the same before and after the mapping,
 i.e. after replacing the free variables in the former with (expanded) terms.
 -/
-@[simp]
 def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
   intro σ; intro
   | ` x => exact σ x
@@ -291,10 +290,6 @@ abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ 
 
 infixr:90 " ⇴ " => subst₁
 infixl:90 " ⬰ " => flip subst₁
-
--- https://plfa.github.io/More/#exercise-double-subst-stretch
-theorem double_subst : subst₂ v w n = v ⇴ rename .s w ⇴ n := by
-  sorry
 
 example
 : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
@@ -468,7 +463,6 @@ inductive Progress (m : ∅ ⊢ a) where
 | step : (m —→ n) → Progress m
 | done : Value m → Progress m
 
-@[simp]
 def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
   intro
   | ` _ => contradiction
@@ -494,7 +488,8 @@ def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
     | .step _ => apply step; apply mulPξ₁; trivial
     | .done m => match progress n with
       | .step _ => apply step; apply mulPξ₂; trivial
-      | .done n => cases m; cases n; exact .step mulPδ
+      | .done n => match m, n with
+        | .prim m, .prim n => exact .step mulPδ
   | .let m n => match progress m with
     | .step _ => apply step; apply letξ; trivial
     | .done m => apply step; apply letβ; trivial
@@ -531,7 +526,7 @@ def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
     | .step _ => apply step; apply consξ₁; trivial
     | .done _ => match progress n with
       | .step _ => apply step; apply consξ₂; trivial
-      | .done _ => refine .done (.cons ?_ ?_); repeat trivial
+      | .done _ => refine .done (.cons ?_ ?_) <;> trivial
   | .caseList l m n => match progress l with
     | .step _ => apply step; apply caseListξ; trivial
     | .done l => match l with
@@ -564,7 +559,24 @@ section examples
   -- def x : ℕ := x + 1
   abbrev succμ : ∅ ⊢ ℕt := μ ι #0
 
-  #eval eval 3 succμ |> (·.3)
-  #eval eval 100 (add □ 2 □ 2) |> (·.3)
-  #eval eval 100 (mul □ 2 □ 3) |> (·.3)
+  abbrev evalRes (l : ∅ ⊢ a) (gas := 100) := (eval gas l).3
+
+  #eval evalRes (gas := 3) succμ
+  #eval evalRes <| add □ 2 □ 1
+  #eval evalRes <| mul □ 2 □ 2
+  -- Prim
+  #eval evalRes <| .prim 2 ⋄ .prim 3
+  -- Let
+  #eval evalRes <| .let (.prim 6) (#0 ⋄ .prim 7)
+  #eval evalRes <| .let (.prim 3) <| .let (.prim 4) (.prod (#1) (#0))
+  -- Prod, Unit
+  #eval evalRes <| .fst <| .snd <| .prod ◯ (.prod (.prim 6) (ι ι 0))
+  -- Sum
+  #eval evalRes <| (.left (.prim 3) : ∅ ⊢ ℕp + ℕt)
+  #eval evalRes <| (.right 4 : ∅ ⊢ ℕp + ℕt)
+  #eval evalRes <| .caseSum (.right 1 : ∅ ⊢ ℕp + ℕt) 𝟘 (.succ (#0))
+  -- List
+  #eval evalRes <| .nil (a := ℕt)
+  #eval evalRes <| .cons (ι 𝟘) <| .cons 𝟘 .nil
+  #eval evalRes <| .caseList (.cons (ι 𝟘) <| .cons 𝟘 .nil) 𝟘 (#1 /- 0:cdr, 1:car -/)
 end examples
