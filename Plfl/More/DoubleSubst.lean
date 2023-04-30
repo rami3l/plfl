@@ -11,8 +11,9 @@ set_option tactic.simp.trace true
 open Term
 
 @[simp]
-lemma subst₁_shift : t' ⇴ (rename .s t) = t := by
-  sorry
+lemma subst₁_shift : (t' : Γ ⊢ b) ⇴ (rename .s (t : Γ ⊢ a)) = t := by
+  simp_all; cases t <;> try trivial
+  · case lam n => stop {simp_all; apply congr_arg lam}
 
 theorem double_subst
 : subst₂ (v : Γ ⊢ a) (w : Γ ⊢ b) (n : Γ‚ a‚ b ⊢ c)
@@ -22,12 +23,12 @@ theorem double_subst
   · case var n =>
     cases n
     · case z =>
-      simp_all
-      conv_lhs => unfold subst; simp
+      unfold subst₂; change w = _
       conv_rhs => arg 2; unfold subst; simp
       simp_all
     · case s n => simp_all; cases n <;> rfl
-  · case lam => sorry
+  · case lam n =>
+    stop {simp_all; apply congr_arg lam}
   · case ap => sorry
   · case succ => sorry
   · case case => sorry
