@@ -33,8 +33,8 @@ namespace Ty
   notation "ℕp" => natP
 
   -- Operator overloadings for `prod` and `sum` types.
-  instance : HMul Ty Ty Ty where hMul := prod
-  instance : HAdd Ty Ty Ty where hAdd := sum
+  instance : Mul Ty where mul := prod
+  instance : Add Ty where add := sum
 
   infixr:70 " =⇒ " => fn
   notation " ◯ " => unit
@@ -438,14 +438,14 @@ end Reduce
 @[simp]
 def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
-  cases v <;> try contradiction
-  · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
-  · case prod => cases r with
+  cases v with try contradiction
+  | succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
+  | prod => cases r with
     | prodξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
     | prodξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
-  · case left v => cases r; · case leftξ => apply (emptyReduce v).false; trivial
-  · case right v => cases r; · case rightξ => apply (emptyReduce v).false; trivial
-  · case cons => cases r with
+  | left v => cases r; · case leftξ => apply (emptyReduce v).false; trivial
+  | right v => cases r; · case rightξ => apply (emptyReduce v).false; trivial
+  | cons => cases r with
     | consξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
     | consξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
 
