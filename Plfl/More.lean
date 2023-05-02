@@ -222,10 +222,12 @@ def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
   | .cons m n => exact .cons (rename ρ m) (rename ρ n)
   | .caseList l m n => exact .caseList (rename ρ l) (rename ρ m) (rename (ext (ext ρ)) n)
 
+abbrev shift : Γ ⊢ a → Γ‚ b ⊢ a := rename .s
+
 example
 : let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
   let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#2 $ #2 $ #0)
-  rename .s m = m'
+  shift m = m'
 := rfl
 
 -- https://plfa.github.io/DeBruijn/#simultaneous-substitution
@@ -237,7 +239,7 @@ the mapping holds after adding the same variable to both contexts.
 def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
   intro σ; intro
   | .z => exact `.z
-  | .s x => apply rename .s; exact σ x
+  | .s x => apply shift; exact σ x
 
 /--
 General substitution for multiple free variables.

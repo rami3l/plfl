@@ -2,6 +2,7 @@
 
 -- Adapted from <https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda>.
 
+import Plfl
 import Plfl.More
 
 import Mathlib.Tactic
@@ -10,27 +11,38 @@ set_option tactic.simp.trace true
 
 open Term
 
-theorem congr_arg₃
-(f : α → β → γ → δ) {x x' : α} {y y' : β} {z z' : γ}
-(hx : x = x') (hy : y = y') (hz : z = z')
-: f x y z = f x' y' z'
-:= by subst hx hy hz; rfl
-
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L104
 @[simp]
-lemma subst₁_shift : (t' : Γ ⊢ b) ⇴ (rename .s (t : Γ ⊢ a)) = t := by
+lemma subst₁_shift : (t' : Γ ⊢ b) ⇴ shift (t : Γ ⊢ a) = t := by
   sorry
   -- simp_all; cases t <;> try trivial
   -- · case lam n => simp_all; apply congr_arg lam; sorry
+
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L154
+@[simp]
+lemma shift_subst
+{σ : ∀ {a}, Γ ∋ a → Δ ⊢ a}
+(t : Γ ⊢ a)
+: subst (exts (b := b) σ) (shift t) = shift (subst σ t)
+:= by
+  sorry
+  -- cases t with
+  -- | var => trivial
+  -- | lam t =>
+  --   apply congr_arg lam
+  --   have := shift_subst (b := b) (σ := exts σ) t
+  --   unfold shift at this
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L161
 @[simp]
 lemma exts_subst_compose
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a} {σ' : ∀ {a}, Δ ∋ a → Ε ⊢ a}
-(t : Γ‚ b ∋ a)
-: subst (exts σ') (exts σ t) = exts (subst σ' ∘ σ) t
+(i : Γ‚ b ∋ a)
+: subst (exts σ') (exts σ i) = exts (subst σ' ∘ σ) i
 := by
-  sorry
+  match i with
+  | .z => trivial
+  | .s i => exact shift_subst (σ i)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L170
 @[simp]
@@ -43,8 +55,8 @@ lemma subst_subst_compose
   | ` t => trivial
   | ƛ t =>
     apply congr_arg lam
-    have := subst_subst_compose (σ := exts σ) (σ' := exts σ') t
-    rw [this]; congr; ext; apply exts_subst_compose
+    rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') t]
+    congr; ext; apply exts_subst_compose
   | l □ m => apply congr_arg₂ ap <;> apply subst_subst_compose
   | 𝟘 => trivial
   | ι t => apply congr_arg succ; apply subst_subst_compose
