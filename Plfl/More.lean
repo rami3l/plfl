@@ -54,9 +54,12 @@ end Ty
 abbrev Context : Type := List Ty
 
 namespace Context
-  abbrev snoc : Context → Ty → Context := flip (· :: ·)
+  @[simp] abbrev snoc (Γ : Context) (a : Ty) : Context := a :: Γ
+  @[simp] abbrev lappend (Γ : Context) (Δ : Context) : Context := Δ ++ Γ
+
   -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
-  infixl:50 " ‚ " => snoc
+  infixl:50 "‚ " => snoc
+  infixl:50 ",, " => lappend
 end Context
 
 -- https://plfa.github.io/DeBruijn/#variables-and-the-lookup-judgment
@@ -271,14 +274,17 @@ def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
   | .cons m n => exact .cons (subst σ m) (subst σ n)
   | .caseList l m n => exact .caseList (subst σ l) (subst σ m) (subst (exts (exts σ)) n)
 
+abbrev subst₁σ (v : Γ ⊢ b) : ∀ {a}, Γ‚ b ∋ a → Γ ⊢ a := by
+  introv; intro
+  | .z => exact v
+  | .s x => exact ` x
+
 /--
 Substitution for one free variable `v` in the term `n`.
 -/
 @[simp]
 abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
-  refine subst ?_ n; introv; intro
-  | .z => exact v
-  | .s x => exact ` x
+  refine subst ?_ n; exact subst₁σ v
 
 /--
 Substitution for one two variable `v` and `w'` in the term `n`.
