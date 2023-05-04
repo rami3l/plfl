@@ -54,12 +54,12 @@ end Ty
 abbrev Context : Type := List Ty
 
 namespace Context
-  @[simp] abbrev snoc (Γ : Context) (a : Ty) : Context := a :: Γ
-  @[simp] abbrev lappend (Γ : Context) (Δ : Context) : Context := Δ ++ Γ
+  abbrev snoc (Γ : Context) (a : Ty) : Context := a :: Γ
+  abbrev lappend (Γ : Context) (Δ : Context) : Context := Δ ++ Γ
 
   -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
   infixl:50 "‚ " => snoc
-  infixl:50 ",, " => lappend
+  infixl:45 "‚‚ " => lappend
 end Context
 
 -- https://plfa.github.io/DeBruijn/#variables-and-the-lookup-judgment

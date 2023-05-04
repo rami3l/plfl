@@ -12,42 +12,56 @@ set_option tactic.simp.trace true
 open Term
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L50
+/--
+Applies `ext` repeatedly.
+-/
 @[simp]
-def ext' (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) : Γ,, Ε ∋ a → Δ,, Ε ∋ a := by
+def ext' (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) : Γ‚‚ Ε ∋ a → Δ‚‚ Ε ∋ a := by
   match Ε with
   | [] => exact ρ (a := a)
   | b :: Ε => exact ext (a := a) (b := b) (ext' (Ε := Ε) ρ)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L56
+/--
+Applies `exts` repeatedly.
+-/
 @[simp]
-def exts' (σ : ∀ {a}, Γ ∋ a → Δ ⊢ a) : Γ,, Ε ∋ a → Δ,, Ε ⊢ a := by
+def exts' (σ : ∀ {a}, Γ ∋ a → Δ ⊢ a) : Γ‚‚ Ε ∋ a → Δ‚‚ Ε ⊢ a := by
   match Ε with
   | [] => exact σ (a := a)
   | b :: Ε => exact exts (a := a) (b := b) (exts' (Ε := Ε) σ)
+
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L120
+@[simp]
+lemma insert_twice {Γ Δ Ε : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Ε ⊢ a)
+: rename
+  (ext' (Ε := Ε) (.s (t' := c)))
+  (rename (ext' (Ε := Ε) (ext' (Ε := Δ) (.s (t' := b)))) t)
+= (rename (ext' (ext (ext' .s))) (rename (ext' .s) t) : (Γ‚ b‚‚ Δ)‚ c‚‚ Ε ⊢ a)
+:= by
+  sorry
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L132
 @[simp]
 lemma insert_subst_idx
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a}
-(i : Γ,, Ε ∋ a)
+(i : Γ‚‚ Ε ∋ a)
 : exts' (Ε := Ε) (exts (b := b) σ) (ext' .s i) = rename (ext' .s) (exts' σ i)
 := by
   match Ε, i with
   | [], i => rfl
   | _ :: _, .z => rfl
-  | c :: E, .s i =>
-    -- have := insert_subst_idx (b := b) (σ := σ) i
-    -- conv_lhs => arg 2; unfold ext' ext; simp
-    -- conv_lhs => unfold exts' exts; simp
-    -- conv_rhs => arg 2; unfold ext' ext; simp
-    -- apply congr_arg Lookup.s
-    sorry
+  | c :: Ε, .s i =>
+    conv_lhs => arg 2; unfold ext' ext; simp
+    conv_lhs => change shift (exts' (exts σ) (ext' .s i)); rw [insert_subst_idx i]
+    conv_rhs => arg 2; unfold ext' ext; simp
+    exact insert_twice (Ε := []) (@exts' Γ Δ Ε a σ i)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L141
 @[simp]
 lemma insert_subst
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a}
-(t : Γ,, Ε ⊢ a)
+(t : Γ‚‚ Ε ⊢ a)
 : subst (exts' (Ε := Ε) (exts (b := b) σ)) (rename (ext' .s) t)
 = rename (ext' .s) (subst (exts' σ) t)
 := by
