@@ -339,7 +339,7 @@ end Value
 /--
 `Reduce t t'` says that `t` reduces to `t'`.
 -/
-inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
+inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 | lamβ : Value v → Reduce ((ƛ n) □ v) (n ⬰ v)
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
@@ -382,7 +382,6 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | consξ₁ : Reduce m m' → Reduce (.cons m n) (.cons m' n)
 | consξ₂ : Reduce n n' → Reduce (.cons v n) (.cons v n')
 | consβ : Reduce (.caseList (.cons v w) m n) (subst₂ v w n)
-deriving Repr
 
 infix:40 " —→ " => Reduce
 
@@ -392,43 +391,25 @@ namespace Reduce
   A reflexive and transitive closure,
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
-  inductive Clos : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-  | nil : Clos m m
-  | cons : (l —→ m) → Clos m n → Clos l n
-  deriving Repr
-
-  infix:20 " —↠ " => Clos
+  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) Reduce
 
   namespace Clos
-    @[simp]
-    def length : (m —↠ n) → Nat
-    | nil => 0
-    | cons _ cdr => 1 + cdr.length
+    infix:20 " —↠ " => Clos
 
-    @[simp] abbrev one (car : m —→ n) : (m —↠ n) := cons car nil
+    @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c
     instance : Coe (m —→ n) (m —↠ n) where coe := one
 
-    @[simp]
-    def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
-    | nil, c => c
-    | cons h c, c' => cons h <| c.trans c'
-
     instance : Trans (α := Γ ⊢ a) Clos Clos Clos where
-      trans := trans
-
-    instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
-      trans := cons
-
-    instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
-      trans c c' := cons c <| cons c' nil
-
-    @[simp]
-    def transOne : (l —↠ m) → (m —→ n) → (l —↠ n)
-    | nil, c => c
-    | cons h c, c' => cons h <| c.trans c'
+      trans := Relation.ReflTransGen.trans
 
     instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where
-      trans := transOne
+      trans := .tail
+
+    instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
+      trans c c' := (one c).tail c'
+
+    instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
+      trans h c := (one h).trans c
   end Clos
 
   open Term
@@ -444,24 +425,23 @@ end Reduce
 
 -- https://plfa.github.io/DeBruijn/#values-do-not-reduce
 @[simp]
-def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
-  introv v; is_empty; intro r
+theorem Value.not_Reduce : Value m → ∀ {n}, ¬(m —→ n) := by
+  introv v; intro r
   cases v with try contradiction
-  | succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
+  | succ v => cases r; · case succξ => apply not_Reduce v; trivial
   | prod => cases r with
-    | prodξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
-    | prodξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
-  | left v => cases r; · case leftξ => apply (emptyReduce v).false; trivial
-  | right v => cases r; · case rightξ => apply (emptyReduce v).false; trivial
+    | prodξ₁ r => rename_i v _ _; apply not_Reduce v; trivial
+    | prodξ₂ r => rename_i v _; apply not_Reduce v; trivial
+  | left v => cases r; · case leftξ => apply not_Reduce v; trivial
+  | right v => cases r; · case rightξ => apply not_Reduce v; trivial
   | cons => cases r with
-    | consξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
-    | consξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
+    | consξ₁ r => rename_i v _ _; apply not_Reduce v; trivial
+    | consξ₂ r => rename_i v _; apply not_Reduce v; trivial
 
 @[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
-  have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
-  exact this.false r
+  have := v.not_Reduce (n := n); contradiction
 
 /--
 If a term `m` is not ill-typed, then it either is a value or can be reduced.
@@ -548,18 +528,17 @@ deriving BEq, DecidableEq, Repr
 
 inductive Steps (l : Γ ⊢ a) where
 | steps : ∀{n : Γ ⊢ a}, (l —↠ n) → Result n → Steps l
-deriving Repr
 
 @[simp]
 def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
   if gas = 0 then
-    ⟨.nil, .dnf⟩
+    ⟨.refl, .dnf⟩
   else
     match progress l with
-    | .done v => .steps .nil <| .done v
+    | .done v => .steps .refl <| .done v
     | .step r =>
       let ⟨rs, res⟩ := eval (gas - 1) (by trivial)
-      ⟨.cons r rs, res⟩
+      ⟨Trans.trans r rs, res⟩
 
 section examples
   open Term
