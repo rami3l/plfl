@@ -3,8 +3,6 @@
 import Plfl
 import Plfl.Lambda
 
-import Mathlib.CategoryTheory.Iso
-
 set_option tactic.simp.trace true
 
 open Context Context.IsTy Term.Reduce
@@ -37,11 +35,11 @@ namespace Canonical
   | tySucc t, Value.succ m => canSucc <| ofIsTy t m
 
   @[simp]
-  def wellTypedHom : Canonical v t → ∅ ⊢ v ⦂ t × Value v := by
+  def wellTyped : Canonical v t → ∅ ⊢ v ⦂ t × Value v := by
     intro
     | canLam h => exact ⟨tyLam h, Value.lam⟩
     | canZero => exact ⟨tyZero, V𝟘⟩
-    | canSucc h => have ⟨ty, v⟩ := wellTypedHom h; exact ⟨tySucc ty, Value.succ v⟩
+    | canSucc h => have ⟨ty, v⟩ := wellTyped h; exact ⟨tySucc ty, Value.succ v⟩
 
   @[simp]
   def wellTypedInv : ∅ ⊢ v ⦂ t × Value v → Canonical v t := by
@@ -50,29 +48,32 @@ namespace Canonical
     | ⟨tyZero, Value.zero⟩ => exact canZero
     | ⟨tySucc ty, Value.succ v⟩ => apply canSucc; exact wellTypedInv ⟨ty, v⟩
 
-  theorem wellTyped_hom_inv_id {v t} : @wellTypedInv v t ∘ wellTypedHom = id := by
-    funext c; cases c <;> simp_all
-    · rename_i v' c'; have := @wellTyped_hom_inv_id v' ℕt
-      apply_fun (· c') at this; trivial
+  lemma wellTyped_left_inv (c : Canonical v t)
+  : wellTypedInv (wellTyped c) = c
+  := by
+    cases c with simp_all
+    | canSucc c' => rename_i v'; exact @wellTyped_left_inv v' ℕt c'
 
-  def wellTyped_inv_hom_id {v t} : @wellTypedHom v t ∘ wellTypedInv = id := by
-    funext c; match c with
+  lemma wellTyped_right_inv (c : ∅ ⊢ v ⦂ t × Value v)
+  : wellTyped (wellTypedInv c) = c
+  := by
+    match c with
     | ⟨tyLam ty, Value.lam⟩ => simp_all
     | ⟨tyZero, Value.zero⟩ => simp_all
     | ⟨tySucc ty, Value.succ n⟩ =>
-        rename_i v'; have := @wellTyped_inv_hom_id v' ℕt;
-        rw [Function.comp_apply, wellTypedInv, wellTypedHom]; split
-        · simp_all; apply_fun (· (ty, n)) at this; simp_all
+        rename_i v'; have := @wellTyped_right_inv v' ℕt ⟨ty, n⟩;
+        rw [wellTypedInv, wellTyped]; split
+        · simp_all only [Prod.mk.injEq]
 
   /--
   The Canonical forms are exactly the well-typed values.
   -/
   @[simp]
-  instance wellTyped : Canonical v t ≅ (∅ ⊢ v ⦂ t) × Value v where
-    hom := wellTypedHom
-    inv := wellTypedInv
-    hom_inv_id := wellTyped_hom_inv_id
-    inv_hom_id := wellTyped_inv_hom_id
+  instance : Canonical v t ≃ (∅ ⊢ v ⦂ t) × Value v where
+    toFun := wellTyped
+    invFun := wellTypedInv
+    left_inv := wellTyped_left_inv
+    right_inv := wellTyped_right_inv
 end Canonical
 
 def canonical : ∅ ⊢ m ⦂ t → Value m → Canonical m t := Canonical.ofIsTy
@@ -153,14 +154,14 @@ end Progress'
 
 namespace Progress
   -- https://plfa.github.io/Properties/#exercise-progress--practice
-  @[simp] def sumHom : Progress m → Progress' m | step r => inr ⟨_, r⟩ | done v => inl v
-  @[simp] def sumInv : Progress' m → Progress m | inl v => done v | inr ⟨_, r⟩ => step r
+  @[simp] def toProgress' : Progress m → Progress' m | step r => inr ⟨_, r⟩ | done v => inl v
+  @[simp] def fromProgress' : Progress' m → Progress m | inl v => done v | inr ⟨_, r⟩ => step r
 
-  instance sum_iso : Progress m ≅ Progress' m where
-    hom := sumHom
-    inv := sumInv
-    hom_inv_id : sumInv ∘ sumHom = id := by funext x; aesop
-    inv_hom_id : sumHom ∘ sumInv = id := by funext x; aesop
+  instance : Progress m ≃ Progress' m where
+    toFun := toProgress'
+    invFun := fromProgress'
+    left_inv := by intro x; cases x <;> simp_all
+    right_inv := by intro x; cases x <;> simp_all
 end Progress
 
 -- https://plfa.github.io/Properties/#renaming
