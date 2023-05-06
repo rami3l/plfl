@@ -31,15 +31,67 @@ def exts' (σ : ∀ {a}, Γ ∋ a → Δ ⊢ a) : Γ‚‚ Ε ∋ a → Δ‚‚
   | [] => exact σ (a := a)
   | b :: Ε => exact exts (a := a) (b := b) (exts' (Ε := Ε) σ)
 
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L104
+@[simp]
+theorem subst₁_shift : (t' : Γ ⊢ b) ⇴ shift (t : Γ ⊢ a) = t := by
+  sorry
+  -- simp_all; cases t with try trivial
+  -- | lam t =>
+  --   apply congr_arg lam; rename_i a' b'
+  --   have := subst₁_shift (Γ := Γ‚ a') (t := t) (t' := shift t')
+
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L112
+@[simp]
+lemma insert_twice_idx {Γ Δ Ε : Context} {a b c : Ty} (i : Γ‚‚ Δ‚‚ Ε ∋ a)
+: ext' (Ε := Ε)
+    (.s (t' := c))
+    (ext' (Ε := Ε) (ext' (Ε := Δ) (.s (t' := b))) i)
+= ext' (ext (ext' .s)) (ext' .s i)
+:= by
+  match Ε, i with
+  | [], _ => rfl
+  | _ :: _, .z => rfl
+  | d :: Ε, .s i => apply congr_arg Lookup.s; exact insert_twice_idx i
+
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L120
 @[simp]
 lemma insert_twice {Γ Δ Ε : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Ε ⊢ a)
 : rename
-  (ext' (Ε := Ε) (.s (t' := c)))
-  (rename (ext' (Ε := Ε) (ext' (Ε := Δ) (.s (t' := b)))) t)
+    (ext' (Ε := Ε) (.s (t' := c)))
+    (rename (ext' (Ε := Ε) (ext' (Ε := Δ) (.s (t' := b)))) t)
 = (rename (ext' (ext (ext' .s))) (rename (ext' .s) t) : (Γ‚ b‚‚ Δ)‚ c‚‚ Ε ⊢ a)
 := by
-  sorry
+  match t with
+  | ` i => apply congr_arg var; exact insert_twice_idx i
+  | ƛ t => apply congr_arg lam; rename_i a' b'; exact insert_twice (Ε := Ε‚ a') t
+  | l □ m => apply congr_arg₂ ap <;> apply insert_twice
+  | 𝟘 => trivial
+  | ι t => apply congr_arg succ; apply insert_twice
+  | 𝟘? l m n =>
+    apply congr_arg₃ case <;> try apply insert_twice
+    · exact insert_twice (Ε := Ε‚ ℕt) n
+  | μ t => apply congr_arg mu; exact insert_twice (Ε := Ε‚ a) t
+  | .prim t => trivial
+  | .mulP m n => apply congr_arg₂ mulP <;> apply insert_twice
+  | .let m n =>
+    apply congr_arg₂ «let» <;> try apply insert_twice
+    · rename_i a'; exact insert_twice (Ε := Ε‚ a') n
+  | .prod m n => apply congr_arg₂ prod <;> apply insert_twice
+  | .fst t => apply congr_arg fst; apply insert_twice
+  | .snd t => apply congr_arg snd; apply insert_twice
+  | .left t => apply congr_arg left; apply insert_twice
+  | .right t => apply congr_arg right; apply insert_twice
+  | .caseSum s l r =>
+    apply congr_arg₃ caseSum <;> try apply insert_twice
+    · rename_i a' b'; exact insert_twice (Ε := Ε‚ a') l
+    · rename_i a' b'; exact insert_twice (Ε := Ε‚ b') r
+  | .caseVoid v => apply congr_arg caseVoid; apply insert_twice
+  | ◯ => trivial
+  | .nil => trivial
+  | .cons m n => apply congr_arg₂ cons <;> apply insert_twice
+  | .caseList l m n =>
+    apply congr_arg₃ caseList <;> try apply insert_twice
+    · rename_i a'; exact insert_twice (Ε := Ε‚ a'‚ .list a') n
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L132
 @[simp]
@@ -66,7 +118,7 @@ lemma insert_subst
 = rename (ext' .s) (subst (exts' σ) t)
 := by
   match t with
-  | ` t => exact insert_subst_idx t
+  | ` i => exact insert_subst_idx i
   | ƛ t => rename_i a b; apply congr_arg lam; exact insert_subst (Ε := Ε‚ a) t
   | l □ m => apply congr_arg₂ ap <;> apply insert_subst
   | 𝟘 => trivial
@@ -105,15 +157,6 @@ lemma shift_subst
 : subst (exts (b := b) σ) (shift t) = shift (subst σ t)
 := insert_subst (Ε := []) t
 
--- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L104
-@[simp]
-lemma subst₁_shift : (t' : Γ ⊢ b) ⇴ shift (t : Γ ⊢ a) = t := by
-  sorry
-  -- simp_all; cases t with try trivial
-  -- | lam t =>
-  --   apply congr_arg lam; rename_i a' b'
-  --   have := subst₁_shift (Γ := Γ‚ a') (t := t) (t' := shift t')
-
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L161
 @[simp]
 lemma exts_subst_compose
@@ -127,13 +170,13 @@ lemma exts_subst_compose
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L170
 @[simp]
-lemma subst_subst_compose
+theorem subst_subst_compose
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a} {σ' : ∀ {a}, Δ ∋ a → Ε ⊢ a}
 (t : Γ ⊢ a)
 : subst σ' (subst σ t) = subst (subst σ' ∘ σ) t
 := by
   match t with
-  | ` t => trivial
+  | ` _ => trivial
   | ƛ t =>
     apply congr_arg lam
     rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') t]
