@@ -32,13 +32,14 @@ abbrev Context : Type := List Ty
 
 namespace Context
   abbrev snoc : Context → Ty → Context := flip (· :: ·)
-  infixl:50 " :< " => snoc
+  -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
+  infixl:50 " ‚ " => snoc
 end Context
 
 -- https://plfa.github.io/DeBruijn/#variables-and-the-lookup-judgment
 inductive Lookup : Context → Ty → Type where
-| z : Lookup (Γ :< t) t
-| s : Lookup Γ t → Lookup (Γ :< t') t
+| z : Lookup (Γ‚ t) t
+| s : Lookup Γ t → Lookup (Γ‚ t') t
 deriving DecidableEq, Repr
 
 namespace Lookup
@@ -52,10 +53,10 @@ namespace Lookup
 
   macro " ♯ " n:term:90 : term => `(by get_elem $n)
 
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ∋ ℕt := .z
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ∋ ℕt := ♯0
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ∋ ℕt =⇒ ℕt := .s .z
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ∋ ℕt =⇒ ℕt := ♯1
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := .z
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := ♯0
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt =⇒ ℕt := .s .z
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt =⇒ ℕt := ♯1
 end Lookup
 
 -- https://plfa.github.io/DeBruijn/#terms-and-the-typing-judgment
@@ -64,12 +65,12 @@ A term with typing judgement embedded in itself.
 -/
 inductive Term : Context → Ty → Type where
 | var : Γ ∋ a → Term Γ a
-| lam : Term (Γ :< a) b → Term Γ (a =⇒ b)
+| lam : Term (Γ‚ a) b → Term Γ (a =⇒ b)
 | ap : Term Γ (a =⇒ b) → Term Γ a → Term Γ b
 | zero : Term Γ ℕt
 | succ : Term Γ ℕt → Term Γ ℕt
-| case : Term Γ ℕt → Term Γ a → Term (Γ :< ℕt) a → Term Γ a
-| mu : Term (Γ :< a) a → Term Γ a
+| case : Term Γ ℕt → Term Γ a → Term (Γ‚ ℕt) a → Term Γ a
+| mu : Term (Γ‚ a) a → Term Γ a
 deriving DecidableEq, Repr
 
 namespace Term
@@ -87,11 +88,11 @@ namespace Term
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
   macro " # " n:term:90 : term => `(`♯$n)
 
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ⊢ ℕt := #0
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ⊢ ℕt =⇒ ℕt := #1
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ⊢ ℕt := #1 $ #0
-  example : ∅ :< ℕt =⇒ ℕt :< ℕt ⊢ ℕt := #1 $ #1 $ #0
-  example : ∅ :< ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #0
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := #1
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #1 $ #0
+  example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #1 $ #1 $ #0
+  example : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
   example : ∅ ⊢ (ℕt =⇒ ℕt) =⇒ ℕt =⇒ ℕt := ƛ ƛ (#1 $ #1 $ #0)
 
   @[simp]
@@ -131,7 +132,7 @@ If one context maps to another,
 the mapping holds after adding the same variable to both contexts.
 -/
 @[simp]
-def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ :< b ∋ a → Δ :< b ∋ a := by
+def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
   intro ρ; intro
   | .z => exact .z
   | .s x => refine .s ?_; exact ρ x
@@ -159,8 +160,8 @@ def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
   | μ n => refine .mu ?_; refine rename ?_ n; exact ext ρ
 
 example
-: let m : ∅ :< ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
-  let m' : ∅ :< ℕt =⇒ ℕt :< ℕt ⊢ ℕt =⇒ ℕt := ƛ (#2 $ #2 $ #0)
+: let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
+  let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#2 $ #2 $ #0)
   rename .s m = m'
 := rfl
 
@@ -170,7 +171,7 @@ If the variables in one context maps to some terms in another,
 the mapping holds after adding the same variable to both contexts.
 -/
 @[simp]
-def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ :< b ∋ a → Δ :< b ⊢ a := by
+def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
   intro σ; intro
   | .z => exact `.z
   | .s x => apply rename .s; exact σ x
@@ -202,7 +203,7 @@ def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
 /--
 Substitution for one free variable `m` in the term `n`.
 -/
-abbrev subst₁ (m : Γ ⊢ b) (n : Γ :< b ⊢ a) : Γ ⊢ a := by
+abbrev subst₁ (m : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
   refine subst ?_ n; introv; intro
   | .z => exact m
   | .s x => exact ` x
@@ -212,20 +213,20 @@ infix:90 " ⬰ " => flip subst₁
 
 example
 : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
-  let m' : ∅ :< ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
+  let m' : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
   let n : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ƛ ι #0) □ ((ƛ ι #0) □ #0)
   m ⇴ m' = n
 := rfl
 
 example
-: let m : ∅ :< ℕt =⇒ ℕt ⊢ ℕt := #0 $ 𝟘
-  let m' : ∅ :< ℕt =⇒ ℕt :< ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1)
-  let n : ∅ :< ℕt =⇒ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1 $ 𝟘)
+: let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt := #0 $ 𝟘
+  let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1)
+  let n : ∅‚ ℕt =⇒ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1 $ 𝟘)
   m ⇴ m' = n
 := rfl
 
 inductive Value : Γ ⊢ a → Type where
-| lam : Value (ƛ (n : Γ :< a ⊢ b))
+| lam : Value (ƛ (n : Γ‚ a ⊢ b))
 | zero: Value 𝟘
 | succ: Value n → Value (ι n)
 deriving BEq, DecidableEq, Repr
