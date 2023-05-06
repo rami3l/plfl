@@ -25,13 +25,13 @@ namespace Sim
   @[simp]
   theorem toEq {s : (m : Γ ⊢ a) ~ m'} : (m ~ n) → (m' = n) := by
     intro s'; match s, s' with
-    | s, var => cases s with
+    | s, .var => cases s with
       | var => rfl
-    | s, lam s' => cases s with
+    | s, .lam s' => cases s with
       | lam s'' => simp only [toEq (s := s'') s']
-    | s, ap sl sm => cases s with
+    | s, .ap sl sm => cases s with
       | ap sl' sm' => simp only [toEq (s := sl') sl, toEq (s := sm') sm]
-    | s, «let» sl sm => cases s with
+    | s, .let sl sm => cases s with
       | «let» sl' sm' => simp only [toEq (s := sl') sl, toEq (s := sm') sm]
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-values
@@ -43,4 +43,26 @@ namespace Sim
   @[simp]
   def commValue_inv {m m' : Γ ⊢ a} : (m ~ m') → Value m' → Value m
   | .lam _, .lam => .lam
+
+  -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-renaming
+  @[simp]
+  def commRename (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) {m m' : Γ ⊢ a}
+  : m ~ m' → rename ρ m ~ rename ρ m'
+  := by
+    intro
+    | .var => exact .var
+    | .lam s => apply lam; exact commRename (ext ρ) s
+    | .ap sl sm => apply ap; repeat (apply commRename ρ; trivial)
+    | .let sl sm => apply «let»; repeat
+      first | apply commRename ρ | apply commRename (ext ρ)
+      trivial
+
+  -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-substitution
+  def commExts {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
+  : (∀ {a}, (x : Γ ∋ a) → σ x ~ σ' x)
+  → (∀ {a b}, (x : Γ‚ b ∋ a) → exts σ x ~ exts σ' x)
+  := by
+    intro s; introv; match x with
+    | .z => simp only [exts]; exact .var
+    | .s x => simp only [exts]; apply commRename Lookup.s; apply s
 end Sim
