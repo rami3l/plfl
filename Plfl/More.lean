@@ -46,7 +46,7 @@ namespace Ty
   @[simp]
   theorem t_to_t'_ne_t (t t' : Ty) : (t =⇒ t') ≠ t := by
     by_contra h; match t with
-    | nat => trivial
+    | nat => contradiction
     | fn ta tb => injection h; have := t_to_t'_ne_t ta tb; contradiction
 end Ty
 

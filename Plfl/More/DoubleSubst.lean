@@ -15,7 +15,6 @@ open Term
 /--
 Applies `ext` repeatedly.
 -/
-@[simp]
 def ext' (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) : Γ‚‚ Ε ∋ a → Δ‚‚ Ε ∋ a := by
   match Ε with
   | [] => exact ρ (a := a)
@@ -25,23 +24,120 @@ def ext' (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) : Γ‚‚ Ε ∋ a → Δ‚‚ 
 /--
 Applies `exts` repeatedly.
 -/
-@[simp]
 def exts' (σ : ∀ {a}, Γ ∋ a → Δ ⊢ a) : Γ‚‚ Ε ∋ a → Δ‚‚ Ε ⊢ a := by
   match Ε with
   | [] => exact σ (a := a)
   | b :: Ε => exact exts (a := a) (b := b) (exts' (Ε := Ε) σ)
 
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L64
+lemma exts_comp {ρ : ∀ {a}, Γ ∋ a → Δ ∋ a} {σ : ∀ {a}, Δ ∋ a → Ε ⊢ a} (i : Γ‚ b ∋ a)
+: (exts σ) (ext ρ i) = exts (σ ∘ ρ) i
+:= by cases i <;> rfl
+
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L87
+lemma exts_var (i : Γ‚ b ∋ a) : exts var i = ` i := by cases i <;> rfl
+
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L73
+lemma subst_comp {ρ : ∀ {a}, Γ ∋ a → Δ ∋ a} {σ : ∀ {a}, Δ ∋ a → Ε ⊢ a} (t : Γ ⊢ a)
+: subst σ (rename ρ t) = subst (σ ∘ ρ) t
+:= by
+  match t with
+  | ` i => triv
+  | ƛ t =>
+    apply congr_arg lam; rw [subst_comp t]
+    conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+  | l □ m => apply congr_arg₂ ap <;> apply subst_comp
+  | 𝟘 => triv
+  | ι t => apply congr_arg succ; apply subst_comp
+  | 𝟘? l m n =>
+    apply congr_arg₃ case <;> try apply subst_comp
+    · rw [subst_comp n]
+      conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+  | μ t =>
+    apply congr_arg mu; rw [subst_comp t]
+    conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+  | .prim t => triv
+  | .mulP m n => apply congr_arg₂ mulP <;> apply subst_comp
+  | .let m n =>
+    apply congr_arg₂ «let» <;> try apply subst_comp
+    · rw [subst_comp n]
+      conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+  | .prod m n => apply congr_arg₂ prod <;> apply subst_comp
+  | .fst t => apply congr_arg fst; apply subst_comp
+  | .snd t => apply congr_arg snd; apply subst_comp
+  | .left t => apply congr_arg left; apply subst_comp
+  | .right t => apply congr_arg right; apply subst_comp
+  | .caseSum s l r =>
+    apply congr_arg₃ caseSum <;> try apply subst_comp
+    · rw [subst_comp l]
+      conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+    · rw [subst_comp r]
+      conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+  | .caseVoid v => apply congr_arg caseVoid; apply subst_comp
+  | ◯ => triv
+  | .nil => triv
+  | .cons m n => apply congr_arg₂ cons <;> apply subst_comp
+  | .caseList l m n =>
+    apply congr_arg₃ caseList <;> try apply subst_comp
+    · rw [subst_comp n]
+      conv_lhs =>
+        arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+        arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
+
+-- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L93
+lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
+  match t with
+  | ` i => apply congr_arg var; triv
+  | ƛ t =>
+    apply congr_arg lam
+    conv_lhs => arg 1; ext a i; rw [exts_var i]
+    exact subst_var t
+  | l □ m => apply congr_arg₂ ap <;> apply subst_var
+  | 𝟘 => triv
+  | ι t => apply congr_arg succ; apply subst_var
+  | 𝟘? l m n =>
+    apply congr_arg₃ case <;> try apply subst_var
+    · conv_lhs => arg 1; ext a i; rw [exts_var i]
+      exact subst_var n
+  | μ t =>
+    apply congr_arg mu
+    conv_lhs => arg 1; ext a i; rw [exts_var i]
+    exact subst_var t
+  | .prim t => triv
+  | .mulP m n => apply congr_arg₂ mulP <;> apply subst_var
+  | .let m n =>
+    apply congr_arg₂ «let» <;> try apply subst_var
+    · conv_lhs => arg 1; ext a i; rw [exts_var i]
+      exact subst_var n
+  | .prod m n => apply congr_arg₂ prod <;> apply subst_var
+  | .fst t => apply congr_arg fst; apply subst_var
+  | .snd t => apply congr_arg snd; apply subst_var
+  | .left t => apply congr_arg left; apply subst_var
+  | .right t => apply congr_arg right; apply subst_var
+  | .caseSum s l r =>
+    apply congr_arg₃ caseSum <;> try apply subst_var
+    · conv_lhs => arg 1; ext a i; rw [exts_var i]
+      exact subst_var l
+    · conv_lhs => arg 1; ext a i; rw [exts_var i]
+      exact subst_var r
+  | .caseVoid v => apply congr_arg caseVoid; apply subst_var
+  | ◯ => triv
+  | .nil => triv
+  | .cons m n => apply congr_arg₂ cons <;> apply subst_var
+  | .caseList l m n =>
+    apply congr_arg₃ caseList <;> try apply subst_var
+    · conv_lhs => arg 1; ext a i; arg 1; ext a i; rw [exts_var i]
+      conv_lhs => arg 1; ext a i; rw [exts_var i]
+      exact subst_var n
+
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L104
 @[simp]
 theorem subst₁_shift : (t' : Γ ⊢ b) ⇴ shift (t : Γ ⊢ a) = t := by
-  sorry
-  -- simp_all; cases t with try trivial
-  -- | lam t =>
-  --   apply congr_arg lam; rename_i a' b'
-  --   have := subst₁_shift (Γ := Γ‚ a') (t := t) (t' := shift t')
+  simp_all only [subst₁, subst₁σ, subst_comp]
+  conv_lhs => arg 1; ext a t'; simp
+  simp_all only [subst_var]
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L112
-@[simp]
 lemma insert_twice_idx {Γ Δ Ε : Context} {a b c : Ty} (i : Γ‚‚ Δ‚‚ Ε ∋ a)
 : ext' (Ε := Ε)
     (.s (t' := c))
@@ -54,7 +150,6 @@ lemma insert_twice_idx {Γ Δ Ε : Context} {a b c : Ty} (i : Γ‚‚ Δ‚‚ 
   | d :: Ε, .s i => apply congr_arg Lookup.s; exact insert_twice_idx i
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L120
-@[simp]
 lemma insert_twice {Γ Δ Ε : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Ε ⊢ a)
 : rename
     (ext' (Ε := Ε) (.s (t' := c)))
@@ -65,13 +160,13 @@ lemma insert_twice {Γ Δ Ε : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Ε �
   | ` i => apply congr_arg var; exact insert_twice_idx i
   | ƛ t => apply congr_arg lam; rename_i a' b'; exact insert_twice (Ε := Ε‚ a') t
   | l □ m => apply congr_arg₂ ap <;> apply insert_twice
-  | 𝟘 => trivial
+  | 𝟘 => triv
   | ι t => apply congr_arg succ; apply insert_twice
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply insert_twice
     · exact insert_twice (Ε := Ε‚ ℕt) n
   | μ t => apply congr_arg mu; exact insert_twice (Ε := Ε‚ a) t
-  | .prim t => trivial
+  | .prim t => triv
   | .mulP m n => apply congr_arg₂ mulP <;> apply insert_twice
   | .let m n =>
     apply congr_arg₂ «let» <;> try apply insert_twice
@@ -86,15 +181,14 @@ lemma insert_twice {Γ Δ Ε : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Ε �
     · rename_i a' b'; exact insert_twice (Ε := Ε‚ a') l
     · rename_i a' b'; exact insert_twice (Ε := Ε‚ b') r
   | .caseVoid v => apply congr_arg caseVoid; apply insert_twice
-  | ◯ => trivial
-  | .nil => trivial
+  | ◯ => triv
+  | .nil => triv
   | .cons m n => apply congr_arg₂ cons <;> apply insert_twice
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply insert_twice
     · rename_i a'; exact insert_twice (Ε := Ε‚ a'‚ .list a') n
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L132
-@[simp]
 lemma insert_subst_idx
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a}
 (i : Γ‚‚ Ε ∋ a)
@@ -110,7 +204,6 @@ lemma insert_subst_idx
     exact insert_twice (Ε := []) (@exts' Γ Δ Ε a σ i)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L141
-@[simp]
 lemma insert_subst
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a}
 (t : Γ‚‚ Ε ⊢ a)
@@ -121,13 +214,13 @@ lemma insert_subst
   | ` i => exact insert_subst_idx i
   | ƛ t => rename_i a b; apply congr_arg lam; exact insert_subst (Ε := Ε‚ a) t
   | l □ m => apply congr_arg₂ ap <;> apply insert_subst
-  | 𝟘 => trivial
+  | 𝟘 => triv
   | ι t => apply congr_arg succ; apply insert_subst
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply insert_subst
     · exact insert_subst (Ε := Ε‚ ℕt) n
   | μ t => apply congr_arg mu; exact insert_subst (Ε := Ε‚ a) t
-  | .prim t => trivial
+  | .prim t => triv
   | .mulP m n => apply congr_arg₂ mulP <;> apply insert_subst
   | .let m n =>
     apply congr_arg₂ «let» <;> try apply insert_subst
@@ -142,15 +235,14 @@ lemma insert_subst
     · rename_i a' b'; exact insert_subst (Ε := Ε‚ a') l
     · rename_i a' b'; exact insert_subst (Ε := Ε‚ b') r
   | .caseVoid v => apply congr_arg caseVoid; apply insert_subst
-  | ◯ => trivial
-  | .nil => trivial
+  | ◯ => triv
+  | .nil => triv
   | .cons m n => apply congr_arg₂ cons <;> apply insert_subst
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply insert_subst
     · rename_i a'; exact insert_subst (Ε := Ε‚ a'‚ .list a') n
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L154
-@[simp]
 lemma shift_subst
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a}
 (t : Γ ⊢ a)
@@ -158,76 +250,81 @@ lemma shift_subst
 := insert_subst (Ε := []) t
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L161
-@[simp]
-lemma exts_subst_compose
+lemma exts_subst_comp
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a} {σ' : ∀ {a}, Δ ∋ a → Ε ⊢ a}
 (i : Γ‚ b ∋ a)
 : subst (exts σ') (exts σ i) = exts (subst σ' ∘ σ) i
 := by
   match i with
-  | .z => trivial
+  | .z => triv
   | .s i => exact shift_subst (σ i)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L170
 @[simp]
-theorem subst_subst_compose
+theorem subst_subst_comp
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a} {σ' : ∀ {a}, Δ ∋ a → Ε ⊢ a}
 (t : Γ ⊢ a)
 : subst σ' (subst σ t) = subst (subst σ' ∘ σ) t
 := by
   match t with
-  | ` _ => trivial
+  | ` _ => triv
   | ƛ t =>
     apply congr_arg lam
-    rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') t]
-    congr; ext; apply exts_subst_compose
-  | l □ m => apply congr_arg₂ ap <;> apply subst_subst_compose
-  | 𝟘 => trivial
-  | ι t => apply congr_arg succ; apply subst_subst_compose
+    rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') t]
+    congr; ext; apply exts_subst_comp
+  | l □ m => apply congr_arg₂ ap <;> apply subst_subst_comp
+  | 𝟘 => triv
+  | ι t => apply congr_arg succ; apply subst_subst_comp
   | 𝟘? l m n =>
-    apply congr_arg₃ case <;> try apply subst_subst_compose
+    apply congr_arg₃ case <;> try apply subst_subst_comp
     · conv_lhs =>
-      rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') n]
-      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_compose t]
+      rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') n]
+      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_comp t]
   | μ t =>
     apply congr_arg mu
-    have := subst_subst_compose (σ := exts σ) (σ' := exts σ') t
-    rw [this]; congr; ext; apply exts_subst_compose
-  | .prim t => trivial
-  | .mulP m n => apply congr_arg₂ mulP <;> apply subst_subst_compose
+    have := subst_subst_comp (σ := exts σ) (σ' := exts σ') t
+    rw [this]; congr; ext; apply exts_subst_comp
+  | .prim t => triv
+  | .mulP m n => apply congr_arg₂ mulP <;> apply subst_subst_comp
   | .let m n =>
     apply congr_arg₂ «let»
-    · apply subst_subst_compose
+    · apply subst_subst_comp
     · conv_lhs =>
-      rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') n]
-      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_compose t]
-  | .prod m n => apply congr_arg₂ prod <;> apply subst_subst_compose
-  | .fst t => apply congr_arg fst; apply subst_subst_compose
-  | .snd t => apply congr_arg snd; apply subst_subst_compose
-  | .left t => apply congr_arg left; apply subst_subst_compose
-  | .right t => apply congr_arg right; apply subst_subst_compose
+      rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') n]
+      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_comp t]
+  | .prod m n => apply congr_arg₂ prod <;> apply subst_subst_comp
+  | .fst t => apply congr_arg fst; apply subst_subst_comp
+  | .snd t => apply congr_arg snd; apply subst_subst_comp
+  | .left t => apply congr_arg left; apply subst_subst_comp
+  | .right t => apply congr_arg right; apply subst_subst_comp
   | .caseSum s l r =>
-    apply congr_arg₃ caseSum <;> try apply subst_subst_compose
+    apply congr_arg₃ caseSum <;> try apply subst_subst_comp
     · conv_lhs =>
-      rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') l]
-      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_compose t]
+      rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') l]
+      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_comp t]
     · conv_lhs =>
-      rw [subst_subst_compose (σ := exts σ) (σ' := exts σ') r]
-      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_compose t]
-  | .caseVoid v => apply congr_arg caseVoid; apply subst_subst_compose
-  | ◯ => trivial
-  | .nil => trivial
-  | .cons m n => apply congr_arg₂ cons <;> apply subst_subst_compose
+      rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') r]
+      arg 1; ext tt t; rw [Function.comp_apply, exts_subst_comp t]
+  | .caseVoid v => apply congr_arg caseVoid; apply subst_subst_comp
+  | ◯ => triv
+  | .nil => triv
+  | .cons m n => apply congr_arg₂ cons <;> apply subst_subst_comp
   | .caseList l m n =>
-    apply congr_arg₃ caseList <;> try apply subst_subst_compose
-    · rw [subst_subst_compose (σ := exts (exts σ)) (σ' := exts (exts σ')) n]
-      congr; ext _ t; rw [Function.comp_apply, exts_subst_compose t]
-      congr; ext _ t; rw [Function.comp_apply, exts_subst_compose t]
+    apply congr_arg₃ caseList <;> try apply subst_subst_comp
+    · rw [subst_subst_comp (σ := exts (exts σ)) (σ' := exts (exts σ')) n]
+      congr; ext _ t; rw [Function.comp_apply, exts_subst_comp t]
+      congr; ext _ t; rw [Function.comp_apply, exts_subst_comp t]
 
 theorem double_subst
 : subst₂ (v : Γ ⊢ a) (w : Γ ⊢ b) (n : Γ‚ a‚ b ⊢ c)
 = v ⇴ rename .s w ⇴ n
 := by
   cases n <;> first
-  | trivial
-  | simp_all [subst₂, subst₁, subst₁σ]; congr; ext; aesop
+  | triv
+  | simp_all [subst₂, subst₁, subst₁σ]; congr; ext
+    -- The following is generated by `aesop?`:
+    simp_all only [Function.comp_apply]
+    split
+    · simp_all only [subst₁_shift]
+    · simp_all only; rfl
+    · simp_all only; rfl
