@@ -93,3 +93,19 @@ namespace Sim
     simp only [subst₁];
     exact commSubst (Γ := Γ‚ b) (Δ := Γ) (σ := σ) (σ' := σ') gs sn
 end Sim
+
+/--
+Now we can actually prove that `Sim` is a real simulation by giving the construction
+of the lower leg of the diagram from the upper leg.
+-/
+
+-- https://plfa.github.io/Bisimulation/#the-relation-is-a-simulation
+structure Leg (m' n : Γ ⊢ a) where
+  sim : n ~ n'
+  red : m' —→ n'
+
+def Leg.fromUpper {m m' n' : Γ ⊢ a} (sim : m ~ m') (red : m —→ n) : Leg m' n := by
+  match sim with
+  -- TODO: Maybe we need to add some axioms instead of using a big inductive?
+  | .ap sl sm => sorry
+  | .let sl sm => sorry
