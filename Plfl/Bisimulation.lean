@@ -58,11 +58,38 @@ namespace Sim
       trivial
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-substitution
+  @[simp]
   def commExts {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
-  : (∀ {a}, (x : Γ ∋ a) → σ x ~ σ' x)
-  → (∀ {a b}, (x : Γ‚ b ∋ a) → exts σ x ~ exts σ' x)
+  (gs : ∀ {a}, (x : Γ ∋ a) → σ x ~ σ' x)
+  : (∀ {a b}, (x : Γ‚ b ∋ a) → exts σ x ~ exts σ' x)
   := by
-    intro s; introv; match x with
+    introv; match x with
     | .z => simp only [exts]; exact .var
-    | .s x => simp only [exts]; apply commRename Lookup.s; apply s
+    | .s x => simp only [exts]; apply commRename Lookup.s; apply gs
+
+  @[simp]
+  def commSubst {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
+  (gs : ∀ {a}, (x : Γ ∋ a) → @σ a x ~ @σ' a x)
+  {m m' : Γ ⊢ a}
+  : m ~ m' → subst σ m ~ subst σ' m'
+  := by
+    intro
+    | .var => apply gs
+    | .lam s => apply lam; exact commSubst (commExts gs) s
+    | .ap sl sm => apply ap; repeat (apply commSubst gs; trivial)
+    | .let sl sm => apply «let»; repeat
+      first | apply commSubst gs | apply commSubst (commExts gs)
+      trivial
+
+  @[simp]
+  def commSubst₁ {m m' : Γ ⊢ b} {n n' : Γ‚ b ⊢ a}
+  (sm : m ~ m') (sn : n ~ n') : m ⇴ n ~ m' ⇴ n'
+  := by
+    let σ {a} : Γ‚ b ∋ a → Γ ⊢ a := subst₁σ m
+    let σ' {a} : Γ‚ b ∋ a → Γ ⊢ a := subst₁σ m'
+    let gs {a} (x : Γ‚ b ∋ a) : (@σ a x) ~ (@σ' a x) := match x with
+    | .z => sm
+    | .s x => .var
+    simp only [subst₁];
+    exact commSubst (Γ := Γ‚ b) (Δ := Γ) (σ := σ) (σ' := σ') gs sn
 end Sim
