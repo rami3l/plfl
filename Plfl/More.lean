@@ -337,9 +337,9 @@ end Value
 
 -- https://plfa.github.io/DeBruijn/#reduction
 /--
-`Reduce t t'` says that `t` reduces to `t'`.
+`Reduce t t'` says that `t` reduces to `t'` via a given step.
 -/
-inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
+inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | lamβ : Value v → Reduce ((ƛ n) □ v) (n ⬰ v)
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
@@ -383,15 +383,23 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 | consξ₂ : Reduce n n' → Reduce (.cons v n) (.cons v n')
 | consβ : Reduce (.caseList (.cons v w) m n) (subst₂ v w n)
 
-infix:40 " —→ " => Reduce
-
 namespace Reduce
   -- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
+  infix:40 " —→ " => Reduce
+
+  /--
+  The predicate version of `Reduce`.
+  -/
+  abbrev ReduceP (t : Γ ⊢ a) (t' : Γ ⊢ a) := Nonempty (Reduce t t')
+  infix:40 " —→ₚ " => ReduceP
+
+  instance : Coe (m —→ n) (m —→ₚ n) where coe r := ⟨r⟩
+
   /--
   A reflexive and transitive closure,
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
-  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) Reduce
+  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) ReduceP
 
   namespace Clos
     infix:20 " —↠ " => Clos
@@ -403,13 +411,13 @@ namespace Reduce
       trans := Relation.ReflTransGen.trans
 
     instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where
-      trans := .tail
+      trans c r := c.tail r
 
     instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
       trans c c' := (one c).tail c'
 
     instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
-      trans h c := (one h).trans c
+      trans r c := (one r).trans c
   end Clos
 
   open Term
@@ -425,30 +433,31 @@ end Reduce
 
 -- https://plfa.github.io/DeBruijn/#values-do-not-reduce
 @[simp]
-theorem Value.not_Reduce : Value m → ∀ {n}, ¬(m —→ n) := by
-  introv v; intro r
+def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
+  introv v; is_empty; intro r
   cases v with try contradiction
-  | succ v => cases r; · case succξ => apply not_Reduce v; trivial
+  | succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
   | prod => cases r with
-    | prodξ₁ r => rename_i v _ _; apply not_Reduce v; trivial
-    | prodξ₂ r => rename_i v _; apply not_Reduce v; trivial
-  | left v => cases r; · case leftξ => apply not_Reduce v; trivial
-  | right v => cases r; · case rightξ => apply not_Reduce v; trivial
+    | prodξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
+    | prodξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
+  | left v => cases r; · case leftξ => apply (emptyReduce v).false; trivial
+  | right v => cases r; · case rightξ => apply (emptyReduce v).false; trivial
   | cons => cases r with
-    | consξ₁ r => rename_i v _ _; apply not_Reduce v; trivial
-    | consξ₂ r => rename_i v _; apply not_Reduce v; trivial
+    | consξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
+    | consξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
 
 @[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
-  have := v.not_Reduce (n := n); contradiction
+  have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
+  exact this.false r
 
 /--
 If a term `m` is not ill-typed, then it either is a value or can be reduced.
 -/
 @[aesop safe [constructors, cases]]
 inductive Progress (m : ∅ ⊢ a) where
-| step : (m —→ n) → Progress m
+| step : Reduce m n → Progress m
 | done : Value m → Progress m
 
 def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by

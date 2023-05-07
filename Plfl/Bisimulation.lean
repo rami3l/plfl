@@ -94,18 +94,70 @@ namespace Sim
     exact commSubst (Γ := Γ‚ b) (Δ := Γ) (σ := σ) (σ' := σ') gs sn
 end Sim
 
-/--
-Now we can actually prove that `Sim` is a real simulation by giving the construction
-of the lower leg of the diagram from the upper leg.
+/-
+Now we can actually prove that `Sim` is a real bisimulation by giving the construction
+of the lower leg of the diagram from the upper leg and vice versa.
 -/
 
--- https://plfa.github.io/Bisimulation/#the-relation-is-a-simulation
-structure Leg (m' n : Γ ⊢ a) where
-  sim : n ~ n'
-  red : m' —→ n'
+open Sim Reduce
 
-def Leg.fromUpper {m m' n' : Γ ⊢ a} (sim : m ~ m') (red : m —→ n) : Leg m' n := by
-  match sim with
-  -- TODO: Maybe we need to add some axioms instead of using a big inductive?
-  | .ap sl sm => sorry
-  | .let sl sm => sorry
+-- https://plfa.github.io/Bisimulation/#the-relation-is-a-simulation
+/--
+`Lower (n' := n') m n` stands for the leg
+```txt
+          n
+          |
+          ~
+          |
+m' - —→ - n'
+```
+-/
+inductive Lower (m' n : Γ ⊢ a) where
+| intro (sim : n ~ n') (red : m' —→ n')
+
+def Lower.fromUpper {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Lower m' n := by
+  match s with
+  | .ap sl sm => match r with
+    | .lamβ v => cases sl with | lam sl =>
+      constructor
+      · apply commSubst₁ <;> trivial
+      · apply lamβ; exact commValue sm v
+    | .apξ₁ r =>
+      have ⟨s', r'⟩ := fromUpper sl r; constructor
+      · apply ap <;> trivial
+      · apply apξ₁ r'
+    | .apξ₂ v r =>
+      have ⟨s', r'⟩ := fromUpper sm r; constructor
+      · apply ap <;> trivial
+      · refine apξ₂ ?_ r'; exact commValue sl v
+  | .let sl sm => match r with
+    | .letξ r =>
+      have ⟨s', r'⟩ := fromUpper sl r; constructor
+      · apply «let» <;> trivial
+      · apply letξ; exact r'
+    | .letβ v =>
+      constructor
+      · apply commSubst₁ <;> trivial
+      · apply letβ; exact commValue sl v
+
+-- https://plfa.github.io/Bisimulation/#exercise-sim¹-practice
+/--
+`Upper (m := m) m' n` stands for the leg
+```txt
+m - —→ - n
+|
+~
+|
+m'
+```
+-/
+inductive Upper (m' n : Γ ⊢ a) where
+| intro (sim : m ~ m') (red : m —→ n)
+
+def Upper.fromLower {m m' n : Γ ⊢ a} (s : n ~ n') (r : m' —→ n') : Upper m' n := by
+  cases s with
+  | var =>
+    rename_i i; refine ⟨?_, r⟩; sorry
+  | lam s => sorry
+  | ap sl sm => sorry
+  | «let» sl sm => sorry
