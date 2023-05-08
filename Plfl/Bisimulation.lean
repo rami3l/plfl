@@ -154,7 +154,7 @@ m'
 inductive Upper (m' n : Γ ⊢ a) where
 | intro (sim : m ~ m') (red : m —→ n)
 
-def Upper.fromLower {m m' n : Γ ⊢ a} (s : n ~ n') (r : m' —→ n') : Upper m' n := by
+def Upper.fromLower {m' n n' : Γ ⊢ a} (s : n ~ n') (r : m' —→ n') : Upper m' n := by
   cases s with
   | var =>
     rename_i i; refine ⟨?_, r⟩; sorry
