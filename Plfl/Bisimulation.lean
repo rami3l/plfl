@@ -15,8 +15,30 @@ inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | let : Sim l l' → Sim m m' → Sim (.let l m) (.let l' m')
 deriving BEq, DecidableEq, Repr
 
+open Classical (choice)
+
 namespace Sim
   infix:40 " ~ " => Sim
+
+  @[simp]
+  noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (Nonempty (t ~ t)) := by
+    cases t with try (apply isFalse; intro ⟨s⟩; contradiction)
+    | var i => exact isTrue ⟨.var⟩
+    | lam t =>
+      if h : Nonempty (t ~ t) then
+        exact isTrue ⟨.lam <| choice h⟩
+      else
+        apply isFalse; intro ⟨.lam s⟩; exact h ⟨s⟩
+    | ap l m =>
+      if h : Nonempty (l ~ l) ∧ Nonempty (m ~ m) then
+        refine isTrue ⟨?_⟩; exact .ap (choice h.1) (choice h.2)
+      else
+        apply isFalse; intro ⟨.ap s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
+    | «let» m n =>
+      if h : Nonempty (m ~ m) ∧ Nonempty (n ~ n) then
+        refine isTrue ⟨?_⟩; exact .let (choice h.1) (choice h.2)
+      else
+        apply isFalse; intro ⟨.let s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
 
   -- https://plfa.github.io/Bisimulation/#exercise-_-practice
   def fromEq {s : (m : Γ ⊢ a) ~ m'} : (m' = n) → (m ~ n) := by
@@ -31,8 +53,8 @@ namespace Sim
       | lam s'' => simp only [toEq (s := s'') s']
     | s, .ap sl sm => cases s with
       | ap sl' sm' => simp only [toEq (s := sl') sl, toEq (s := sm') sm]
-    | s, .let sl sm => cases s with
-      | «let» sl' sm' => simp only [toEq (s := sl') sl, toEq (s := sm') sm]
+    | s, .let sm sn => cases s with
+      | «let» sm' sn' => simp only [toEq (s := sm') sm, toEq (s := sn') sn]
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-values
   @[simp]
@@ -77,7 +99,7 @@ namespace Sim
     | .var => apply gs
     | .lam s => apply lam; exact commSubst (commExts gs) s
     | .ap sl sm => apply ap; repeat (apply commSubst gs; trivial)
-    | .let sl sm => apply «let»; repeat
+    | .let sm sn => apply «let»; repeat
       first | apply commSubst gs | apply commSubst (commExts gs)
       trivial
 
@@ -130,15 +152,15 @@ def Lower.fromUpper {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Lower m'
       have ⟨s', r'⟩ := fromUpper sm r; constructor
       · apply ap <;> trivial
       · refine apξ₂ ?_ r'; exact commValue sl v
-  | .let sl sm => match r with
+  | .let sm sn => match r with
     | .letξ r =>
-      have ⟨s', r'⟩ := fromUpper sl r; constructor
+      have ⟨s', r'⟩ := fromUpper sm r; constructor
       · apply «let» <;> trivial
       · apply letξ; exact r'
     | .letβ v =>
       constructor
       · apply commSubst₁ <;> trivial
-      · apply letβ; exact commValue sl v
+      · apply letβ; exact commValue sm v
 
 -- https://plfa.github.io/Bisimulation/#exercise-sim¹-practice
 /--
@@ -154,10 +176,16 @@ m'
 inductive Upper (m' n : Γ ⊢ a) where
 | intro (sim : m ~ m') (red : m —→ n)
 
-def Upper.fromLower {m' n n' : Γ ⊢ a} (s : n ~ n') (r : m' —→ n') : Upper m' n := by
-  cases s with
-  | var =>
-    rename_i i; refine ⟨?_, r⟩; sorry
-  | lam s => sorry
-  | ap sl sm => sorry
-  | «let» sl sm => sorry
+theorem Upper.fromLower {m' n n' : Γ ⊢ a} (s : n ~ n') (r : m' —→ n') : Upper m' n := by
+  cases n with try trivial
+  | var i => cases s with
+    | var => refine ⟨?_, r⟩; cases m' with try trivial
+      | ap l m => sorry
+      | «let» l m => sorry
+      | case => sorry
+      | mu => sorry
+      | caseSum => sorry
+      | caseList => sorry
+  | lam l => sorry
+  | ap l m => sorry
+  | «let» m n => sorry
