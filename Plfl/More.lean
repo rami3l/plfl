@@ -252,7 +252,7 @@ i.e. after replacing the free variables in the former with (expanded) terms.
 -/
 def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
   intro σ; intro
-  | ` x => exact σ x
+  | ` i => exact σ i
   | ƛ n => exact ƛ (subst (exts σ) n)
   | l □ m => exact subst σ l □ subst σ m
   | 𝟘 => exact 𝟘
