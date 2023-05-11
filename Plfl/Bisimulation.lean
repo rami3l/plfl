@@ -125,7 +125,7 @@ open Sim Reduce
 
 -- https://plfa.github.io/Bisimulation/#the-relation-is-a-simulation
 /--
-`Lower (n' := n') m n` stands for the leg
+`Leg m' n` stands for the leg
 ```txt
           n
           |
@@ -134,10 +134,10 @@ open Sim Reduce
 m' - —→ - n'
 ```
 -/
-inductive Lower (m' n : Γ ⊢ a) where
+inductive Leg (m' n : Γ ⊢ a) where
 | intro (sim : n ~ n') (red : m' —→ n')
 
-def Lower.fromUpper {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Lower m' n := by
+def Leg.fromLegInv {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Leg m' n := by
   match s with
   | .ap sl sm => match r with
     | .lamβ v => cases sl with | lam sl =>
@@ -145,16 +145,16 @@ def Lower.fromUpper {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Lower m'
       · apply commSubst₁ <;> trivial
       · apply lamβ; exact commValue sm v
     | .apξ₁ r =>
-      have ⟨s', r'⟩ := fromUpper sl r; constructor
+      have ⟨s', r'⟩ := fromLegInv sl r; constructor
       · apply ap <;> trivial
       · apply apξ₁ r'
     | .apξ₂ v r =>
-      have ⟨s', r'⟩ := fromUpper sm r; constructor
+      have ⟨s', r'⟩ := fromLegInv sm r; constructor
       · apply ap <;> trivial
       · refine apξ₂ ?_ r'; exact commValue sl v
   | .let sm sn => match r with
     | .letξ r =>
-      have ⟨s', r'⟩ := fromUpper sm r; constructor
+      have ⟨s', r'⟩ := fromLegInv sm r; constructor
       · apply «let» <;> trivial
       · apply letξ; exact r'
     | .letβ v =>
@@ -164,28 +164,39 @@ def Lower.fromUpper {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Lower m'
 
 -- https://plfa.github.io/Bisimulation/#exercise-sim¹-practice
 /--
-`Upper (m := m) m' n` stands for the leg
+`LegInv m n'` stands for the leg
 ```txt
 m - —→ - n
-|
-~
-|
-m'
+         |
+         ~
+         |
+         n'
 ```
 -/
-inductive Upper (m' n : Γ ⊢ a) where
-| intro (sim : m ~ m') (red : m —→ n)
+inductive LegInv (m n' : Γ ⊢ a) where
+| intro (sim : n ~ n') (red : m —→ n)
 
-theorem Upper.fromLower {m' n n' : Γ ⊢ a} (s : n ~ n') (r : m' —→ n') : Upper m' n := by
-  cases n with try trivial
-  | var i => cases s with
-    | var => refine ⟨?_, r⟩; cases m' with try trivial
-      | ap l m => sorry
-      | «let» l m => sorry
-      | case => sorry
-      | mu => sorry
-      | caseSum => sorry
-      | caseList => sorry
-  | lam l => sorry
-  | ap l m => sorry
-  | «let» m n => sorry
+def LegInv.fromLeg {m m' n' : Γ ⊢ a} (s : m ~ m') (r : m' —→ n') : LegInv m n' := by
+  match s with
+  | .ap sl sm => match r with
+    | .lamβ v => cases sl with | lam sl =>
+      constructor
+      · apply commSubst₁ <;> trivial
+      · apply lamβ; exact commValue_inv sm v
+    | .apξ₁ r =>
+      have ⟨s', r'⟩ := fromLeg sl r; constructor
+      · apply ap <;> trivial
+      · apply apξ₁ r'
+    | .apξ₂ v r =>
+      have ⟨s', r'⟩ := fromLeg sm r; constructor
+      · apply ap <;> trivial
+      · refine apξ₂ ?_ r'; exact commValue_inv sl v
+  | .let sm sn => match r with
+    | .letξ r =>
+      have ⟨s', r'⟩ := fromLeg sm r; constructor
+      · apply «let» <;> trivial
+      · apply letξ; exact r'
+    | .letβ v =>
+      constructor
+      · apply commSubst₁ <;> trivial
+      · apply letβ; exact commValue_inv sm v
