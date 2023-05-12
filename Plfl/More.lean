@@ -28,18 +28,24 @@ inductive Ty where
 | list : Ty → Ty
 deriving BEq, DecidableEq, Repr
 
-namespace Ty
-  notation "ℕt" => nat
-  notation "ℕp" => natP
+namespace Notations
+  open Ty
+
+  scoped notation "ℕt" => nat
+  scoped notation "ℕp" => natP
 
   -- Operator overloadings for `prod` and `sum` types.
   instance : Mul Ty where mul := prod
   instance : Add Ty where add := sum
 
-  infixr:70 " =⇒ " => fn
-  notation " ◯ " => unit
-  notation " ∅ " => void
+  scoped infixr:70 " =⇒ " => fn
+  scoped notation " ◯ " => unit
+  scoped notation " ∅ " => void
+end Notations
 
+open Notations
+
+namespace Ty
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
   example : Ty := ℕp * ℕt
 
@@ -56,11 +62,15 @@ abbrev Context : Type := List Ty
 namespace Context
   abbrev snoc (Γ : Context) (a : Ty) : Context := a :: Γ
   abbrev lappend (Γ : Context) (Δ : Context) : Context := Δ ++ Γ
+end Context
+
+namespace Notations
+  open Context
 
   -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
-  infixl:50 "‚ " => snoc
-  infixl:45 "‚‚ " => lappend
-end Context
+  scoped infixl:50 "‚ " => snoc
+  scoped infixl:45 "‚‚ " => lappend
+end Notations
 
 -- https://plfa.github.io/DeBruijn/#variables-and-the-lookup-judgment
 inductive Lookup : Context → Ty → Type where
@@ -68,17 +78,21 @@ inductive Lookup : Context → Ty → Type where
 | s : Lookup Γ t → Lookup (Γ‚ t') t
 deriving DecidableEq, Repr
 
-namespace Lookup
-  infix:40 " ∋ " => Lookup
+namespace Notations
+  open Lookup
+
+  scoped infix:40 " ∋ " => Lookup
 
   -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/macros.md#simplifying-macro-declaration
-  syntax "get_elem" (ppSpace term) : tactic
-  macro_rules | `(tactic| get_elem $n) => match n.1.toNat with
+  scoped syntax "get_elem" (ppSpace term) : tactic
+  scoped macro_rules | `(tactic| get_elem $n) => match n.1.toNat with
   | 0 => `(tactic | exact Lookup.z)
   | n+1 => `(tactic| apply Lookup.s; get_elem $(Lean.quote n))
 
-  macro " ♯ " n:term:90 : term => `(by get_elem $n)
+  scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
+end Notations
 
+namespace Lookup
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := .z
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := ♯0
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt =⇒ ℕt := .s .z
@@ -126,24 +140,28 @@ inductive Term : Context → Ty → Type where
 | caseList : Term Γ (.list a) → Term Γ b → Term (Γ‚ a‚ .list a) b → Term Γ b
 deriving DecidableEq, Repr
 
-namespace Term
-  infix:40 " ⊢ " => Term
+namespace Notations
+  open Term
 
-  prefix:50 " ƛ " => lam
-  prefix:50 " μ " => mu
-  notation " 𝟘? " => case
-  infixr:min " $ " => ap
-  infixl:70 " □ " => ap
-  infixl:70 " ⋄ "   => mulP
-  prefix:80 " ι " => succ
-  prefix:90 " ` " => var
+  scoped infix:40 " ⊢ " => Term
 
-  notation " 𝟘 " => zero
-  notation " ◯ " => unit
+  scoped prefix:50 " ƛ " => lam
+  scoped prefix:50 " μ " => mu
+  scoped notation " 𝟘? " => case
+  scoped infixr:min " $ " => ap
+  scoped infixl:70 " □ " => ap
+  scoped infixl:70 " ⋄ "   => mulP
+  scoped prefix:80 " ι " => succ
+  scoped prefix:90 " ` " => var
+
+  scoped notation " 𝟘 " => zero
+  scoped notation " ◯ " => unit
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
-  macro " # " n:term:90 : term => `(`♯$n)
+  scoped macro " # " n:term:90 : term => `(`♯$n)
+end Notations
 
+namespace Term
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #0
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := #1
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #1 $ #0
@@ -153,8 +171,8 @@ namespace Term
 
   @[simp]
   def ofNat : ℕ → Γ ⊢ ℕt
-  | 0 => zero
-  | n + 1 => succ <| ofNat n
+  | 0 => .zero
+  | n + 1 => .succ <| ofNat n
 
   instance : Coe ℕ (Γ ⊢ ℕt) where coe := ofNat
   instance : OfNat (Γ ⊢ ℕt) n where ofNat := ofNat n
@@ -185,133 +203,143 @@ namespace Term
   example : ∅ ⊢ ℕp =⇒ ℕp := ƛ #0 ⋄ #0 ⋄ #0
 end Term
 
--- https://plfa.github.io/DeBruijn/#renaming
-/--
-If one context maps to another,
-the mapping holds after adding the same variable to both contexts.
--/
-@[simp]
-def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
-  intro ρ; intro
-  | .z => exact .z
-  | .s x => refine .s ?_; exact ρ x
+namespace Subst
+  -- https://plfa.github.io/DeBruijn/#renaming
+  /--
+  If one context maps to another,
+  the mapping holds after adding the same variable to both contexts.
+  -/
+  @[simp]
+  def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
+    intro ρ; intro
+    | .z => exact .z
+    | .s x => refine .s ?_; exact ρ x
 
-/--
-If one context maps to another,
-then the type judgements are the same in both contexts.
--/
-@[simp]
-def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
-  intro ρ; intro
-  | ` x => exact ` (ρ x)
-  | ƛ n => exact ƛ (rename (ext ρ) n)
-  | l □ m => exact rename ρ l □ rename ρ m
-  | 𝟘 => exact 𝟘
-  | ι n => exact ι (rename ρ n)
-  | 𝟘? l m n => exact 𝟘? (rename ρ l) (rename ρ m) (rename (ext ρ) n)
-  | μ n => exact μ (rename (ext ρ) n)
-  | .prim n => exact .prim n
-  | m ⋄ n => exact rename ρ m ⋄ rename ρ n
-  | .let m n => exact .let (rename ρ m) (rename (ext ρ) n)
-  | .prod m n => exact .prod (rename ρ m) (rename ρ n)
-  | .fst n => exact .fst (rename ρ n)
-  | .snd n => exact .snd (rename ρ n)
-  | .left n => exact .left (rename ρ n)
-  | .right n => exact .right (rename ρ n)
-  | .caseSum s l r => exact .caseSum (rename ρ s) (rename (ext ρ) l) (rename (ext ρ) r)
-  | .caseVoid v => exact .caseVoid (rename ρ v)
-  | ◯ => exact ◯
-  | .nil => exact .nil
-  | .cons m n => exact .cons (rename ρ m) (rename ρ n)
-  | .caseList l m n => exact .caseList (rename ρ l) (rename ρ m) (rename (ext (ext ρ)) n)
+  /--
+  If one context maps to another,
+  then the type judgements are the same in both contexts.
+  -/
+  @[simp]
+  def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
+    intro ρ; intro
+    | ` x => exact ` (ρ x)
+    | ƛ n => exact ƛ (rename (ext ρ) n)
+    | l □ m => exact rename ρ l □ rename ρ m
+    | 𝟘 => exact 𝟘
+    | ι n => exact ι (rename ρ n)
+    | 𝟘? l m n => exact 𝟘? (rename ρ l) (rename ρ m) (rename (ext ρ) n)
+    | μ n => exact μ (rename (ext ρ) n)
+    | .prim n => exact .prim n
+    | m ⋄ n => exact rename ρ m ⋄ rename ρ n
+    | .let m n => exact .let (rename ρ m) (rename (ext ρ) n)
+    | .prod m n => exact .prod (rename ρ m) (rename ρ n)
+    | .fst n => exact .fst (rename ρ n)
+    | .snd n => exact .snd (rename ρ n)
+    | .left n => exact .left (rename ρ n)
+    | .right n => exact .right (rename ρ n)
+    | .caseSum s l r => exact .caseSum (rename ρ s) (rename (ext ρ) l) (rename (ext ρ) r)
+    | .caseVoid v => exact .caseVoid (rename ρ v)
+    | ◯ => exact ◯
+    | .nil => exact .nil
+    | .cons m n => exact .cons (rename ρ m) (rename ρ n)
+    | .caseList l m n => exact .caseList (rename ρ l) (rename ρ m) (rename (ext (ext ρ)) n)
 
-abbrev shift : Γ ⊢ a → Γ‚ b ⊢ a := rename .s
+  abbrev shift : Γ ⊢ a → Γ‚ b ⊢ a := rename .s
 
-example
-: let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
-  let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#2 $ #2 $ #0)
-  shift m = m'
-:= rfl
+  example
+  : let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
+    let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#2 $ #2 $ #0)
+    shift m = m'
+  := rfl
 
--- https://plfa.github.io/DeBruijn/#simultaneous-substitution
-/--
-If the variables in one context maps to some terms in another,
-the mapping holds after adding the same variable to both contexts.
--/
-@[simp]
-def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
-  intro σ; intro
-  | .z => exact `.z
-  | .s x => apply shift; exact σ x
+  -- https://plfa.github.io/DeBruijn/#simultaneous-substitution
+  /--
+  If the variables in one context maps to some terms in another,
+  the mapping holds after adding the same variable to both contexts.
+  -/
+  @[simp]
+  def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
+    intro σ; intro
+    | .z => exact `.z
+    | .s x => apply shift; exact σ x
 
-/--
-General substitution for multiple free variables.
-If the variables in one context maps to some terms in another,
-then the type judgements are the same before and after the mapping,
-i.e. after replacing the free variables in the former with (expanded) terms.
--/
-def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
-  intro σ; intro
-  | ` i => exact σ i
-  | ƛ n => exact ƛ (subst (exts σ) n)
-  | l □ m => exact subst σ l □ subst σ m
-  | 𝟘 => exact 𝟘
-  | ι n => exact ι (subst σ n)
-  | 𝟘? l m n => exact 𝟘? (subst σ l) (subst σ m) (subst (exts σ) n)
-  | μ n => exact μ (subst (exts σ) n)
-  | .prim n => exact .prim n
-  | m ⋄ n => exact subst σ m ⋄ subst σ n
-  | .let m n => exact .let (subst σ m) (subst (exts σ) n)
-  | .prod m n => exact .prod (subst σ m) (subst σ n)
-  | .fst n => exact .fst (subst σ n)
-  | .snd n => exact .snd (subst σ n)
-  | .left n => exact .left (subst σ n)
-  | .right n => exact .right (subst σ n)
-  | .caseSum s l r => exact .caseSum (subst σ s) (subst (exts σ) l) (subst (exts σ) r)
-  | .caseVoid v => exact .caseVoid (subst σ v)
-  | ◯ => exact ◯
-  | .nil => exact .nil
-  | .cons m n => exact .cons (subst σ m) (subst σ n)
-  | .caseList l m n => exact .caseList (subst σ l) (subst σ m) (subst (exts (exts σ)) n)
+  /--
+  General substitution for multiple free variables.
+  If the variables in one context maps to some terms in another,
+  then the type judgements are the same before and after the mapping,
+  i.e. after replacing the free variables in the former with (expanded) terms.
+  -/
+  def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
+    intro σ; intro
+    | ` i => exact σ i
+    | ƛ n => exact ƛ (subst (exts σ) n)
+    | l □ m => exact subst σ l □ subst σ m
+    | 𝟘 => exact 𝟘
+    | ι n => exact ι (subst σ n)
+    | 𝟘? l m n => exact 𝟘? (subst σ l) (subst σ m) (subst (exts σ) n)
+    | μ n => exact μ (subst (exts σ) n)
+    | .prim n => exact .prim n
+    | m ⋄ n => exact subst σ m ⋄ subst σ n
+    | .let m n => exact .let (subst σ m) (subst (exts σ) n)
+    | .prod m n => exact .prod (subst σ m) (subst σ n)
+    | .fst n => exact .fst (subst σ n)
+    | .snd n => exact .snd (subst σ n)
+    | .left n => exact .left (subst σ n)
+    | .right n => exact .right (subst σ n)
+    | .caseSum s l r => exact .caseSum (subst σ s) (subst (exts σ) l) (subst (exts σ) r)
+    | .caseVoid v => exact .caseVoid (subst σ v)
+    | ◯ => exact ◯
+    | .nil => exact .nil
+    | .cons m n => exact .cons (subst σ m) (subst σ n)
+    | .caseList l m n => exact .caseList (subst σ l) (subst σ m) (subst (exts (exts σ)) n)
 
-abbrev subst₁σ (v : Γ ⊢ b) : ∀ {a}, Γ‚ b ∋ a → Γ ⊢ a := by
-  introv; intro
-  | .z => exact v
-  | .s x => exact ` x
+  abbrev subst₁σ (v : Γ ⊢ b) : ∀ {a}, Γ‚ b ∋ a → Γ ⊢ a := by
+    introv; intro
+    | .z => exact v
+    | .s x => exact ` x
 
-/--
-Substitution for one free variable `v` in the term `n`.
--/
-@[simp]
-abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
-  refine subst ?_ n; exact subst₁σ v
+  /--
+  Substitution for one free variable `v` in the term `n`.
+  -/
+  @[simp]
+  abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
+    refine subst ?_ n; exact subst₁σ v
 
-/--
-Substitution for one two variable `v` and `w'` in the term `n`.
--/
-@[simp]
-abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ a := by
-  refine subst ?_ n; introv; intro
-  | .z => exact w
-  | .s .z => exact v
-  | .s (.s x) => exact ` x
+  /--
+  Substitution for one two variable `v` and `w'` in the term `n`.
+  -/
+  @[simp]
+  abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ a := by
+    refine subst ?_ n; introv; intro
+    | .z => exact w
+    | .s .z => exact v
+    | .s (.s x) => exact ` x
+end Subst
 
-infixr:90 " ⇴ " => subst₁
-infixl:90 " ⬰ " => flip subst₁
+namespace Notations
+  open Subst
 
-example
-: let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
-  let m' : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
-  let n : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ƛ ι #0) □ ((ƛ ι #0) □ #0)
-  m ⇴ m' = n
-:= rfl
+  scoped infixr:90 " ⇴ " => subst₁
+  scoped infixl:90 " ⬰ " => flip subst₁
+end Notations
 
-example
-: let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt := #0 $ 𝟘
-  let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1)
-  let n : ∅‚ ℕt =⇒ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1 $ 𝟘)
-  m ⇴ m' = n
-:= rfl
+open Subst
+
+namespace Subst
+  example
+  : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
+    let m' : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
+    let n : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ƛ ι #0) □ ((ƛ ι #0) □ #0)
+    m ⇴ m' = n
+  := rfl
+
+  example
+  : let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt := #0 $ 𝟘
+    let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1)
+    let n : ∅‚ ℕt =⇒ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1 $ 𝟘)
+    m ⇴ m' = n
+  := rfl
+end Subst
 
 inductive Value : Γ ⊢ a → Type where
 | lam : Value (ƛ (n : Γ‚ a ⊢ b))
@@ -326,9 +354,11 @@ inductive Value : Γ ⊢ a → Type where
 | cons : Value (v : Γ ⊢ a) → Value (vs : Γ ⊢ .list a) → Value (.cons v vs)
 deriving DecidableEq, Repr
 
-namespace Value
-  notation " V𝟘 " => zero
+namespace Notations
+  scoped notation " V𝟘 " => Value.zero
+end Notations
 
+namespace Value
   @[simp]
   def ofNat : (n : ℕ) → @Value Γ ℕt (Term.ofNat n)
   | 0 => V𝟘
@@ -383,16 +413,18 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | consξ₂ : Reduce n n' → Reduce (.cons v n) (.cons v n')
 | consβ : Reduce (.caseList (.cons v w) m n) (subst₂ v w n)
 
-namespace Reduce
+/--
+The predicate version of `Reduce`.
+-/
+abbrev Reduce.ReduceP (t : Γ ⊢ a) (t' : Γ ⊢ a) := Nonempty (Reduce t t')
+
+namespace Notations
   -- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
-  infix:40 " —→ " => Reduce
+  scoped infix:40 " —→ " => Reduce
+  scoped infix:40 " —→ₚ " => Reduce.ReduceP
+end Notations
 
-  /--
-  The predicate version of `Reduce`.
-  -/
-  abbrev ReduceP (t : Γ ⊢ a) (t' : Γ ⊢ a) := Nonempty (Reduce t t')
-  infix:40 " —→ₚ " => ReduceP
-
+namespace Reduce
   instance : Coe (m —→ n) (m —→ₚ n) where coe r := ⟨r⟩
 
   /--
@@ -400,10 +432,13 @@ namespace Reduce
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
   abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) ReduceP
+end Reduce
 
-  namespace Clos
-    infix:20 " —↠ " => Clos
+namespace Notations
+  scoped infix:20 " —↠ " => Reduce.Clos
+end Notations
 
+namespace Reduce.Clos
     @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c
     instance : Coe (m —→ n) (m —↠ n) where coe := one
 
@@ -418,11 +453,12 @@ namespace Reduce
 
     instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
       trans r c := (one r).trans c
-  end Clos
+end Reduce.Clos
 
+namespace Reduce
+  -- https://plfa.github.io/DeBruijn/#examples
   open Term
 
-  -- https://plfa.github.io/DeBruijn/#examples
   example : twoC □ succC □ @zero ∅ —↠ 2 := calc
     twoC □ succC □ 𝟘
     _ —→ (ƛ (succC $ succC $ #0)) □ 𝟘 := by apply apξ₁; apply lamβ; exact Value.lam
@@ -460,7 +496,7 @@ inductive Progress (m : ∅ ⊢ a) where
 | step : Reduce m n → Progress m
 | done : Value m → Progress m
 
-def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
+def Progress.progress : (m : ∅ ⊢ a) → Progress m := open Reduce in by
   intro
   | ` _ => contradiction
   | ƛ _ => exact .done .lam
@@ -529,6 +565,8 @@ def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
     | .done l => match l with
       | .nil => apply step; exact nilβ
       | .cons _ w => apply step; exact consβ
+
+open Progress (progress)
 
 inductive Result (n : Γ ⊢ a) where
 | done (val : Value n)

@@ -7,6 +7,8 @@ import Mathlib.Tactic
 
 set_option tactic.simp.trace true
 
+open Subst Notations
+
 -- https://plfa.github.io/Bisimulation/#simulation
 inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | var : Sim (` x)  (` x)
@@ -15,30 +17,29 @@ inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | let : Sim l l' → Sim m m' → Sim (.let l m) (.let l' m')
 deriving BEq, DecidableEq, Repr
 
-open Classical (choice)
-
 namespace Sim
   infix:40 " ~ " => Sim
 
   @[simp]
-  noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (Nonempty (t ~ t)) := by
-    cases t with try (apply isFalse; intro ⟨s⟩; contradiction)
-    | var i => exact isTrue ⟨.var⟩
-    | lam t =>
-      if h : Nonempty (t ~ t) then
-        exact isTrue ⟨.lam <| choice h⟩
-      else
-        apply isFalse; intro ⟨.lam s⟩; exact h ⟨s⟩
-    | ap l m =>
-      if h : Nonempty (l ~ l) ∧ Nonempty (m ~ m) then
-        refine isTrue ⟨?_⟩; exact .ap (choice h.1) (choice h.2)
-      else
-        apply isFalse; intro ⟨.ap s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
-    | «let» m n =>
-      if h : Nonempty (m ~ m) ∧ Nonempty (n ~ n) then
-        refine isTrue ⟨?_⟩; exact .let (choice h.1) (choice h.2)
-      else
-        apply isFalse; intro ⟨.let s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
+  noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (Nonempty (t ~ t)) :=
+    open Classical (choice) in by
+      cases t with try (apply isFalse; intro ⟨s⟩; contradiction)
+      | var i => exact isTrue ⟨.var⟩
+      | lam t =>
+        if h : Nonempty (t ~ t) then
+          exact isTrue ⟨.lam <| choice h⟩
+        else
+          apply isFalse; intro ⟨.lam s⟩; exact h ⟨s⟩
+      | ap l m =>
+        if h : Nonempty (l ~ l) ∧ Nonempty (m ~ m) then
+          refine isTrue ⟨?_⟩; exact .ap (choice h.1) (choice h.2)
+        else
+          apply isFalse; intro ⟨.ap s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
+      | «let» m n =>
+        if h : Nonempty (m ~ m) ∧ Nonempty (n ~ n) then
+          refine isTrue ⟨?_⟩; exact .let (choice h.1) (choice h.2)
+        else
+          apply isFalse; intro ⟨.let s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
 
   -- https://plfa.github.io/Bisimulation/#exercise-_-practice
   def fromEq {s : (m : Γ ⊢ a) ~ m'} : (m' = n) → (m ~ n) := by
