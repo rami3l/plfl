@@ -2,7 +2,7 @@
 
 -- Adapted from <https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda>.
 
-import Plfl
+import Plfl.Init
 import Plfl.More
 
 import Mathlib.Tactic

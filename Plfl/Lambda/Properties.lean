@@ -1,9 +1,13 @@
 -- https://plfa.github.io/Properties/
 
-import Plfl
+import Plfl.Init
 import Plfl.Lambda
 
 set_option tactic.simp.trace true
+
+open Lambda
+
+namespace Properties
 
 open Context Context.IsTy Term.Reduce
 open Sum

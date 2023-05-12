@@ -1,6 +1,6 @@
 -- https://plfa.github.io/More/
 
-import Plfl
+import Plfl.Init
 
 import Mathlib.Tactic
 

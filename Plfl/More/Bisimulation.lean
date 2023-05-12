@@ -1,6 +1,6 @@
 -- https://plfa.github.io/Bisimulation/
 
-import Plfl
+import Plfl.Init
 import Plfl.More
 
 import Mathlib.Tactic
@@ -18,7 +18,7 @@ inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 deriving BEq, DecidableEq, Repr
 
 namespace Sim
-  infix:40 " ~ " => Sim
+  scoped infix:40 " ~ " => Sim
 
   @[simp]
   noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (Nonempty (t ~ t)) :=

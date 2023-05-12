@@ -1,12 +1,13 @@
 -- https://plfa.github.io/DeBruijn/
 
-import Plfl
+import Plfl.Init
 
 import Mathlib.Tactic
 
 set_option tactic.simp.trace true
 
 -- Sorry, nothing is inherited from previous chapters here. We have to start over.
+namespace DeBruijn
 
 -- https://plfa.github.io/DeBruijn/#types
 inductive Ty where
