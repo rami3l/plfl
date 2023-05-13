@@ -7,6 +7,7 @@ import Mathlib.Tactic
 set_option tactic.simp.trace true
 
 -- This module was adapted based on the original one for <https://plfa.github.io/DeBruijn/>.
+namespace More
 
 -- https://plfa.github.io/More/#types
 inductive Ty where

@@ -7,6 +7,7 @@ import Mathlib.Tactic
 
 set_option tactic.simp.trace true
 
+open More
 open Subst Notations
 
 -- https://plfa.github.io/Bisimulation/#simulation
