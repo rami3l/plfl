@@ -47,19 +47,6 @@ end Notation
 
 open Notation
 
-/--
-A lookup judgement.
-`Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
--/
-inductive Context.Lookup : Context → Sym → Ty → Type where
-| z : Lookup (Γ‚ x ⦂ tx) x tx
-| s : x ≠ y → Lookup Γ x tx → Lookup (Γ‚ y ⦂ ty) x tx
-deriving DecidableEq
-
-namespace Notation
-  notation:40 c " ∋ " s " ⦂ " t:51 => Context.Lookup c s t
-end Notation
-
 mutual
   /--
   A term with synthesized types.
@@ -94,8 +81,8 @@ namespace Notation
   scoped notation:50 " μ " v " : " d => mu v d
   scoped notation:max " 𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
   scoped infixr:min " $ " => ap
-  scoped infix:60 " ↓ " => syn
-  scoped postfix:60 "↑ " => inh
+  -- scoped infix:60 " ↓ " => syn
+  -- scoped postfix:60 "↑ " => inh
   scoped infixl:70 " □ " => ap
   scoped prefix:80 " ι " => succ
   scoped prefix:90 " ` " => var
@@ -109,12 +96,22 @@ abbrev two : TermI := ι ι 𝟘
 -- since the other direction requires an extra type annotation.
 instance : Coe TermS TermI where coe := TermI.inh
 
+@[simp] abbrev TermI.the := TermS.syn
+
 abbrev add : TermS :=
-  (μ "p" : ƛ "m" : ƛ "n" :
-    𝟘? (`"m")
-    [zero: `"n"
-    |succ "m" : ι (`"p" □ (`"m") □ (`"n"))]
-  ) ↓ (ℕt =⇒ ℕt =⇒ ℕt)
+  (μ "+" : ƛ "m" : ƛ "n" :
+    𝟘? `"m"
+      [zero: `"n"
+      |succ "m" : ι (`"+" □ `"m" □ `"n")]
+  ).the (ℕt =⇒ ℕt =⇒ ℕt)
+
+abbrev mul : TermS :=
+  (μ "*" : ƛ "m" : ƛ "n" :
+    𝟘? `"m"
+    [zero: 𝟘
+    |succ "m": add □ `"n" $ `"*" □ `"m" □ `"n"]
+  ).the (ℕt =⇒ ℕt =⇒ ℕt)
+
 -- Note that the typing is only required for `add` due to the rule for `ap`.
 example : TermS := add □ two □ two
 
@@ -128,7 +125,89 @@ abbrev succC : TermI := ƛ "n" : ι `"n"
 abbrev oneC : TermI := ƛ "s" : ƛ "z" : `"s" $ `"z"
 abbrev twoC : TermI := ƛ "s" : ƛ "z" : `"s" $ `"s" $ `"z"
 abbrev addC : TermS :=
-  (ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z")
-  ↓ (Ch =⇒ Ch =⇒ Ch)
+  (ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
+  ).the (Ch =⇒ Ch =⇒ Ch)
 -- Note that the typing is only required for `addC` due to the rule for `ap`.
 example : TermS := addC □ twoC □ twoC □ 𝟘
+
+-- https://plfa.github.io/Inference/#bidirectional-type-checking
+/--
+A lookup judgement.
+`Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
+-/
+inductive Context.Lookup : Context → Sym → Ty → Type where
+| z : Lookup (Γ‚ x ⦂ tx) x tx
+| s : x ≠ y → Lookup Γ x tx → Lookup (Γ‚ y ⦂ ty) x tx
+deriving DecidableEq
+
+namespace Context.Lookup
+  -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/tactics.md#tactics-by-macro-expansion
+  /--
+  `elem` validates the type of a variable by looking it up in the current context.
+  This tactic fails when the lookup fails.
+  -/
+  scoped syntax "elem" : tactic
+  macro_rules
+  | `(tactic| elem) =>
+    `(tactic| repeat (first | apply Lookup.s (by trivial) | exact Lookup.z))
+
+  -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/macros.md#simplifying-macro-declaration
+  scoped syntax "get_elem" (ppSpace term) : tactic
+  macro_rules | `(tactic| get_elem $n) => match n.1.toNat with
+  | 0 => `(tactic| exact Lookup.z)
+  | n+1 => `(tactic| apply Lookup.s (by trivial); get_elem $(Lean.quote n))
+end Context.Lookup
+
+namespace Notation
+  open Context
+  open Context.Lookup
+
+  scoped notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
+  scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
+end Notation
+
+mutual
+  /--
+  Typing of `TermS` terms.
+  -/
+  inductive TyS : Context → TermS → Ty → Type where
+  | var : Γ ∋ x ⦂ a → TyS Γ (` x) a
+  | ap: TyS Γ l (a =⇒ b) → TyI Γ m a → TyS Γ (l □ m) b
+  | syn : TyI Γ m a → TyS Γ (m.the a) a
+
+  /--
+  Typing of `TermI` terms.
+  -/
+  inductive TyI : Context → TermI → Ty → Type where
+  | lam : TyI (Γ‚ x ⦂ a) n b → TyI Γ (ƛ x : n) (a =⇒ b)
+  | zero : TyI Γ 𝟘 ℕt
+  | succ : TyI Γ m ℕt → TyI Γ (ι m) ℕt
+  | case
+  : TyS Γ l ℕt → TyI Γ m a → TyI (Γ‚ x ⦂ ℕt) n a
+  → TyI Γ (𝟘? l [zero: m |succ x : n]) a
+  | mu : TyI (Γ‚ x ⦂ a) n a → TyI Γ (μ x : n) a
+  | inh : TyS Γ m a → TyI Γ m a
+end
+
+instance : Coe (TyI Γ m a) (TyS Γ (m.the a) a) where coe := TyS.syn
+instance : Coe (TyS Γ m a) (TyI Γ m a) where coe := TyI.inh
+
+namespace Notation
+  scoped notation:40 Γ " ⊢ " m " ↥ " a:51 => TyS Γ m a
+  scoped notation:40 Γ " ⊢ " m " ↟ " a:51 => TyS Γ (TermS.syn m a) a
+  scoped notation:40 Γ " ⊢ " m " ↧ " a:51 => TyI Γ m a
+end Notation
+
+example : ∅ ⊢ two ↟ ℕt := open TyS TyI in by
+  apply_rules [syn, succ, zero]
+
+abbrev addTy : Γ ⊢ add ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context.Lookup in by
+  repeat apply_rules [var, ap, syn, lam, zero, succ, case, mu, inh]
+  <;> elem
+
+-- https://plfa.github.io/Inference/#bidirectional-mul
+abbrev mulTy : Γ ⊢ mul ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context.Lookup in by
+  repeat apply_rules [var, ap, syn, lam, zero, succ, case, mu, inh]
+  <;> first | exact addTy | elem
+
+-- https://plfa.github.io/Inference/#bidirectional-products

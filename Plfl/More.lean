@@ -87,7 +87,7 @@ namespace Notations
   -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/macros.md#simplifying-macro-declaration
   scoped syntax "get_elem" (ppSpace term) : tactic
   scoped macro_rules | `(tactic| get_elem $n) => match n.1.toNat with
-  | 0 => `(tactic | exact Lookup.z)
+  | 0 => `(tactic| exact Lookup.z)
   | n+1 => `(tactic| apply Lookup.s; get_elem $(Lean.quote n))
 
   scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
