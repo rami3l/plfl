@@ -340,5 +340,21 @@ mutual
       | .inl n => left; is_empty; intro ⟨a', t'⟩; cases t'; apply n.false; trivial
 
   def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : PDecidable (Γ ⊢ m ↧ a) := by
-    sorry
+    match m with
+    | ƛ x : n => sorry
+    | 𝟘 => match a with
+      | ℕt => right; exact .zero
+      | _ =⇒ _ => left; is_empty; intro.
+      | _ * _ => left; is_empty; intro.
+    | ι n => match a with
+      | ℕt => match n.infer Γ ℕt with
+        | .inr t => right; refine .succ t
+        | .inl n => left; is_empty; intro (.succ t); exact n.false t
+      | _ =⇒ _ => left; is_empty; intro.
+      | _ * _ => left; is_empty; intro.
+    | .case l m x n => sorry
+    | μ x : n => sorry
+    | .fst x => sorry
+    | .snd x => sorry
+    | .inh m => sorry
 end
