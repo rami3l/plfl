@@ -133,7 +133,7 @@ lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L104
 @[simp]
-theorem subst₁_shift : (t' : Γ ⊢ b) ⇴ shift (t : Γ ⊢ a) = t := by
+theorem subst₁_shift : (t' : Γ ⊢ b) ⇸ shift (t : Γ ⊢ a) = t := by
   simp_all only [subst₁, subst₁σ, subst_comp]
   conv_lhs => arg 1; ext a t'; simp
   simp_all only [subst_var]
@@ -318,7 +318,7 @@ theorem subst_subst_comp
 
 theorem double_subst
 : subst₂ (v : Γ ⊢ a) (w : Γ ⊢ b) (n : Γ‚ a‚ b ⊢ c)
-= v ⇴ rename .s w ⇴ n
+= v ⇸ rename .s w ⇸ n
 := by
   cases n <;> first
   | triv

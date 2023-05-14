@@ -107,7 +107,7 @@ namespace Sim
 
   @[simp]
   def commSubst₁ {m m' : Γ ⊢ b} {n n' : Γ‚ b ⊢ a}
-  (sm : m ~ m') (sn : n ~ n') : m ⇴ n ~ m' ⇴ n'
+  (sm : m ~ m') (sn : n ~ n') : m ⇸ n ~ m' ⇸ n'
   := by
     let σ {a} : Γ‚ b ∋ a → Γ ⊢ a := subst₁σ m
     let σ' {a} : Γ‚ b ∋ a → Γ ⊢ a := subst₁σ m'

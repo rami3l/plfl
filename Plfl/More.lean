@@ -320,8 +320,8 @@ end Subst
 namespace Notations
   open Subst
 
-  scoped infixr:90 " ⇴ " => subst₁
-  scoped infixl:90 " ⬰ " => flip subst₁
+  scoped infixr:90 " ⇸ " => subst₁
+  scoped infixl:90 " ⇷ " => flip subst₁
 end Notations
 
 open Subst
@@ -331,14 +331,14 @@ namespace Subst
   : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
     let m' : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
     let n : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ƛ ι #0) □ ((ƛ ι #0) □ #0)
-    m ⇴ m' = n
+    m ⇸ m' = n
   := rfl
 
   example
   : let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt := #0 $ 𝟘
     let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1)
     let n : ∅‚ ℕt =⇒ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1 $ 𝟘)
-    m ⇴ m' = n
+    m ⇸ m' = n
   := rfl
 end Subst
 
@@ -371,21 +371,21 @@ end Value
 `Reduce t t'` says that `t` reduces to `t'` via a given step.
 -/
 inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-| lamβ : Value v → Reduce ((ƛ n) □ v) (n ⬰ v)
+| lamβ : Value v → Reduce ((ƛ n) □ v) (n ⇷ v)
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
 | zeroβ : Reduce (𝟘? 𝟘 m n) m
-| succβ : Value v → Reduce (𝟘? (ι v) m n) (n ⬰ v)
+| succβ : Value v → Reduce (𝟘? (ι v) m n) (n ⇷ v)
 | succξ : Reduce m m' → Reduce (ι m) (ι m')
 | caseξ : Reduce l l' → Reduce (𝟘? l m n) (𝟘? l' m n)
-| muβ : Reduce (μ n) (n ⬰ (μ n))
+| muβ : Reduce (μ n) (n ⇷ (μ n))
 -- https://plfa.github.io/More/#reduction
 | mulPξ₁ : Reduce l l' → Reduce (l ⋄ m) (l' ⋄ m)
 | mulPξ₂ : Reduce m m' → Reduce (l ⋄ m) (l ⋄ m')
 | mulPδ : Reduce ((.prim c) ⋄ (.prim d)) (.prim (c * d))
 -- https://plfa.github.io/More/#reduction-1
 | letξ : Reduce m m' → Reduce (.let m n) (.let m' n)
-| letβ : Value v → Reduce (.let v n) (n ⬰ v)
+| letβ : Value v → Reduce (.let v n) (n ⇷ v)
 -- https://plfa.github.io/More/#reduction-2
 | prodξ₁ : Reduce m m' → Reduce (.prod m n) (.prod m' n)
 | prodξ₂ : Reduce n n' → Reduce (.prod m n) (.prod m n')
@@ -402,9 +402,9 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 -- https://plfa.github.io/More/#reduction-4
 | caseSumξ : Reduce s s' → Reduce (.caseSum s l r) (.caseSum s' l r)
 | leftξ : Reduce m m' → Reduce (.left m) (.left m')
-| leftβ : Value v → Reduce (.caseSum (.left v) l r) (l ⬰ v)
+| leftβ : Value v → Reduce (.caseSum (.left v) l r) (l ⇷ v)
 | rightξ : Reduce m m' → Reduce (.right m) (.right m')
-| rightβ : Value v → Reduce (.caseSum (.right v) l r) (r ⬰ v)
+| rightβ : Value v → Reduce (.caseSum (.right v) l r) (r ⇷ v)
 -- https://plfa.github.io/More/#reduction-7
 | caseVoidξ : Reduce l l' → Reduce (.caseVoid l) (.caseVoid l')
 -- https://plfa.github.io/More/#reduction-8

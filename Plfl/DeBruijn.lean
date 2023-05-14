@@ -209,21 +209,21 @@ abbrev subst₁ (m : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
   | .z => exact m
   | .s x => exact ` x
 
-infix:90 " ⇴ " => subst₁
-infix:90 " ⬰ " => flip subst₁
+infix:90 " ⇸ " => subst₁
+infix:90 " ⇷ " => flip subst₁
 
 example
 : let m : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ι #0)
   let m' : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
   let n : ∅ ⊢ ℕt =⇒ ℕt := ƛ (ƛ ι #0) □ ((ƛ ι #0) □ #0)
-  m ⇴ m' = n
+  m ⇸ m' = n
 := rfl
 
 example
 : let m : ∅‚ ℕt =⇒ ℕt ⊢ ℕt := #0 $ 𝟘
   let m' : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1)
   let n : ∅‚ ℕt =⇒ ℕt ⊢ (ℕt =⇒ ℕt) =⇒ ℕt := ƛ (#0 $ #1 $ 𝟘)
-  m ⇴ m' = n
+  m ⇸ m' = n
 := rfl
 
 inductive Value : Γ ⊢ a → Type where
@@ -246,14 +246,14 @@ end Value
 `Reduce t t'` says that `t` reduces to `t'`.
 -/
 inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-| lamβ : Value w → Reduce ((ƛ n) □ w) (n ⬰ w)
+| lamβ : Value w → Reduce ((ƛ n) □ w) (n ⇷ w)
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
 | zeroβ : Reduce (𝟘? 𝟘 m n) m
-| succβ : Value v → Reduce (𝟘? (ι v) m n) (n ⬰ v)
+| succβ : Value v → Reduce (𝟘? (ι v) m n) (n ⇷ v)
 | succξ : Reduce m m' → Reduce (ι m) (ι m')
 | caseξ : Reduce l l' → Reduce (𝟘? l m n) (𝟘? l' m n)
-| muβ : Reduce (μ n) (n ⬰ (μ n))
+| muβ : Reduce (μ n) (n ⇷ (μ n))
 deriving Repr
 
 infix:40 " —→ " => Reduce
