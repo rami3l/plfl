@@ -307,3 +307,13 @@ export Context.Lookup (lookup)
 open Context.Lookup (lookup)
 
 -- https://plfa.github.io/Inference/#promoting-negations
+lemma TyS.empty_arg
+: Γ ⊢ l ↥ a =⇒ b
+→ IsEmpty (Γ ⊢ m ↧ a)
+→ IsEmpty (Σ b', Γ ⊢ l □ m ↥ b')
+:= by
+  intro tl n; is_empty; intro ⟨b', .ap tl' tm'⟩
+  injection TyS.unique tl tl'; rename_i h _; apply n.false; rwa [←h] at tm'
+
+lemma TyS.empty_switch : Γ ⊢ m ↥ a → a ≠ b → IsEmpty (Γ ⊢ m ↥ b) := by
+  intro ta n; is_empty; intro tb; have := TyS.unique ta tb; contradiction
