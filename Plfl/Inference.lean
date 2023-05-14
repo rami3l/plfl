@@ -175,9 +175,11 @@ namespace Context.Lookup
   | n+1 => `(tactic| apply Lookup.s (by trivial); get_elem $(Lean.quote n))
 end Context.Lookup
 
+export Context (Lookup)
+open Context (Lookup)
+
 namespace Notation
-  open Context
-  open Context.Lookup
+  open Context Lookup
 
   scoped notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
   scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
@@ -260,9 +262,15 @@ example : Γ ⊢ .snd (.prod (two.the ℕt) add) ↟ (ℕt =⇒ ℕt =⇒ ℕt)
     addTy]
   <;> elem
 
+-- https://plfa.github.io/Inference/#prerequisites
+
+/-
+Nothing to do. Relevant definitions have been derived.
+-/
+
 -- https://plfa.github.io/Inference/#unique-types
 @[simp]
-theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
+theorem Context.Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
   cases i with try trivial
   | z => cases j <;> trivial
   | s => cases j with try trivial
@@ -272,7 +280,30 @@ theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
 theorem TyS.unique (t : Γ ⊢ x ↥ a) (u : Γ ⊢ x ↥ b) : a = b := by
   match t with
   | .var i => cases u with | var j => apply Lookup.unique <;> trivial
-  | .ap l _ => cases u with | ap l' _ => have := unique l l'; simp_all
-  | .prod m n => cases u with | prod m' n' =>
-    have := unique m m'; have := unique n n'; simp_all
+  | .ap l _ => cases u with | ap l' _ => injection unique l l'
+  | .prod m n => cases u with | prod m' n' => congr; exact unique m m'; exact unique n n'
   | .syn _ => cases u with | syn _ => trivial
+
+-- https://plfa.github.io/Inference/#lookup-type-of-a-variable-in-the-context
+lemma Context.Lookup.empty_ext_empty
+: x ≠ y
+→ IsEmpty (Σ a, Γ ∋ x ⦂ a)
+→ IsEmpty (Σ a, Γ‚ y ⦂ b ∋ x ⦂ a)
+:= by
+  intro n ai; is_empty; intro ⟨a, i⟩; refine ai.false ⟨a, ?_⟩
+  cases i <;> trivial
+
+def Context.Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
+  match Γ, x with
+  | [], _ => right; is_empty; intro.
+  | ⟨y, b⟩ :: Γ, x =>
+    if h : x = y then
+      left; subst h; exact ⟨b, .z⟩
+    else match lookup Γ x with
+    | .inl ⟨a, i⟩ => left; refine ⟨a, .s ?_ i⟩; trivial
+    | .inr n => right; refine empty_ext_empty ?_ n; trivial
+
+export Context.Lookup (lookup)
+open Context.Lookup (lookup)
+
+-- https://plfa.github.io/Inference/#promoting-negations
