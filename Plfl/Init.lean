@@ -9,7 +9,7 @@ macro_rules | `(tactic| is_empty) => `(tactic| apply Function.isEmpty (β := Fal
 /--
 `PDecidable` is like `Decidable`, but allows arbitrary sorts.
 -/
-abbrev PDecidable α := α ⊕' IsEmpty α
+abbrev PDecidable α := IsEmpty α ⊕' α
 
 theorem congr_arg₃
 (f : α → β → γ → δ) {x x' : α} {y y' : β} {z z' : γ}

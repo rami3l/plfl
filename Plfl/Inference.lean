@@ -295,13 +295,13 @@ lemma Context.Lookup.empty_ext_empty
 
 def Context.Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
   match Γ, x with
-  | [], _ => right; is_empty; intro.
+  | [], _ => left; is_empty; intro.
   | ⟨y, b⟩ :: Γ, x =>
     if h : x = y then
-      left; subst h; exact ⟨b, .z⟩
+      right; subst h; exact ⟨b, .z⟩
     else match lookup Γ x with
-    | .inl ⟨a, i⟩ => left; refine ⟨a, .s ?_ i⟩; trivial
-    | .inr n => right; refine empty_ext_empty ?_ n; trivial
+    | .inr ⟨a, i⟩ => right; refine ⟨a, .s ?_ i⟩; trivial
+    | .inl n => left; refine empty_ext_empty ?_ n; trivial
 
 export Context.Lookup (lookup)
 open Context.Lookup (lookup)
@@ -313,7 +313,32 @@ lemma TyS.empty_arg
 → IsEmpty (Σ b', Γ ⊢ l □ m ↥ b')
 := by
   intro tl n; is_empty; intro ⟨b', .ap tl' tm'⟩
-  injection TyS.unique tl tl'; rename_i h _; apply n.false; rwa [←h] at tm'
+  injection tl.unique tl'; rename_i h _; apply n.false; rwa [←h] at tm'
 
 lemma TyS.empty_switch : Γ ⊢ m ↥ a → a ≠ b → IsEmpty (Γ ⊢ m ↥ b) := by
-  intro ta n; is_empty; intro tb; have := TyS.unique ta tb; contradiction
+  intro ta n; is_empty; intro tb; have := ta.unique tb; contradiction
+
+mutual
+  def TermS.infer (m : TermS) (Γ : Context) : PDecidable (Σ a, Γ ⊢ m ↥ a) := by
+    match m with
+    | ` x => match Lookup.lookup Γ x with
+      | .inr ⟨a, i⟩ => right; exact ⟨a, .var i⟩
+      | .inl n => left; is_empty; intro ⟨a, .var ta⟩; apply n.false; exact ⟨a, ta⟩
+    | l □ m => match l.infer Γ with
+      | .inr ⟨b =⇒ a, tba⟩ => match m.infer Γ b with
+        | .inr tb => right; exact ⟨a, .ap tba tb⟩
+        | .inl n => left; exact tba.empty_arg n
+      | .inr ⟨ℕt, t⟩ => left; is_empty; intro ⟨_, .ap tl tm⟩; injection t.unique tl
+      | .inr ⟨_ * _, t⟩ => left; is_empty; intro ⟨_, .ap tl tm⟩; injection t.unique tl
+      | .inl n => left; is_empty; intro ⟨a, .ap tl tm⟩; rename_i b; exact n.false ⟨b =⇒ a, tl⟩
+    | .prod m n => match m.infer Γ, n.infer Γ with
+      | .inr ⟨a, tm⟩, .inr ⟨b, tn⟩ => right; exact ⟨a * b, tm.prod tn⟩
+      | .inr tm, .inl nn => left; is_empty; intro ⟨_, tmn⟩; cases tmn; apply nn.false; constructor <;> trivial
+      | .inl nm, _ => left; is_empty; intro ⟨_, tmn⟩; cases tmn; apply nm.false; constructor <;> trivial
+    | .syn m a => match m.infer Γ a with
+      | .inr t => right; exact ⟨a, t⟩
+      | .inl n => left; is_empty; intro ⟨a', t'⟩; cases t'; apply n.false; trivial
+
+  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : PDecidable (Γ ⊢ m ↧ a) := by
+    sorry
+end
