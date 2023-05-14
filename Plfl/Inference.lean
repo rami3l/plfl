@@ -19,6 +19,8 @@ inductive Ty where
 | nat : Ty
 /-- Arrow type. -/
 | fn : Ty → Ty → Ty
+/-- Product type. -/
+| prod: Ty → Ty → Ty
 deriving BEq, DecidableEq, Repr
 
 namespace Notations
@@ -26,6 +28,8 @@ namespace Notations
 
   scoped notation "ℕt" => nat
   scoped infixr:70 " =⇒ " => fn
+
+  instance : Mul Ty where mul := .prod
 end Notations
 
 open Notations
@@ -47,6 +51,16 @@ end Notation
 
 open Notation
 
+/-
+An attribute is said to be Synthesized,
+if its parse tree node value is determined by the attribute value at its *child* nodes.
+
+An attribute is said to be Inherited,
+if its parse tree node value is determined by the attribute value at its *parent and/or siblings*.
+
+<https://www.geeksforgeeks.org/differences-between-synthesized-and-inherited-attributes/>
+-/
+
 mutual
   /--
   A term with synthesized types.
@@ -55,6 +69,7 @@ mutual
   inductive TermS where
   | var : Sym → TermS
   | ap : TermS → TermI → TermS
+  | prod : TermS → TermS → TermS
   | syn : TermI → Ty → TermS
   deriving BEq, Repr
   -- * `DecidableEq` derivations are not yet supported in `mutual` blocks.
@@ -70,6 +85,8 @@ mutual
   | succ : TermI → TermI
   | case : TermS → TermI → Sym → TermI → TermI
   | mu : Sym → TermI → TermI
+  | fst : TermS → TermI
+  | snd : TermS → TermI
   | inh : TermS → TermI
   deriving BEq, Repr
 end
@@ -136,8 +153,8 @@ A lookup judgement.
 `Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
 -/
 inductive Context.Lookup : Context → Sym → Ty → Type where
-| z : Lookup (Γ‚ x ⦂ tx) x tx
-| s : x ≠ y → Lookup Γ x tx → Lookup (Γ‚ y ⦂ ty) x tx
+| z : Lookup (Γ‚ x ⦂ a) x a
+| s : x ≠ y → Lookup Γ x a → Lookup (Γ‚ y ⦂ b) x a
 deriving DecidableEq
 
 namespace Context.Lookup
@@ -173,6 +190,7 @@ mutual
   inductive TyS : Context → TermS → Ty → Type where
   | var : Γ ∋ x ⦂ a → TyS Γ (` x) a
   | ap: TyS Γ l (a =⇒ b) → TyI Γ m a → TyS Γ (l □ m) b
+  | prod: TyS Γ m a → TyS Γ n b → TyS Γ (.prod m n) (a * b)
   | syn : TyI Γ m a → TyS Γ (m.the a) a
 
   /--
@@ -186,6 +204,8 @@ mutual
   : TyS Γ l ℕt → TyI Γ m a → TyI (Γ‚ x ⦂ ℕt) n a
   → TyI Γ (𝟘? l [zero: m |succ x : n]) a
   | mu : TyI (Γ‚ x ⦂ a) n a → TyI Γ (μ x : n) a
+  | fst: TyS Γ mn (a * b) → TyI Γ (.fst mn) a
+  | snd: TyS Γ mn (a * b) → TyI Γ (.snd mn) b
   | inh : TyS Γ m a → TyI Γ m a
 end
 
@@ -198,16 +218,61 @@ namespace Notation
   scoped notation:40 Γ " ⊢ " m " ↧ " a:51 => TyI Γ m a
 end Notation
 
-example : ∅ ⊢ two ↟ ℕt := open TyS TyI in by
+abbrev twoTy : Γ ⊢ two ↟ ℕt := open TyS TyI in by
   apply_rules [syn, succ, zero]
 
 abbrev addTy : Γ ⊢ add ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context.Lookup in by
-  repeat apply_rules [var, ap, syn, lam, zero, succ, case, mu, inh]
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh]
   <;> elem
 
 -- https://plfa.github.io/Inference/#bidirectional-mul
 abbrev mulTy : Γ ⊢ mul ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context.Lookup in by
-  repeat apply_rules [var, ap, syn, lam, zero, succ, case, mu, inh]
-  <;> first | exact addTy | elem
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    addTy]
+  <;> elem
 
 -- https://plfa.github.io/Inference/#bidirectional-products
+example : Γ ⊢ .prod (two.the ℕt) add ↥ ℕt * (ℕt =⇒ ℕt =⇒ ℕt)
+:= open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    twoTy, addTy]
+  <;> elem
+
+example : Γ ⊢ .fst (.prod (two.the ℕt) add) ↟ ℕt
+:= open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    twoTy]
+  <;> elem
+
+example : Γ ⊢ .snd (.prod (two.the ℕt) add) ↟ (ℕt =⇒ ℕt =⇒ ℕt)
+:= open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    addTy]
+  <;> elem
+
+-- https://plfa.github.io/Inference/#unique-types
+@[simp]
+theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
+  cases i with try trivial
+  | z => cases j <;> trivial
+  | s => cases j with try trivial
+    | s => apply unique <;> trivial
+
+@[simp]
+theorem TyS.unique (t : Γ ⊢ x ↥ a) (u : Γ ⊢ x ↥ b) : a = b := by
+  match t with
+  | .var i => cases u with | var j => apply Lookup.unique <;> trivial
+  | .ap l _ => cases u with | ap l' _ => have := unique l l'; simp_all
+  | .prod m n => cases u with | prod m' n' =>
+    have := unique m m'; have := unique n n'; simp_all
+  | .syn _ => cases u with | syn _ => trivial
