@@ -130,12 +130,12 @@ abbrev mul : TermS :=
   ).the (ℕt =⇒ ℕt =⇒ ℕt)
 
 -- Note that the typing is only required for `add` due to the rule for `ap`.
-example : TermS := add □ two □ two
+abbrev four : TermS := add □ two □ two
 
 /--
 The Church numeral Ty.
 -/
-abbrev Ch (t : Ty := ℕt) : Ty := (t =⇒ t) =⇒ t =⇒ t
+@[simp] abbrev Ch (t : Ty := ℕt) : Ty := (t =⇒ t) =⇒ t =⇒ t
 
 -- Church encoding...
 abbrev succC : TermI := ƛ "n" : ι `"n"
@@ -145,7 +145,7 @@ abbrev addC : TermS :=
   (ƛ "m" : ƛ "n" : ƛ "s" : ƛ "z" : `"m" □ `"s" $ `"n" □ `"s" □ `"z"
   ).the (Ch =⇒ Ch =⇒ Ch)
 -- Note that the typing is only required for `addC` due to the rule for `ap`.
-example : TermS := addC □ twoC □ twoC □ 𝟘
+abbrev four' : TermS := addC □ twoC □ twoC □ succC □ 𝟘
 
 -- https://plfa.github.io/Inference/#bidirectional-type-checking
 /--
@@ -237,6 +237,18 @@ abbrev mulTy : Γ ⊢ mul ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context
     addTy]
   <;> elem
 
+abbrev twoCTy : Γ ⊢ twoC ↧ Ch := open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh]
+  <;> elem
+
+abbrev addCTy : Γ ⊢ addC ↥ (Ch =⇒ Ch =⇒ Ch) := open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh]
+  <;> elem
+
 -- https://plfa.github.io/Inference/#bidirectional-products
 example : Γ ⊢ .prod (two.the ℕt) add ↥ ℕt * (ℕt =⇒ ℕt =⇒ ℕt)
 := open TyS TyI Context.Lookup in by
@@ -290,7 +302,7 @@ lemma Context.Lookup.empty_ext_empty
 → IsEmpty (Σ a, Γ ∋ x ⦂ a)
 → IsEmpty (Σ a, Γ‚ y ⦂ b ∋ x ⦂ a)
 := by
-  intro n ai; is_empty; intro ⟨a, i⟩; refine ai.false ⟨a, ?_⟩
+  intro n ai; is_empty; intro ⟨a, i⟩; apply ai.false; exists a
   cases i <;> trivial
 
 def Context.Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
@@ -323,38 +335,108 @@ mutual
     match m with
     | ` x => match Lookup.lookup Γ x with
       | .inr ⟨a, i⟩ => right; exact ⟨a, .var i⟩
-      | .inl n => left; is_empty; intro ⟨a, .var ta⟩; apply n.false; exact ⟨a, ta⟩
+      | .inl n => left; is_empty; intro ⟨a, .var _⟩; apply n.false; exists a
     | l □ m => match l.infer Γ with
-      | .inr ⟨b =⇒ a, tba⟩ => match m.infer Γ b with
-        | .inr tb => right; exact ⟨a, .ap tba tb⟩
-        | .inl n => left; exact tba.empty_arg n
-      | .inr ⟨ℕt, t⟩ => left; is_empty; intro ⟨_, .ap tl tm⟩; injection t.unique tl
-      | .inr ⟨_ * _, t⟩ => left; is_empty; intro ⟨_, .ap tl tm⟩; injection t.unique tl
-      | .inl n => left; is_empty; intro ⟨a, .ap tl tm⟩; rename_i b; exact n.false ⟨b =⇒ a, tl⟩
+      | .inr ⟨a =⇒ b, tab⟩ => match m.infer Γ a with
+        | .inr ta => right; exact ⟨b, .ap tab ta⟩
+        | .inl n => left; exact tab.empty_arg n
+      | .inr ⟨ℕt, t⟩ => left; is_empty; intro ⟨_, .ap tl _⟩; injection t.unique tl
+      | .inr ⟨_ * _, t⟩ => left; is_empty; intro ⟨_, .ap tl _⟩; injection t.unique tl
+      | .inl n => left; is_empty; intro ⟨a, .ap tl _⟩; rename_i b _; exact n.false ⟨b =⇒ a, tl⟩
     | .prod m n => match m.infer Γ, n.infer Γ with
       | .inr ⟨a, tm⟩, .inr ⟨b, tn⟩ => right; exact ⟨a * b, tm.prod tn⟩
-      | .inr tm, .inl nn => left; is_empty; intro ⟨_, tmn⟩; cases tmn; apply nn.false; constructor <;> trivial
-      | .inl nm, _ => left; is_empty; intro ⟨_, tmn⟩; cases tmn; apply nm.false; constructor <;> trivial
+      | .inr _, .inl nn => left; is_empty; intro ⟨_, tmn⟩; cases tmn; apply nn.false; constructor <;> trivial
+      | .inl nm, _ => left; is_empty; intro ⟨_, .prod tm _⟩; apply nm.false; constructor <;> trivial
     | .syn m a => match m.infer Γ a with
       | .inr t => right; exact ⟨a, t⟩
       | .inl n => left; is_empty; intro ⟨a', t'⟩; cases t'; apply n.false; trivial
 
   def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : PDecidable (Γ ⊢ m ↧ a) := by
     match m with
-    | ƛ x : n => sorry
+    | ƛ x : n => match a with
+      | a =⇒ b => match n.infer (Γ‚ x ⦂ a) b with
+        | .inr t => right; exact .lam t
+        | .inl n => left; is_empty; intro (.lam t); exact n.false t
+      | ℕt => left; is_empty; intro.
+      | _ * _ => left; is_empty; intro.
     | 𝟘 => match a with
       | ℕt => right; exact .zero
       | _ =⇒ _ => left; is_empty; intro.
       | _ * _ => left; is_empty; intro.
     | ι n => match a with
       | ℕt => match n.infer Γ ℕt with
-        | .inr t => right; refine .succ t
+        | .inr t => right; exact .succ t
         | .inl n => left; is_empty; intro (.succ t); exact n.false t
       | _ =⇒ _ => left; is_empty; intro.
       | _ * _ => left; is_empty; intro.
-    | .case l m x n => sorry
-    | μ x : n => sorry
-    | .fst x => sorry
-    | .snd x => sorry
-    | .inh m => sorry
+    | .case l m x n => match l.infer Γ with
+      | .inr ⟨ℕt, tl⟩ => match m.infer Γ a, n.infer (Γ‚ x ⦂ ℕt) a with
+        | .inr tm, .inr tn => right; exact .case tl tm tn
+        | .inl nm, _ => left; is_empty; intro (.case _ _ _); apply nm.false; trivial
+        | .inr _, .inl nn => left; is_empty; intro (.case _ _ _); apply nn.false; trivial
+      | .inr ⟨_ =⇒ _, tl⟩ => left; is_empty; intro (.case t _ _); injection t.unique tl
+      | .inr ⟨_ * _, tl⟩ => left; is_empty; intro (.case t _ _); injection t.unique tl
+      | .inl nl => left; is_empty; intro (.case _ _ _); apply nl.false; constructor <;> trivial
+    | μ x : n => match n.infer (Γ‚ x ⦂ a) a with
+      | .inr t => right; exact .mu t
+      | .inl n => left; is_empty; intro (.mu t); exact n.false t
+    | .fst m => match m.infer Γ with
+      | .inr ⟨b * _, tm⟩ => if h : a = b then
+          right; subst h; exact .fst tm
+        else
+          left; is_empty; intro (.fst t); injection t.unique tm; contradiction
+      | .inr ⟨ℕt, tm⟩ => left; is_empty; intro (.fst t); injection t.unique tm
+      | .inr ⟨_ =⇒ _, tm⟩ => left; is_empty; intro (.fst t); injection t.unique tm
+      | .inl n => left; is_empty; intro (.fst t); apply n.false; constructor <;> trivial
+    | .snd m => match m.infer Γ with
+      | .inr ⟨_ * b, tm⟩ => if h : a = b then
+          right; subst h; exact .snd tm
+        else
+          left; is_empty; intro (.snd t); injection t.unique tm; contradiction
+      | .inr ⟨ℕt, tm⟩ => left; is_empty; intro (.snd t); injection t.unique tm
+      | .inr ⟨_ =⇒ _, tm⟩ => left; is_empty; intro (.snd t); injection t.unique tm
+      | .inl n => left; is_empty; intro (.snd t); apply n.false; constructor <;> trivial
+    | .inh m => match m.infer Γ with
+      | .inr ⟨b, tm⟩ => if h : a = b then
+          right; subst h; exact .inh tm
+        else
+          left; rw [←Ne.def] at h; is_empty; intro (.inh _)
+          apply (tm.empty_switch h.symm).false; trivial
+      | .inl nm => left; is_empty; intro (.inh tm); apply nm.false; exists a
 end
+termination_by
+  TermS.infer m Γ => sizeOf m
+  TermI.infer n Γ a => sizeOf n
+
+-- https://plfa.github.io/Inference/#testing-the-example-terms
+abbrev fourTy : Γ ⊢ four ↥ ℕt := open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    addTy, twoTy]
+  <;> elem
+
+example : four.infer ∅ = .inr ⟨ℕt, fourTy⟩ := by rfl
+
+abbrev four'Ty : Γ ⊢ four' ↥ ℕt := open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    addCTy, twoCTy]
+  <;> elem
+
+example : four'.infer ∅ = .inr ⟨ℕt, four'Ty⟩ := by rfl
+
+abbrev four'': TermS := mul □ two □ two
+
+abbrev four''Ty : Γ ⊢ four'' ↥ ℕt := open TyS TyI Context.Lookup in by
+  repeat apply_rules
+    [var, ap, prod, syn,
+    lam, zero, succ, case, mu, fst, snd, inh,
+    addCTy, twoCTy]
+  <;> elem
+
+example : four''.infer ∅ = .inr ⟨ℕt, four''Ty⟩ := by rfl
+
+-- https://plfa.github.io/Inference/#testing-the-error-cases
+-- example : ((ƛ "x" : `"y").the (ℕt =⇒ ℕt)).infer ∅ = .inl _ := by rfl
