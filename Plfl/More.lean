@@ -183,9 +183,7 @@ namespace Term
   example : Γ ⊢ ℕt := 2
 
   @[simp] abbrev add : Γ ⊢ ℕt =⇒ ℕt =⇒ ℕt := μ ƛ ƛ (𝟘? (#1) (#0) (ι (#3 □ #0 □ #1)))
-  @[simp] abbrev mul : Γ ⊢ ℕt =⇒ ℕt =⇒ ℕt := μ ƛ ƛ (𝟘? (#1) 𝟘 (add □ #1 $ #3 □ #0 □ #1))
-
-  example : Γ ⊢ ℕt := add □ 2 □ 2
+  abbrev four : Γ ⊢ ℕt := add □ 2 □ 2
 
   /--
   The Church numeral Ty.
@@ -195,7 +193,10 @@ namespace Term
   @[simp] abbrev succC : Γ ⊢ ℕt =⇒ ℕt := ƛ ι #0
   @[simp] abbrev twoC : Γ ⊢ Ch a := ƛ ƛ (#1 $ #1 $ #0)
   @[simp] abbrev addC : Γ ⊢ Ch a =⇒ Ch a =⇒ Ch a := ƛ ƛ ƛ ƛ (#3 □ #1 $ #2 □ #1 □ #0)
-  example : Γ ⊢ ℕt := addC □ twoC □ twoC □ succC □ 𝟘
+  abbrev four' : Γ ⊢ ℕt := addC □ twoC □ twoC □ succC □ 𝟘
+
+  @[simp] abbrev mul : Γ ⊢ ℕt =⇒ ℕt =⇒ ℕt := μ ƛ ƛ (𝟘? (#1) 𝟘 (add □ #1 $ #3 □ #0 □ #1))
+  abbrev four'' : Γ ⊢ ℕt := mul □ 2 □ 2
 
   -- https://plfa.github.io/DeBruijn/#exercise-mul-recommended
   @[simp] abbrev mulC : Γ ⊢ Ch a =⇒ Ch a =⇒ Ch a := ƛ ƛ ƛ ƛ (#3 □ (#2 □ #1) □ #0)

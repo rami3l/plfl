@@ -493,7 +493,7 @@ This won't work either, probably due to similar reasons...
 def Ty.erase : Ty → More.Ty
 | ℕt => .nat
 | a =⇒ b => .fn a.erase b.erase
-| a * b => .prod a.erase b.erase
+| a * b => a.erase * b.erase
 
 def Context.erase : Context → More.Context
 | [] => ∅
@@ -502,3 +502,34 @@ def Context.erase : Context → More.Context
 def Lookup.erase : Γ ∋ x ⦂ a → More.Lookup Γ.erase a.erase
 | .z => .z
 | .s _ i => .s i.erase
+
+mutual
+  def TyS.erase : Γ ⊢ m ↥ a → More.Term Γ.erase a.erase
+  | .var i => .var i.erase
+  | .ap l m => .ap l.erase m.erase
+  | .prod m n => .prod m.erase n.erase
+  | .syn m => m.erase
+
+  def TyI.erase : Γ ⊢ m ↧ a → More.Term Γ.erase a.erase
+  | .lam m => .lam m.erase
+  | .zero => .zero
+  | .succ m => .succ m.erase
+  | .case l m n => .case l.erase m.erase n.erase
+  | .mu m => .mu m.erase
+  | .fst m => .fst m.erase
+  | .snd m => .snd m.erase
+  | .inh m => m.erase
+end
+termination_by
+  TyS.erase m => sizeOf m
+  TyI.erase m => sizeOf m
+
+example : fourTy.erase (Γ := ∅) = More.Term.four := by rfl
+
+-- https://plfa.github.io/Inference/#exercise-inference-multiplication-recommended
+example : mul.infer ∅ = .inr ⟨ℕt =⇒ ℕt =⇒ ℕt, mulTy⟩ := by rfl
+
+-- ! BOOM! The commented lines below are very CPU/RAM-intensive, and might even make LEAN4 leak memory!
+-- example : mulTy.erase (Γ := ∅) = More.Term.mul := by rfl
+-- example : four'Ty.erase (Γ := ∅) = More.Term.four' := by rfl
+-- example : four''Ty.erase (Γ := ∅) = More.Term.four'' := by rfl
