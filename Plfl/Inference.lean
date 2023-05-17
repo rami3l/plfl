@@ -152,12 +152,12 @@ abbrev four' : TermS := addC □ twoC □ twoC □ succC □ 𝟘
 A lookup judgement.
 `Lookup c s ts` means that `s` is of type `ts` by _looking up_ the context `c`.
 -/
-inductive Context.Lookup : Context → Sym → Ty → Type where
+inductive Lookup : Context → Sym → Ty → Type where
 | z : Lookup (Γ‚ x ⦂ a) x a
 | s : x ≠ y → Lookup Γ x a → Lookup (Γ‚ y ⦂ b) x a
 deriving DecidableEq
 
-namespace Context.Lookup
+namespace Lookup
   -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/tactics.md#tactics-by-macro-expansion
   /--
   `elem` validates the type of a variable by looking it up in the current context.
@@ -173,17 +173,18 @@ namespace Context.Lookup
   macro_rules | `(tactic| get_elem $n) => match n.1.toNat with
   | 0 => `(tactic| exact Lookup.z)
   | n+1 => `(tactic| apply Lookup.s (by trivial); get_elem $(Lean.quote n))
-end Context.Lookup
-
-export Context (Lookup)
-open Context (Lookup)
+end Lookup
 
 namespace Notation
   open Context Lookup
 
-  scoped notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
+  scoped notation:40 Γ " ∋ " m " ⦂ " a:51 => Lookup Γ m a
   scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
 end Notation
+
+instance : Repr (Γ ∋ m ⦂ a) where reprPrec i n := "♯" ++ reprPrec n (sizeOf i)
+
+#eval @Lookup.z (∅‚ "x" ⦂ ℕt) "x" ℕt
 
 mutual
   /--
@@ -194,6 +195,7 @@ mutual
   | ap: TyS Γ l (a =⇒ b) → TyI Γ m a → TyS Γ (l □ m) b
   | prod: TyS Γ m a → TyS Γ n b → TyS Γ (.prod m n) (a * b)
   | syn : TyI Γ m a → TyS Γ (m.the a) a
+  deriving Repr
 
   /--
   Typing of `TermI` terms.
@@ -209,6 +211,7 @@ mutual
   | fst: TyS Γ mn (a * b) → TyI Γ (.fst mn) a
   | snd: TyS Γ mn (a * b) → TyI Γ (.snd mn) b
   | inh : TyS Γ m a → TyI Γ m a
+  deriving Repr
 end
 
 instance : Coe (TyI Γ m a) (TyS Γ (m.the a) a) where coe := TyS.syn
@@ -223,27 +226,27 @@ end Notation
 abbrev twoTy : Γ ⊢ two ↟ ℕt := open TyS TyI in by
   apply_rules [syn, succ, zero]
 
-abbrev addTy : Γ ⊢ add ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context.Lookup in by
+abbrev addTy : Γ ⊢ add ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh]
   <;> elem
 
 -- https://plfa.github.io/Inference/#bidirectional-mul
-abbrev mulTy : Γ ⊢ mul ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Context.Lookup in by
+abbrev mulTy : Γ ⊢ mul ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
     addTy]
   <;> elem
 
-abbrev twoCTy : Γ ⊢ twoC ↧ Ch := open TyS TyI Context.Lookup in by
+abbrev twoCTy : Γ ⊢ twoC ↧ Ch := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh]
   <;> elem
 
-abbrev addCTy : Γ ⊢ addC ↥ (Ch =⇒ Ch =⇒ Ch) := open TyS TyI Context.Lookup in by
+abbrev addCTy : Γ ⊢ addC ↥ (Ch =⇒ Ch =⇒ Ch) := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh]
@@ -251,7 +254,7 @@ abbrev addCTy : Γ ⊢ addC ↥ (Ch =⇒ Ch =⇒ Ch) := open TyS TyI Context.Loo
 
 -- https://plfa.github.io/Inference/#bidirectional-products
 example : Γ ⊢ .prod (two.the ℕt) add ↥ ℕt * (ℕt =⇒ ℕt =⇒ ℕt)
-:= open TyS TyI Context.Lookup in by
+:= open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -259,7 +262,7 @@ example : Γ ⊢ .prod (two.the ℕt) add ↥ ℕt * (ℕt =⇒ ℕt =⇒ ℕt)
   <;> elem
 
 example : Γ ⊢ .fst (.prod (two.the ℕt) add) ↟ ℕt
-:= open TyS TyI Context.Lookup in by
+:= open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -267,7 +270,7 @@ example : Γ ⊢ .fst (.prod (two.the ℕt) add) ↟ ℕt
   <;> elem
 
 example : Γ ⊢ .snd (.prod (two.the ℕt) add) ↟ (ℕt =⇒ ℕt =⇒ ℕt)
-:= open TyS TyI Context.Lookup in by
+:= open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -282,7 +285,7 @@ Nothing to do. Relevant definitions have been derived.
 
 -- https://plfa.github.io/Inference/#unique-types
 @[simp]
-theorem Context.Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
+theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
   cases i with try trivial
   | z => cases j <;> trivial
   | s => cases j with try trivial
@@ -297,7 +300,7 @@ theorem TyS.unique (t : Γ ⊢ x ↥ a) (u : Γ ⊢ x ↥ b) : a = b := by
   | .syn _ => cases u with | syn _ => trivial
 
 -- https://plfa.github.io/Inference/#lookup-type-of-a-variable-in-the-context
-lemma Context.Lookup.empty_ext_empty
+lemma Lookup.empty_ext_empty
 : x ≠ y
 → IsEmpty (Σ a, Γ ∋ x ⦂ a)
 → IsEmpty (Σ a, Γ‚ y ⦂ b ∋ x ⦂ a)
@@ -305,7 +308,7 @@ lemma Context.Lookup.empty_ext_empty
   intro n ai; is_empty; intro ⟨a, i⟩; apply ai.false; exists a
   cases i <;> trivial
 
-def Context.Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
+def Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
   match Γ, x with
   | [], _ => left; is_empty; intro.
   | ⟨y, b⟩ :: Γ, x =>
@@ -314,9 +317,6 @@ def Context.Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x 
     else match lookup Γ x with
     | .inr ⟨a, i⟩ => right; refine ⟨a, .s ?_ i⟩; trivial
     | .inl n => left; refine empty_ext_empty ?_ n; trivial
-
-export Context.Lookup (lookup)
-open Context.Lookup (lookup)
 
 -- https://plfa.github.io/Inference/#promoting-negations
 lemma TyS.empty_arg
@@ -409,7 +409,7 @@ termination_by
   TermI.infer n Γ a => sizeOf n
 
 -- https://plfa.github.io/Inference/#testing-the-example-terms
-abbrev fourTy : Γ ⊢ four ↥ ℕt := open TyS TyI Context.Lookup in by
+abbrev fourTy : Γ ⊢ four ↥ ℕt := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -418,7 +418,7 @@ abbrev fourTy : Γ ⊢ four ↥ ℕt := open TyS TyI Context.Lookup in by
 
 example : four.infer ∅ = .inr ⟨ℕt, fourTy⟩ := by rfl
 
-abbrev four'Ty : Γ ⊢ four' ↥ ℕt := open TyS TyI Context.Lookup in by
+abbrev four'Ty : Γ ⊢ four' ↥ ℕt := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -429,7 +429,7 @@ example : four'.infer ∅ = .inr ⟨ℕt, four'Ty⟩ := by rfl
 
 abbrev four'': TermS := mul □ two □ two
 
-abbrev four''Ty : Γ ⊢ four'' ↥ ℕt := open TyS TyI Context.Lookup in by
+abbrev four''Ty : Γ ⊢ four'' ↥ ℕt := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -455,3 +455,50 @@ This won't work either, probably due to similar reasons...
 
 -- example := let m := (ƛ "x" : `"y").the (ℕt =⇒ ℕt); show IsEmpty (Σ a, ∅ ⊢ m ↥ a) by
 --   rw [←not_nonempty_iff]; decide
+
+-- Unbound variable:
+#eval ((ƛ "x" : `"y").the (ℕt =⇒ ℕt)).infer ∅
+
+-- Argument in application is ill typed:
+#eval (add □ succC).infer ∅
+
+-- Function in application is ill typed:
+#eval (add □ succC □ two).infer ∅
+
+-- Function in application has type natural:
+#eval (two.the ℕt □ two).infer ∅
+
+-- Abstraction inherits type natural:
+#eval (twoC.the ℕt).infer ∅
+
+-- Zero inherits a function type:
+#eval (𝟘.the (ℕt =⇒ ℕt)).infer ∅
+
+-- Successor inherits a function type:
+#eval (two.the (ℕt =⇒ ℕt)).infer ∅
+
+-- Successor of an ill-typed term:
+#eval ((ι twoC).the ℕt).infer ∅
+
+-- Case of a term with a function type:
+#eval ((𝟘? twoC.the Ch [zero: 𝟘 |succ "x" : `"x"]).the ℕt).infer ∅
+
+-- Case of an ill-typed term:
+#eval ((𝟘? twoC.the ℕt [zero: 𝟘 |succ "x" : `"x"]).the ℕt).infer ∅
+
+-- Inherited and synthesized types disagree in a switch:
+#eval ((ƛ "x" : `"x").the (ℕt =⇒ ℕt =⇒ ℕt)).infer ∅
+
+-- https://plfa.github.io/Inference/#erasure
+def Ty.erase : Ty → More.Ty
+| ℕt => .nat
+| a =⇒ b => .fn a.erase b.erase
+| a * b => .prod a.erase b.erase
+
+def Context.erase : Context → More.Context
+| [] => ∅
+| ⟨_, a⟩ :: Γ => a.erase :: Context.erase Γ
+
+def Lookup.erase : Γ ∋ x ⦂ a → More.Lookup Γ.erase a.erase
+| .z => .z
+| .s _ i => .s i.erase

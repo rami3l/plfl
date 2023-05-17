@@ -18,6 +18,11 @@ namespace PDecidable
     | .inl na => left; simpa
 end PDecidable
 
+instance [Repr α] : Repr (PDecidable α) where
+  reprPrec da n := match da with
+  | .inr a => ".inr " ++ reprPrec a n
+  | .inl _ => ".inl _"
+
 theorem congr_arg₃
 (f : α → β → γ → δ) {x x' : α} {y y' : β} {z z' : γ}
 (hx : x = x') (hy : y = y') (hz : z = z')
