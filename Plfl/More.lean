@@ -85,12 +85,12 @@ namespace Notations
   scoped infix:40 " ∋ " => Lookup
 
   -- https://github.com/arthurpaulino/lean4-metaprogramming-book/blob/d6a227a63c55bf13d49d443f47c54c7a500ea27b/md/main/macros.md#simplifying-macro-declaration
-  scoped syntax "get_elem" (ppSpace term) : tactic
-  scoped macro_rules | `(tactic| get_elem $n) => match n.1.toNat with
-  | 0 => `(tactic| exact Lookup.z)
-  | n+1 => `(tactic| apply Lookup.s; get_elem $(Lean.quote n))
+  scoped syntax "get_elem" (ppSpace term) : term
+  scoped macro_rules | `(term| get_elem $n) => match n.1.toNat with
+  | 0 => `(term| Lookup.z)
+  | n+1 => `(term| Lookup.s (get_elem $(Lean.quote n)))
 
-  scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
+  scoped macro " ♯ " n:term:90 : term => `(get_elem $n)
 end Notations
 
 namespace Lookup
@@ -168,7 +168,6 @@ namespace Term
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #1 $ #0
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #1 $ #1 $ #0
   example : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
-  example : ∅ ⊢ (ℕt =⇒ ℕt) =⇒ ℕt =⇒ ℕt := ƛ ƛ (#1 $ #1 $ #0)
 
   @[simp]
   def ofNat : ℕ → Γ ⊢ ℕt
