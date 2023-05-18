@@ -67,7 +67,7 @@ instance : Coe ℕ Context where coe := Context.equiv_nat.invFun
 inductive Lookup : Context → Ty → Type where
 | z : Lookup (Γ‚ t) t
 | s : Lookup Γ t → Lookup (Γ‚ t') t
-deriving DecidableEq, Repr
+deriving DecidableEq
 
 namespace Notation
   open Lookup
@@ -82,6 +82,12 @@ namespace Notation
 
   scoped macro " ♯" n:term:90 : term => `(get_elem $n)
 end Notation
+
+def Lookup.toNat : (Γ ∋ a) → ℕ
+| .z => 0
+| .s i => i.toNat + 1
+
+instance : Repr (Γ ∋ a) where reprPrec i n := " ♯" ++ reprPrec i.toNat n
 
 -- https://plfa.github.io/Untyped/#terms-and-the-scoping-judgment
 inductive Term : Context → Ty → Type where
@@ -206,19 +212,79 @@ namespace Notation
   scoped prefix:60 " ′" => norm
   scoped macro " #′" n:term:90 : term => `(var (♯$n))
 
-  scoped prefix:50 " ƛ " => lam
-  scoped infixr:min " $ " => ap
-  scoped infixl:70 " □ " => ap
-  scoped prefix:90 " ` " => var
+  scoped prefix:50 " ƛₙ " => lam
+  scoped infixr:min " $ₙ " => ap
+  scoped infixl:70 " □ₙ " => ap
+  scoped prefix:90 " `ₙ " => var
 end Notation
 
-example : Normal (Term.twoC (Γ := ∅)) := ƛ ƛ (′#′1 □ (′#′1 □ (′#′0)))
+example : Normal (Term.twoC (Γ := ∅)) := ƛₙ ƛₙ (′#′1 □ₙ (′#′1 □ₙ (′#′0)))
 
 -- https://plfa.github.io/Untyped/#reduction-step
+/--
+`Reduce t t'` says that `t` reduces to `t'` via a given step.
+
+_Note: This time there's no need to generate data out of `Reduce t t'`,
+so it can just be a `Prop`._
+-/
+inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
+| lamβ : Reduce ((ƛ n) □ v) (n ⇷ v)
+| lamζ : Reduce n n' → Reduce (ƛ n) (ƛ n')
+| apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
+| apξ₂ : Reduce m m' → Reduce (v □ m) (v □ m')
+
+-- https://plfa.github.io/Untyped/#exercise-variant-1-practice
+example : Type := sorry
+-- TODO
+
+-- https://plfa.github.io/Untyped/#exercise-variant-2-practice
+example : Type := sorry
+-- TODO
 
 -- https://plfa.github.io/Untyped/#reflexive-and-transitive-closure
+/--
+A reflexive and transitive closure,
+defined as a sequence of zero or more steps of the underlying relation `—→`.
 
--- https://plfa.github.io/Untyped/#example-reduction-sequence
+_Note: Since `Reduce t t' : Prop`, `Clos` can be defined directly from `Reduce`._
+-/
+abbrev Reduce.Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) Reduce
+
+namespace Notation
+  -- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
+  scoped infix:40 " —→ " => Reduce
+  scoped infix:20 " —↠ " => Reduce.Clos
+end Notation
+
+namespace Reduce.Clos
+  @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c
+  instance : Coe (m —→ n) (m —↠ n) where coe := one
+
+  instance : Trans (α := Γ ⊢ a) Clos Clos Clos where
+    trans := Relation.ReflTransGen.trans
+
+  instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where
+    trans c r := c.tail r
+
+  instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
+    trans c c' := (one c).tail c'
+
+  instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
+    trans r c := (one r).trans c
+end Reduce.Clos
+
+namespace Reduce
+  -- https://plfa.github.io/Untyped/#example-reduction-sequence
+  open Term
+
+  example : four'C (Γ := ∅) —↠ fourC := calc addC □ twoC □ twoC
+    _ —→ (ƛ ƛ ƛ (twoC □ #1 $ (#2 □ #1 □ #0))) □ twoC := by apply_rules [apξ₁, lamβ]
+    _ —→ ƛ ƛ (twoC □ #1 $ (twoC □ #1 □ #0)) := by exact lamβ
+    _ —→ ƛ ƛ ((ƛ (#2 $ #2 $ #0)) $ (twoC □ #1 □ #0)) := by apply_rules [lamζ, apξ₁, lamβ]
+    _ —→ ƛ ƛ (#1 $ #1 $ (twoC □ #1 □ #0)) := by apply_rules [lamζ, lamβ]
+    _ —→ ƛ ƛ (#1 $ #1 $ ((ƛ (#2 $ #2 $ #0)) □ #0)) := by apply_rules [lamζ, apξ₁, apξ₂, lamβ]
+    _ —→ ƛ ƛ (#1 $ #1 $ #1 $ #1 $ #0) := by apply_rules [lamζ, apξ₁, apξ₂, lamβ]
+end Reduce
 
 -- https://plfa.github.io/Untyped/#progress
 
