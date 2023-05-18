@@ -414,13 +414,13 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | consξ₂ : Reduce n n' → Reduce (.cons v n) (.cons v n')
 | consβ : Reduce (.caseList (.cons v w) m n) (subst₂ v w n)
 
+-- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
 /--
 The predicate version of `Reduce`.
 -/
 abbrev Reduce.ReduceP (t : Γ ⊢ a) (t' : Γ ⊢ a) := Nonempty (Reduce t t')
 
 namespace Notation
-  -- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
   scoped infix:40 " —→ " => Reduce
   scoped infix:40 " —→ₚ " => Reduce.ReduceP
 end Notation
@@ -440,20 +440,20 @@ namespace Notation
 end Notation
 
 namespace Reduce.Clos
-    @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c
-    instance : Coe (m —→ n) (m —↠ n) where coe := one
+  @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c
+  instance : Coe (m —→ n) (m —↠ n) where coe := one
 
-    instance : Trans (α := Γ ⊢ a) Clos Clos Clos where
-      trans := Relation.ReflTransGen.trans
+  instance : Trans (α := Γ ⊢ a) Clos Clos Clos where
+    trans := Relation.ReflTransGen.trans
 
-    instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where
-      trans c r := c.tail r
+  instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where
+    trans c r := c.tail r
 
-    instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
-      trans c c' := (one c).tail c'
+  instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
+    trans c c' := (one c).tail c'
 
-    instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
-      trans r c := (one r).trans c
+  instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
+    trans r c := (one r).trans c
 end Reduce.Clos
 
 namespace Reduce
