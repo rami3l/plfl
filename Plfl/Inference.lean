@@ -23,16 +23,16 @@ inductive Ty where
 | prod: Ty → Ty → Ty
 deriving BEq, DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   open Ty
 
   scoped notation "ℕt" => nat
   scoped infixr:70 " =⇒ " => fn
 
   instance : Mul Ty where mul := .prod
-end Notations
+end Notation
 
-open Notations
+open Notation
 
 abbrev Context : Type := List (Sym × Ty)
 

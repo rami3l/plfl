@@ -8,7 +8,7 @@ import Mathlib.Tactic
 set_option tactic.simp.trace true
 
 open More
-open Subst Notations
+open Subst Notation
 
 -- https://plfa.github.io/Bisimulation/#simulation
 inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Type where
