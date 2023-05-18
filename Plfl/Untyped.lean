@@ -14,11 +14,11 @@ inductive Ty where
 | star: Ty
 deriving BEq, DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   scoped notation " ✶ " => Ty.star
-end Notations
+end Notation
 
-open Notations
+open Notation
 
 -- https://plfa.github.io/Untyped/#exercise-type-practice
 instance : Ty ≃ Unit where
@@ -39,13 +39,13 @@ namespace Context
   abbrev lappend (Γ : Context) (Δ : Context) : Context := Δ ++ Γ
 end Context
 
-namespace Notations
+namespace Notation
   open Context
 
   -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
   scoped infixl:50 "‚ " => snoc
   scoped infixl:45 "‚‚ " => lappend
-end Notations
+end Notation
 
 -- https://plfa.github.io/Untyped/#exercise-context%E2%84%95-practice
 instance Context.equiv_nat : Context ≃ ℕ where
@@ -69,7 +69,7 @@ inductive Lookup : Context → Ty → Type where
 | s : Lookup Γ t → Lookup (Γ‚ t') t
 deriving DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   open Lookup
 
   scoped infix:40 " ∋ " => Lookup
@@ -80,8 +80,8 @@ namespace Notations
   | 0 => `(term| Lookup.z)
   | n+1 => `(term| Lookup.s (get_elem $(Lean.quote n)))
 
-  scoped macro " ♯ " n:term:90 : term => `(get_elem $n)
-end Notations
+  scoped macro " ♯" n:term:90 : term => `(get_elem $n)
+end Notation
 
 -- https://plfa.github.io/Untyped/#terms-and-the-scoping-judgment
 inductive Term : Context → Ty → Type where
@@ -90,8 +90,9 @@ inductive Term : Context → Ty → Type where
 -- Lambda
 | lam : Term (Γ‚ ✶ /- a -/) ✶ /- b -/ → Term Γ ✶ /- (a =⇒ b) -/
 | ap : Term Γ ✶ /- (a =⇒ b) -/ → Term Γ ✶ /- a -/ → Term Γ ✶ /- b -/
+deriving DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   open Term
 
   scoped infix:40 " ⊢ " => Term
@@ -109,8 +110,8 @@ namespace Notations
   -- scoped notation " ◯ " => unit
 
   -- https://plfa.github.io/Untyped/#writing-variables-as-numerals
-  scoped macro " # " n:term:90 : term => `(`♯$n)
-end Notations
+  scoped macro " #" n:term:90 : term => `(`♯$n)
+end Notation
 
 -- https://plfa.github.io/Untyped/#test-examples
 namespace Term
@@ -120,13 +121,98 @@ namespace Term
   abbrev four'C : Γ ⊢ ✶ := addC □ twoC □ twoC
 end Term
 
--- https://plfa.github.io/Untyped/#renaming
+namespace Subst
+  -- https://plfa.github.io/Untyped/#renaming
+  /--
+  If one context maps to another,
+  the mapping holds after adding the same variable to both contexts.
+  -/
+  @[simp]
+  def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
+    intro ρ; intro
+    | .z => exact .z
+    | .s x => refine .s ?_; exact ρ x
 
--- https://plfa.github.io/Untyped/#simultaneous-substitution
+  /--
+  If one context maps to another,
+  then the type judgements are the same in both contexts.
+  -/
+  def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
+    intro ρ; intro
+    | ` x => exact ` (ρ x)
+    | ƛ n => exact ƛ (rename (ext ρ) n)
+    | l □ m => exact rename ρ l □ rename ρ m
 
--- https://plfa.github.io/Untyped/#single-substitution
+  abbrev shift : Γ ⊢ a → Γ‚ b ⊢ a := rename .s
+
+  -- https://plfa.github.io/Untyped/#simultaneous-substitution
+  @[simp]
+  def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
+    intro σ; intro
+    | .z => exact `.z
+    | .s x => apply shift; exact σ x
+
+  /--
+  General substitution for multiple free variables.
+  If the variables in one context maps to some terms in another,
+  then the type judgements are the same before and after the mapping,
+  i.e. after replacing the free variables in the former with (expanded) terms.
+  -/
+  def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
+    intro σ; intro
+    | ` i => exact σ i
+    | ƛ n => exact ƛ (subst (exts σ) n)
+    | l □ m => exact subst σ l □ subst σ m
+
+  -- https://plfa.github.io/Untyped/#single-substitution
+  abbrev subst₁σ (v : Γ ⊢ b) : ∀ {a}, Γ‚ b ∋ a → Γ ⊢ a := by
+    introv; intro
+    | .z => exact v
+    | .s x => exact ` x
+
+  /--
+  Substitution for one free variable `v` in the term `n`.
+  -/
+  @[simp]
+  abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
+    refine subst ?_ n; exact subst₁σ v
+end Subst
+
+open Subst
+
+namespace Notation
+  scoped infixr:90 " ⇸ " => subst₁
+  scoped infixl:90 " ⇷ " => flip subst₁
+end Notation
 
 -- https://plfa.github.io/Untyped/#neutral-and-normal-terms
+mutual
+  inductive Neutral : Γ ⊢ a → Type
+  | var : (x : Γ ∋ a) → Neutral (` x)
+  | ap : Neutral l → Normal m → Neutral (l □ m)
+  deriving Repr
+
+  inductive Normal : Γ ⊢ a → Type
+  | norm : Neutral m → Normal m
+  | lam : Normal n → Normal (ƛ n)
+  deriving Repr
+end
+
+-- instance : Coe (Neutral t) (Normal t) where coe := .norm
+
+namespace Notation
+  open Neutral Normal
+
+  scoped prefix:60 " ′" => norm
+  scoped macro " #′" n:term:90 : term => `(var (♯$n))
+
+  scoped prefix:50 " ƛ " => lam
+  scoped infixr:min " $ " => ap
+  scoped infixl:70 " □ " => ap
+  scoped prefix:90 " ` " => var
+end Notation
+
+example : Normal (Term.twoC (Γ := ∅)) := ƛ ƛ (′#′1 □ (′#′1 □ (′#′0)))
 
 -- https://plfa.github.io/Untyped/#reduction-step
 

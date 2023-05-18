@@ -29,7 +29,7 @@ inductive Ty where
 | list : Ty → Ty
 deriving BEq, DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   open Ty
 
   scoped notation "ℕt" => nat
@@ -42,9 +42,9 @@ namespace Notations
   scoped infixr:70 " =⇒ " => fn
   scoped notation " ◯ " => unit
   scoped notation " ∅ " => void
-end Notations
+end Notation
 
-open Notations
+open Notation
 
 namespace Ty
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
@@ -65,13 +65,13 @@ namespace Context
   abbrev lappend (Γ : Context) (Δ : Context) : Context := Δ ++ Γ
 end Context
 
-namespace Notations
+namespace Notation
   open Context
 
   -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
   scoped infixl:50 "‚ " => snoc
   scoped infixl:45 "‚‚ " => lappend
-end Notations
+end Notation
 
 -- https://plfa.github.io/DeBruijn/#variables-and-the-lookup-judgment
 inductive Lookup : Context → Ty → Type where
@@ -79,7 +79,7 @@ inductive Lookup : Context → Ty → Type where
 | s : Lookup Γ t → Lookup (Γ‚ t') t
 deriving DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   open Lookup
 
   scoped infix:40 " ∋ " => Lookup
@@ -90,8 +90,8 @@ namespace Notations
   | 0 => `(term| Lookup.z)
   | n+1 => `(term| Lookup.s (get_elem $(Lean.quote n)))
 
-  scoped macro " ♯ " n:term:90 : term => `(get_elem $n)
-end Notations
+  scoped macro " ♯" n:term:90 : term => `(get_elem $n)
+end Notation
 
 namespace Lookup
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := .z
@@ -141,7 +141,7 @@ inductive Term : Context → Ty → Type where
 | caseList : Term Γ (.list a) → Term Γ b → Term (Γ‚ a‚ .list a) b → Term Γ b
 deriving DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   open Term
 
   scoped infix:40 " ⊢ " => Term
@@ -159,8 +159,8 @@ namespace Notations
   scoped notation " ◯ " => unit
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
-  scoped macro " # " n:term:90 : term => `(`♯$n)
-end Notations
+  scoped macro " #" n:term:90 : term => `(`♯$n)
+end Notation
 
 namespace Term
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #0
@@ -317,12 +317,12 @@ namespace Subst
     | .s (.s x) => exact ` x
 end Subst
 
-namespace Notations
+namespace Notation
   open Subst
 
   scoped infixr:90 " ⇸ " => subst₁
   scoped infixl:90 " ⇷ " => flip subst₁
-end Notations
+end Notation
 
 open Subst
 
@@ -355,9 +355,9 @@ inductive Value : Γ ⊢ a → Type where
 | cons : Value (v : Γ ⊢ a) → Value (vs : Γ ⊢ .list a) → Value (.cons v vs)
 deriving DecidableEq, Repr
 
-namespace Notations
+namespace Notation
   scoped notation " V𝟘 " => Value.zero
-end Notations
+end Notation
 
 namespace Value
   @[simp]
@@ -419,11 +419,11 @@ The predicate version of `Reduce`.
 -/
 abbrev Reduce.ReduceP (t : Γ ⊢ a) (t' : Γ ⊢ a) := Nonempty (Reduce t t')
 
-namespace Notations
+namespace Notation
   -- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
   scoped infix:40 " —→ " => Reduce
   scoped infix:40 " —→ₚ " => Reduce.ReduceP
-end Notations
+end Notation
 
 namespace Reduce
   instance : Coe (m —→ n) (m —→ₚ n) where coe r := ⟨r⟩
@@ -435,9 +435,9 @@ namespace Reduce
   abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) ReduceP
 end Reduce
 
-namespace Notations
+namespace Notation
   scoped infix:20 " —↠ " => Reduce.Clos
-end Notations
+end Notation
 
 namespace Reduce.Clos
     @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c

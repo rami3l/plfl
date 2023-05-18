@@ -10,7 +10,7 @@ import Mathlib.Tactic
 set_option tactic.simp.trace true
 
 open More
-open Term Subst Notations
+open Term Subst Notation
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L50
 /--
