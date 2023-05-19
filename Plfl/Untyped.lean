@@ -362,9 +362,8 @@ namespace Term
   abbrev succS (m : Γ ⊢ ✶) : Γ ⊢ ✶ := (ƛ ƛ ƛ (#1 □ #2)) □ m
   abbrev caseS (l : Γ ⊢ ✶) (m : Γ ⊢ ✶) (n : Γ‚ ✶ ⊢ ✶) : Γ ⊢ ✶ := l □ (ƛ n) □ m
 
-  /-
-  The Y combinator:
-  Y f := (λ x => f x x) (λ x => f x x)
+  /--
+  The Y combinator: `Y f := (λ x => f x x) (λ x => f x x)`
   -/
   abbrev mu (n : Γ‚ ✶ ⊢ ✶) : Γ ⊢ ✶ := (ƛ (ƛ (#1 $ #0 $ #0)) □ (ƛ (#1 $ #0 $ #0))) □ (ƛ n)
 end Term
@@ -384,23 +383,31 @@ section examples
 
   abbrev addS : Γ ⊢ ✶ := μ ƛ ƛ (𝟘? (#1) (#0) (ι (#3 □ #0 □ #1)))
 
+  -- https://plfa.github.io/Untyped/#exercise-multiplication-untyped-recommended
+  abbrev mulS : Γ ⊢ ✶ := μ ƛ ƛ (𝟘? (#1) 𝟘 (addS □ #1 $ #3 □ #0 □ #1))
+
   abbrev oneS : Γ ⊢ ✶ := ι 𝟘
+
   abbrev twoS : Γ ⊢ ✶ := ι ι 𝟘
+  abbrev twoS'' : Γ ⊢ ✶ := mulS □ twoS □ oneS
+
   abbrev fourS : Γ ⊢ ✶ := ι ι twoS
   abbrev fourS' : Γ ⊢ ✶ := addS □ twoS □ twoS
+  abbrev fourS'' : Γ ⊢ ✶ := mulS □ twoS □ twoS
 
   abbrev evalRes (l : ∅ ⊢ a) (gas := 100) := (eval gas l).3
 
   #eval evalRes (gas := 3) fourC'
   #eval evalRes fourC'
+
   #eval evalRes oneS
 
-  -- https://plfa.github.io/Untyped/#exercise-plus-eval-practice
+  #eval evalRes twoS
+  #eval evalRes twoS''
+
   #eval evalRes fourS
   #eval evalRes fourS'
-
-  -- https://plfa.github.io/Untyped/#exercise-multiplication-untyped-recommended
-  -- TODO
+  #eval evalRes fourS''
 end examples
 
 -- https://plfa.github.io/Untyped/#multi-step-reduction-is-transitive
