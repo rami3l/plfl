@@ -179,7 +179,7 @@ namespace Notation
   open Context Lookup
 
   scoped notation:40 Γ " ∋ " m " ⦂ " a:51 => Lookup Γ m a
-  scoped macro " ♯ " n:term:90 : term => `(by get_elem $n)
+  scoped macro "♯ " n:term:90 : term => `(by get_elem $n)
 end Notation
 
 instance : Repr (Γ ∋ m ⦂ a) where reprPrec i n := "♯" ++ reprPrec n (sizeOf i)
