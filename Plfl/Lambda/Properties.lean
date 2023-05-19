@@ -86,7 +86,6 @@ def canonical : ∅ ⊢ m ⦂ t → Value m → Canonical m t := Canonical.ofIsT
 /--
 If a term `m` is not ill-typed, then it either is a value or can be reduced.
 -/
-@[aesop safe [constructors, cases]]
 inductive Progress (m : Term) where
 | step : (m —→ n) → Progress m
 | done : Value m → Progress m

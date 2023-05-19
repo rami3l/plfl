@@ -146,14 +146,14 @@ namespace Notation
 
   scoped infix:40 " ⊢ " => Term
 
-  scoped prefix:50 " ƛ " => lam
-  scoped prefix:50 " μ " => mu
+  scoped prefix:50 "ƛ " => lam
+  scoped prefix:50 "μ " => mu
   scoped notation " 𝟘? " => case
   scoped infixr:min " $ " => ap
   scoped infixl:70 " □ " => ap
   scoped infixl:70 " ⋄ "   => mulP
-  scoped prefix:80 " ι " => succ
-  scoped prefix:90 " ` " => var
+  scoped prefix:80 "ι " => succ
+  scoped prefix:90 "` " => var
 
   scoped notation " 𝟘 " => zero
   scoped notation " ◯ " => unit
@@ -492,9 +492,8 @@ def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
 /--
 If a term `m` is not ill-typed, then it either is a value or can be reduced.
 -/
-@[aesop safe [constructors, cases]]
 inductive Progress (m : ∅ ⊢ a) where
-| step : Reduce m n → Progress m
+| step : (m —→ n) → Progress m
 | done : Value m → Progress m
 
 def Progress.progress : (m : ∅ ⊢ a) → Progress m := open Reduce in by

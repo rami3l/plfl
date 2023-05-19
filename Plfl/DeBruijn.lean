@@ -77,13 +77,13 @@ deriving DecidableEq, Repr
 namespace Term
   infix:40 " ⊢ " => Term
 
-  prefix:50 " ƛ " => lam
-  prefix:50 " μ " => mu
+  prefix:50 "ƛ " => lam
+  prefix:50 "μ " => mu
   notation " 𝟘? " => case
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
-  prefix:80 " ι " => succ
-  prefix:90 " ` " => var
+  prefix:80 "ι " => succ
+  prefix:90 "` " => var
   notation " 𝟘 " => zero
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
@@ -330,7 +330,6 @@ def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
 /--
 If a term `m` is not ill-typed, then it either is a value or can be reduced.
 -/
-@[aesop safe [constructors, cases]]
 inductive Progress (m : ∅ ⊢ a) where
 | step : (m —→ n) → Progress m
 | done : Value m → Progress m

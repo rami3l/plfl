@@ -103,14 +103,14 @@ namespace Notation
 
   scoped infix:40 " ⊢ " => Term
 
-  scoped prefix:50 " ƛ " => lam
-  -- scoped prefix:50 " μ " => mu
+  scoped prefix:50 "ƛ " => lam
+  -- scoped prefix:50 "μ " => mu
   -- scoped notation " 𝟘? " => case
   scoped infixr:min " $ " => ap
   scoped infixl:70 " □ " => ap
   -- scoped infixl:70 " ⋄ "   => mulP
-  -- scoped prefix:80 " ι " => succ
-  scoped prefix:90 " ` " => var
+  -- scoped prefix:80 "ι " => succ
+  scoped prefix:90 "` " => var
 
   -- scoped notation " 𝟘 " => zero
   -- scoped notation " ◯ " => unit
@@ -119,8 +119,13 @@ namespace Notation
   scoped macro " #" n:term:90 : term => `(`♯$n)
 end Notation
 
--- https://plfa.github.io/Untyped/#test-examples
 namespace Term
+  def depth : (Γ ⊢ a) → ℕ
+  | ` _ => 1
+  | ƛ n => n.depth + 1
+  | l □ m => l.depth + m.depth + 1
+
+  -- https://plfa.github.io/Untyped/#test-examples
   abbrev twoC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #0)
   abbrev fourC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #1 $ #1 $ #0)
   abbrev addC : Γ ⊢ ✶ := ƛ ƛ ƛ ƛ (#3 □ #1 $ #2 □ #1 □ #0)
@@ -212,10 +217,10 @@ namespace Notation
   scoped prefix:60 " ′" => norm
   scoped macro " #′" n:term:90 : term => `(var (♯$n))
 
-  scoped prefix:50 " ƛₙ " => lam
+  scoped prefix:50 "ƛₙ " => lam
   scoped infixr:min " $ₙ " => ap
   scoped infixl:70 " □ₙ " => ap
-  scoped prefix:90 " `ₙ " => var
+  scoped prefix:90 "`ₙ " => var
 end Notation
 
 example : Normal (Term.twoC (Γ := ∅)) := ƛₙ ƛₙ (′#′1 □ₙ (′#′1 □ₙ (′#′0)))
@@ -234,12 +239,22 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 | apξ₂ : Reduce m m' → Reduce (v □ m) (v □ m')
 
 -- https://plfa.github.io/Untyped/#exercise-variant-1-practice
-example : Type := sorry
--- TODO
+inductive Reduce' : (Γ ⊢ a) → (Γ ⊢ a) → Type where
+| lamβ : Normal (ƛ n) → Normal v → Reduce' ((ƛ n) □ v) (n ⇷ v)
+| lamζ : Reduce' n n' → Reduce' (ƛ n) (ƛ n')
+| apξ₁ : Reduce' l l' → Reduce' (l □ m) (l' □ m)
+| apξ₂ : Normal v → Reduce' m m' → Reduce' (v □ m) (v □ m')
 
 -- https://plfa.github.io/Untyped/#exercise-variant-2-practice
-example : Type := sorry
--- TODO
+inductive Reduce'' : (Γ ⊢ a) → (Γ ⊢ a) → Type where
+| lamβ : Reduce'' ((ƛ n) □ (ƛ v)) (n ⇷ (ƛ v))
+| apξ₁ : Reduce'' l l' → Reduce'' (l □ m) (l' □ m)
+| apξ₂ : Reduce'' m m' → Reduce'' (v □ m) (v □ m')
+/-
+Reduction of `four''C` under this variant might go as far as
+`ƛ ƛ (twoC □ #1 $ (twoC □ #1 □ #0))` and get stuck,
+since the next step uses `lamζ` which no longer exists.
+-/
 
 -- https://plfa.github.io/Untyped/#reflexive-and-transitive-closure
 /--
@@ -287,8 +302,63 @@ namespace Reduce
 end Reduce
 
 -- https://plfa.github.io/Untyped/#progress
+/--
+If a term `m` is not ill-typed, then it either is a value or can be reduced.
+-/
+inductive Progress (m : Γ ⊢ a) where
+| step : (m —→ n) → Progress m
+| done : Normal m → Progress m
+
+/--
+If a term is well-scoped, then it satisfies progress.
+-/
+def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
+  intro
+  | ` x => apply done; exact ′`ₙ x
+  | ƛ n =>
+    have : n.depth < (ƛ n).depth := by change _ < n.depth + 1; simp_arith
+    match progress n with
+    | .done n => apply done; exact ƛₙ n
+    | .step n => apply step; exact lamζ n
+  | ` x □ m =>
+    have : m.depth < (` x □ m).depth := by change _ < (` x).depth + m.depth + 1; simp_arith
+    match progress m with
+    | .done m => apply done; exact ′`ₙx □ₙ m
+    | .step m => apply step; exact apξ₂ m
+  | (ƛ n) □ m => apply step; exact lamβ
+  | l@(_ □ _) □ m =>
+    have : l.depth < (l □ m).depth := by change _ < l.depth + m.depth + 1; simp_arith
+    match progress l with
+    | .step l => simp_all only [namedPattern]; apply step; exact apξ₁ l
+    | .done (′l') =>
+      simp_all only [namedPattern]; rename_i h; simp_all [h.symm]
+      have : m.depth < Term.depth (l □ m) := by change _ < l.depth + m.depth + 1; simp_arith
+      match progress m with
+      | .done m => apply done; exact ′l' □ₙ m
+      | .step m => apply step; exact apξ₂ m
+termination_by progress m => m.depth
+
+open Progress (progress)
 
 -- https://plfa.github.io/Untyped/#evaluation
+inductive Result (n : Γ ⊢ a) where
+| done (val : Normal n)
+| dnf
+deriving Repr
+
+inductive Steps (l : Γ ⊢ a) where
+| steps : ∀{n : Γ ⊢ a}, (l —↠ n) → Result n → Steps l
+
+@[simp]
+def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
+  if gas = 0 then
+    ⟨.refl, .dnf⟩
+  else
+    match progress l with
+    | .done v => .steps .refl <| .done v
+    | .step r =>
+      let ⟨rs, res⟩ := eval (gas - 1) (by trivial)
+      ⟨Trans.trans r rs, res⟩
 
 -- https://plfa.github.io/Untyped/#example
 
