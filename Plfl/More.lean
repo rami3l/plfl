@@ -440,20 +440,17 @@ namespace Notation
 end Notation
 
 namespace Reduce.Clos
-  @[simp] abbrev one (c : m —→ n) : (m —↠ n) := .tail .refl c
-  instance : Coe (m —→ n) (m —↠ n) where coe := one
+  abbrev refl : m —↠ m := .refl
+  abbrev tail : (m —↠ n) → (n —→ₚ n') → (m —↠ n') := .tail
+  abbrev head : (m —→ₚ n) → (n —↠ n') → (m —↠ n') := .head
+  abbrev single : (m —→ₚ n) → (m —↠ n) := .single
 
-  instance : Trans (α := Γ ⊢ a) Clos Clos Clos where
-    trans := Relation.ReflTransGen.trans
+  instance : Coe (m —→ n) (m —↠ n) where coe r := .single r
 
-  instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where
-    trans c r := c.tail r
-
-  instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
-    trans c c' := (one c).tail c'
-
-  instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where
-    trans r c := (one r).trans c
+  instance : Trans (α := Γ ⊢ a) Clos Clos Clos where trans := .trans
+  instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where trans c r := c.tail r
+  instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where trans r r' := .tail r ⟨r'⟩
+  instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where trans r c := .head r c
 end Reduce.Clos
 
 namespace Reduce

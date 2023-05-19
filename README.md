@@ -12,7 +12,7 @@ My journey of learning LEAN4 by implementing proofs from the wonderful book [_Pr
 - [x] 4. [More](https://plfa.github.io/More/): Additional constructs of simply-typed lambda calculus
 - [x] 5. [Bisimulation](https://plfa.github.io/Bisimulation/): Relating reduction systems
 - [x] 6. [Inference](https://plfa.github.io/Inference/): Bidirectional type inference
-- [ ] 7. [Untyped](https://plfa.github.io/Untyped/): Untyped lambda calculus with full normalisation
+- [x] 7. [Untyped](https://plfa.github.io/Untyped/): Untyped lambda calculus with full normalisation
 - [ ] 8. [Confluence](https://plfa.github.io/Confluence/): Confluence of untyped lambda calculus
 - [ ] 9. [BigStep](https://plfa.github.io/BigStep/): Big-step semantics of untyped lambda calculus
 
