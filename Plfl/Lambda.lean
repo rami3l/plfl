@@ -22,13 +22,13 @@ inductive Term where
 deriving BEq, DecidableEq, Repr
 
 namespace Term
-  notation:50 " ƛ " v " : " d => lam v d
+  notation:50 "ƛ " v " : " d => lam v d
   notation:50 " μ " v " : " d => mu v d
   notation:max " 𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
-  prefix:80 " ι " => succ
-  prefix:90 " ` " => var
+  prefix:80 "ι " => succ
+  prefix:90 "` " => var
   notation " 𝟘 " => zero
 
   example : Term := `"foo"
