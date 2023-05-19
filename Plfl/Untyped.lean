@@ -120,11 +120,6 @@ namespace Notation
 end Notation
 
 namespace Term
-  def depth : (Γ ⊢ a) → ℕ
-  | ` _ => 1
-  | ƛ n => n.depth + 1
-  | l □ m => l.depth + m.depth + 1
-
   -- https://plfa.github.io/Untyped/#test-examples
   abbrev twoC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #0)
   abbrev fourC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #1 $ #1 $ #0)
@@ -316,27 +311,26 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
   intro
   | ` x => apply done; exact ′`ₙ x
   | ƛ n =>
-    have : n.depth < (ƛ n).depth := by change _ < n.depth + 1; simp_arith
+    have : sizeOf n < sizeOf (ƛ n) := by aesop?
     match progress n with
     | .done n => apply done; exact ƛₙ n
     | .step n => apply step; exact lamζ n
   | ` x □ m =>
-    have : m.depth < (` x □ m).depth := by change _ < (` x).depth + m.depth + 1; simp_arith
+    have : sizeOf m < sizeOf (` x □ m) := by aesop?
     match progress m with
     | .done m => apply done; exact ′`ₙx □ₙ m
     | .step m => apply step; exact apξ₂ m
   | (ƛ n) □ m => apply step; exact lamβ
   | l@(_ □ _) □ m =>
-    have : l.depth < (l □ m).depth := by change _ < l.depth + m.depth + 1; simp_arith
+    have : sizeOf l < sizeOf (l □ m) := by simp_arith
     match progress l with
     | .step l => simp_all only [namedPattern]; apply step; exact apξ₁ l
     | .done (′l') =>
       simp_all only [namedPattern]; rename_i h; simp_all [h.symm]
-      have : m.depth < Term.depth (l □ m) := by change _ < l.depth + m.depth + 1; simp_arith
+      have : sizeOf m < sizeOf (l □ m) := by aesop?
       match progress m with
       | .done m => apply done; exact ′l' □ₙ m
       | .step m => apply step; exact apξ₂ m
-termination_by progress m => m.depth
 
 open Progress (progress)
 
