@@ -52,7 +52,7 @@ namespace Lookup
   | 0 => `(tactic | exact Lookup.z)
   | n+1 => `(tactic| apply Lookup.s; get_elem $(Lean.quote n))
 
-  macro " ♯ " n:term:90 : term => `(by get_elem $n)
+  macro "♯ " n:term:90 : term => `(by get_elem $n)
 
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := .z
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ∋ ℕt := ♯0
@@ -87,7 +87,7 @@ namespace Term
   notation " 𝟘 " => zero
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
-  macro " # " n:term:90 : term => `(`♯$n)
+  macro "# " n:term:90 : term => `(`♯$n)
 
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #0
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt =⇒ ℕt := #1

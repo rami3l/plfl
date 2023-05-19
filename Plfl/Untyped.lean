@@ -80,14 +80,14 @@ namespace Notation
   | 0 => `(term| Lookup.z)
   | n+1 => `(term| Lookup.s (get_elem $(Lean.quote n)))
 
-  scoped macro " ♯" n:term:90 : term => `(get_elem $n)
+  scoped macro "♯" n:term:90 : term => `(get_elem $n)
 end Notation
 
 def Lookup.toNat : (Γ ∋ a) → ℕ
 | .z => 0
 | .s i => i.toNat + 1
 
-instance : Repr (Γ ∋ a) where reprPrec i n := " ♯" ++ reprPrec i.toNat n
+instance : Repr (Γ ∋ a) where reprPrec i n := "♯" ++ reprPrec i.toNat n
 
 -- https://plfa.github.io/Untyped/#terms-and-the-scoping-judgment
 inductive Term : Context → Ty → Type where
@@ -104,19 +104,12 @@ namespace Notation
   scoped infix:40 " ⊢ " => Term
 
   scoped prefix:50 "ƛ " => lam
-  -- scoped prefix:50 "μ " => mu
-  -- scoped notation " 𝟘? " => case
   scoped infixr:min " $ " => ap
   scoped infixl:70 " □ " => ap
-  -- scoped infixl:70 " ⋄ "   => mulP
-  -- scoped prefix:80 "ι " => succ
   scoped prefix:90 "` " => var
 
-  -- scoped notation " 𝟘 " => zero
-  -- scoped notation " ◯ " => unit
-
   -- https://plfa.github.io/Untyped/#writing-variables-as-numerals
-  scoped macro " #" n:term:90 : term => `(`♯$n)
+  scoped macro "#" n:term:90 : term => `(`♯$n)
 end Notation
 
 namespace Term
@@ -124,7 +117,7 @@ namespace Term
   abbrev twoC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #0)
   abbrev fourC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #1 $ #1 $ #0)
   abbrev addC : Γ ⊢ ✶ := ƛ ƛ ƛ ƛ (#3 □ #1 $ #2 □ #1 □ #0)
-  abbrev four'C : Γ ⊢ ✶ := addC □ twoC □ twoC
+  abbrev fourC' : Γ ⊢ ✶ := addC □ twoC □ twoC
 end Term
 
 namespace Subst
@@ -210,7 +203,7 @@ namespace Notation
   open Neutral Normal
 
   scoped prefix:60 " ′" => norm
-  scoped macro " #′" n:term:90 : term => `(var (♯$n))
+  scoped macro "#′" n:term:90 : term => `(var (♯$n))
 
   scoped prefix:50 "ƛₙ " => lam
   scoped infixr:min " $ₙ " => ap
@@ -287,7 +280,7 @@ namespace Reduce
   -- https://plfa.github.io/Untyped/#example-reduction-sequence
   open Term
 
-  example : four'C (Γ := ∅) —↠ fourC := calc addC □ twoC □ twoC
+  example : fourC' (Γ := ∅) —↠ fourC := calc addC □ twoC □ twoC
     _ —→ (ƛ ƛ ƛ (twoC □ #1 $ (#2 □ #1 □ #0))) □ twoC := by apply_rules [apξ₁, lamβ]
     _ —→ ƛ ƛ (twoC □ #1 $ (twoC □ #1 □ #0)) := by exact lamβ
     _ —→ ƛ ƛ ((ƛ (#2 $ #2 $ #0)) $ (twoC □ #1 □ #0)) := by apply_rules [lamζ, apξ₁, lamβ]
@@ -354,9 +347,61 @@ def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
       let ⟨rs, res⟩ := eval (gas - 1) (by trivial)
       ⟨Trans.trans r rs, res⟩
 
--- https://plfa.github.io/Untyped/#example
+namespace Term
+  -- https://plfa.github.io/Untyped/#naturals-and-fixpoint
+  /-
+  The Scott encoding:
+  zero := λ _ z => z
+  succ n := λ s _ => s n
 
--- https://plfa.github.io/Untyped/#naturals-and-fixpoint
+  e.g. one = succ zero
+          = λ s _ => s zero
+          = λ s _ => s (λ _ z => z)
+  -/
+  abbrev zeroS : Γ ⊢ ✶ := ƛ ƛ #0
+  abbrev succS (m : Γ ⊢ ✶) : Γ ⊢ ✶ := (ƛ ƛ ƛ (#1 □ #2)) □ m
+  abbrev caseS (l : Γ ⊢ ✶) (m : Γ ⊢ ✶) (n : Γ‚ ✶ ⊢ ✶) : Γ ⊢ ✶ := l □ (ƛ n) □ m
+
+  /-
+  The Y combinator:
+  Y f := (λ x => f x x) (λ x => f x x)
+  -/
+  abbrev mu (n : Γ‚ ✶ ⊢ ✶) : Γ ⊢ ✶ := (ƛ (ƛ (#1 $ #0 $ #0)) □ (ƛ (#1 $ #0 $ #0))) □ (ƛ n)
+end Term
+
+namespace Notation
+  open Term
+
+  scoped prefix:50 "μ " => mu
+  scoped prefix:80 "ι " => succS
+  scoped notation " 𝟘 " => zeroS
+  scoped notation " 𝟘? " => caseS
+end Notation
+
+-- https://plfa.github.io/Untyped/#example
+section examples
+  open Term
+
+  abbrev addS : Γ ⊢ ✶ := μ ƛ ƛ (𝟘? (#1) (#0) (ι (#3 □ #0 □ #1)))
+
+  abbrev oneS : Γ ⊢ ✶ := ι 𝟘
+  abbrev twoS : Γ ⊢ ✶ := ι ι 𝟘
+  abbrev fourS : Γ ⊢ ✶ := ι ι twoS
+  abbrev fourS' : Γ ⊢ ✶ := addS □ twoS □ twoS
+
+  abbrev evalRes (l : ∅ ⊢ a) (gas := 100) := (eval gas l).3
+
+  #eval evalRes (gas := 3) fourC'
+  #eval evalRes fourC'
+  #eval evalRes oneS
+
+  -- https://plfa.github.io/Untyped/#exercise-plus-eval-practice
+  #eval evalRes fourS
+  #eval evalRes fourS'
+
+  -- https://plfa.github.io/Untyped/#exercise-multiplication-untyped-recommended
+  -- TODO
+end examples
 
 -- https://plfa.github.io/Untyped/#multi-step-reduction-is-transitive
 

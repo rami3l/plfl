@@ -90,7 +90,7 @@ namespace Notation
   | 0 => `(term| Lookup.z)
   | n+1 => `(term| Lookup.s (get_elem $(Lean.quote n)))
 
-  scoped macro " ♯" n:term:90 : term => `(get_elem $n)
+  scoped macro "♯" n:term:90 : term => `(get_elem $n)
 end Notation
 
 namespace Lookup
@@ -159,7 +159,7 @@ namespace Notation
   scoped notation " ◯ " => unit
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
-  scoped macro " #" n:term:90 : term => `(`♯$n)
+  scoped macro "#" n:term:90 : term => `(`♯$n)
 end Notation
 
 namespace Term
