@@ -447,7 +447,6 @@ namespace Reduce.Clos
 
   instance : Coe (m —→ n) (m —↠ n) where coe r := .single r
 
-  instance : Trans (α := Γ ⊢ a) Clos Clos Clos where trans := .trans
   instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where trans c r := c.tail r
   instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where trans r r' := .tail r ⟨r'⟩
   instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where trans r c := .head r c

@@ -6,3 +6,4 @@ import Plfl.More.DoubleSubst
 import Plfl.More.Bisimulation
 import Plfl.Inference
 import Plfl.Untyped
+import Plfl.Untyped.Confluence
