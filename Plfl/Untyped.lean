@@ -182,6 +182,8 @@ open Subst
 namespace Notation
   scoped infixr:90 " ⇸ " => subst₁
   scoped infixl:90 " ⇷ " => flip subst₁
+
+  scoped macro " ⟪" σ:term "⟫ " : term => `(subst $σ)
 end Notation
 
 -- https://plfa.github.io/Untyped/#neutral-and-normal-terms
