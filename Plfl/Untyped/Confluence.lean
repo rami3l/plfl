@@ -2,6 +2,7 @@
 
 import Plfl.Init
 import Plfl.Untyped
+import Plfl.Untyped.Substitution
 
 import Mathlib.Tactic
 
@@ -76,20 +77,17 @@ namespace PReduce
 end PReduce
 
 instance : (m ⇛* n) ≃ (m —↠ n) where
-  toFun := toFun
-  invFun := invFun
+  toFun (rs : m ⇛* n) : m —↠ n := by
+    refine .head_induction_on rs ?_ ?_
+    · rfl
+    · introv; intro r _ rs; refine .trans ?_ rs; exact r.toReduceClos
+
+  invFun (rs : m —↠ n) : m ⇛* n := by
+    refine .head_induction_on rs ?_ ?_
+    · rfl
+    · introv; intro r _ rs; refine .head ?_ rs; exact .fromReduce r
+
   left_inv _ := by simp only
   right_inv _ := by simp only
-
-  where
-    toFun (rs : m ⇛* n) : m —↠ n := by
-      refine .head_induction_on rs ?_ ?_
-      · rfl
-      · introv; intro r _ rs; refine .trans ?_ rs; exact r.toReduceClos
-
-    invFun (rs : m —↠ n) : m ⇛* n := by
-      refine .head_induction_on rs ?_ ?_
-      · rfl
-      · introv; intro r _ rs; refine .head ?_ rs; exact .fromReduce r
 
 -- https://plfa.github.io/Confluence/#substitution-lemma-for-parallel-reduction
