@@ -9,7 +9,7 @@ set_option tactic.simp.trace true
 
 namespace Confluence
 
-open Untyped Untyped.Notation
+open Untyped.Notation
 
 -- https://plfa.github.io/Confluence/#parallel-reduction
 /--
@@ -29,7 +29,7 @@ namespace PReduce
     | ƛ n => apply lamζ; apply refl
     | l □ m => apply apξ <;> apply refl
 
-  abbrev Clos {Γ a} := Relation.TransGen (α := Γ ⊢ a) PReduce
+  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) PReduce
 end PReduce
 
 namespace Notation
@@ -39,13 +39,57 @@ end Notation
 
 open Notation
 
+namespace PReduce.Clos
+  instance : Coe (m ⇛ n) (m ⇛* n) where coe := .single
+
+  @[refl] abbrev refl : m ⇛* m := .refl
+  abbrev tail : (m ⇛* n) → (n ⇛ n') → (m ⇛* n') := .tail
+  abbrev head : (m ⇛ n) → (n ⇛* n') → (m ⇛* n') := .head
+  abbrev single : (m ⇛ n) → (m ⇛* n) := .single
+end PReduce.Clos
+
 namespace PReduce
   instance : IsRefl (Γ ⊢ a) PReduce where refl := .refl
-
-  instance : Coe (m ⇛ n) (m ⇛* n) where coe := .single
 
   instance : Trans (α := Γ ⊢ a) Clos Clos Clos where trans := .trans
   instance : Trans (α := Γ ⊢ a) Clos PReduce Clos where trans c r := c.tail r
   instance : Trans (α := Γ ⊢ a) PReduce PReduce Clos where trans r r' := .tail r r'
   instance : Trans (α := Γ ⊢ a) PReduce Clos Clos where trans r c := .head r c
+
+  -- https://plfa.github.io/Confluence/#equivalence-between-parallel-reduction-and-reduction
+  def fromReduce {Γ a} {m n : Γ ⊢ a} : m —→ n → (m ⇛ n) := by intro
+  | .lamβ => refine .lamβ ?rn ?rv <;> rfl
+  | .lamζ rn => refine .lamζ ?_; exact fromReduce rn
+  | .apξ₁ rl => refine .apξ ?_ (by rfl); exact fromReduce rl
+  | .apξ₂ rm => refine .apξ (by rfl) ?_; exact fromReduce rm
+
+  def toReduceClos : (m ⇛ n) → (m —↠ n) := open Untyped.Reduce in by intro
+  | .var => rfl
+  | .lamβ rn rv => rename_i n n' v v'; calc (ƛ n) □ v
+    _ —↠ (ƛ n') □ v := by refine ap_congr₁ (toReduceClos ?_); exact .lamζ rn
+    _ —↠ (ƛ n') □ v' := ap_congr₂ rv.toReduceClos
+    _ —→ n' ⇷ v' := .lamβ
+  | .lamζ rn => apply lam_congr; exact rn.toReduceClos
+  | .apξ rl rm => rename_i l l' m m'; calc l □ m
+    _ —↠ l' □ m := ap_congr₁ rl.toReduceClos
+    _ —↠ l' □ m' := ap_congr₂ rm.toReduceClos
 end PReduce
+
+instance : (m ⇛* n) ≃ (m —↠ n) where
+  toFun := toFun
+  invFun := invFun
+  left_inv _ := by simp only
+  right_inv _ := by simp only
+
+  where
+    toFun (rs : m ⇛* n) : m —↠ n := by
+      refine .head_induction_on rs ?_ ?_
+      · rfl
+      · introv; intro r _ rs; refine .trans ?_ rs; exact r.toReduceClos
+
+    invFun (rs : m —↠ n) : m ⇛* n := by
+      refine .head_induction_on rs ?_ ?_
+      · rfl
+      · introv; intro r _ rs; refine .head ?_ rs; exact .fromReduce r
+
+-- https://plfa.github.io/Confluence/#substitution-lemma-for-parallel-reduction
