@@ -2,8 +2,6 @@
 
 import Mathlib.Tactic
 
-set_option tactic.simp.trace true
-
 namespace Lambda
 
 open String
