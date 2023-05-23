@@ -8,7 +8,6 @@ namespace Untyped
 
 -- https://plfa.github.io/Untyped/#types
 inductive Ty where
-/-- Native natural type made of 𝟘 and ι. -/
 | star: Ty
 deriving BEq, DecidableEq, Repr
 

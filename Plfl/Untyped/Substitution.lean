@@ -46,6 +46,11 @@ section
   @[simp] theorem sub_dist : @Eq (Γ‚ a ∋ b → Φ ⊢ b) ((m ⦂⦂ σ) ⨟ τ) ((⟪τ⟫ m) ⦂⦂ (σ ⨟ τ)) := by ext i; cases i <;> rfl
 end
 
+-- https://plfa.github.io/Substitution/#interlude-congruences
+/-
+Nothing to do.
+-/
+
 section
   variable {m : Γ ⊢ a} {σ : Subst Γ Δ} {ρ : Rename Γ Δ}
 
@@ -86,10 +91,48 @@ section
     | ƛ n => apply congr_arg Term.lam; convert sub_ids; exact exts_ids
     | l □ m => simp only [sub_ap]; apply congr_arg₂ Term.ap <;> exact sub_ids
 
-  @[simp]
-  theorem rename_id {Γ} {m : Γ ⊢ a} : rename (λ {a} x => x) m = m := by
-    convert sub_ids; ext; simp only [rename_subst_ren, ren]; congr
+  @[simp] theorem rename_id : rename (λ {a} x => x) m = m := by convert sub_ids; ext; simp only [rename_subst_ren, ren]; congr
 
   -- https://plfa.github.io/Substitution/#proof-of-sub-idr
   @[simp] theorem sub_seq_ids : @Eq (Γ ∋ a → Δ ⊢ a) (σ ⨟ ids) σ := by ext; simp only [Function.comp_apply, sub_ids]
+end
+
+section
+  variable {m : Γ ⊢ a} {ρ : Rename Δ Φ} {ρ' : Rename Γ Δ}
+
+  -- https://plfa.github.io/Substitution/#proof-of-sub-sub
+  @[simp] theorem comp_ext : @Eq (Γ‚ b ∋ a → _) ((ext ρ) ∘ (ext ρ')) (ext (ρ ∘ ρ')) := by ext i; cases i <;> rfl
+
+  @[simp]
+  theorem comp_rename {Γ Δ Φ} {m : Γ ⊢ a} {ρ : Rename Δ Φ} {ρ' : Rename Γ Δ}
+  : rename ρ (rename ρ' m) = rename (ρ ∘ ρ') m := by
+     match m with
+    | ` _ => rfl
+    | ƛ n => apply congr_arg Term.lam; convert comp_rename; exact comp_ext.symm
+    | l □ m => apply congr_arg₂ Term.ap <;> exact comp_rename
+
+  @[simp]
+  theorem comm_subst_rename {Γ Δ} {σ : Subst Γ Δ} {ρ : ∀ {Γ}, Rename Γ (Γ‚ ✶)}
+  (r : ∀ {x : Γ ∋ ✶}, exts σ (ρ x) = rename ρ (σ x)) {m : Γ ⊢ ✶}
+  : ⟪exts (b := ✶) σ⟫ (rename ρ m) = rename ρ (⟪σ⟫ m)
+  := by
+    match m with
+    | ` _ => exact r
+    | l □ m => apply congr_arg₂ Term.ap <;> exact comm_subst_rename r
+    | ƛ n =>
+      apply congr_arg Term.lam
+
+      let ρ' : ∀ {Γ}, Rename Γ (Γ‚ ✶) := by intro
+      | [] => intro; intro.
+      | ✶ :: Γ => intro; exact ext ρ
+
+      apply comm_subst_rename (Γ := Γ‚ ✶) (Δ := Δ‚ ✶) (σ := exts σ) (ρ := ρ') (m := n); intro
+      | .z => rfl
+      | .s x => calc exts (exts σ) (ρ' (.s x))
+        _ = rename .s (exts σ (ρ x)) := rfl
+        _ = rename .s (rename ρ (σ x)) := by rw [r]
+        _ = rename (.s ∘ ρ) (σ x) := comp_rename
+        _ = rename (ext ρ ∘ .s) (σ x) := by congr
+        _ = rename (ext ρ) (rename .s (σ x)) := comp_rename.symm
+        _ = rename ρ' (exts σ (.s x)) := rfl
 end
