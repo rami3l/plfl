@@ -3,8 +3,6 @@
 import Plfl.Init
 import Plfl.Lambda
 
-set_option tactic.simp.trace true
-
 open Lambda
 
 namespace Properties

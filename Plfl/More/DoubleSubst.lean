@@ -7,8 +7,6 @@ import Plfl.More
 
 import Mathlib.Tactic
 
-set_option tactic.simp.trace true
-
 open More
 open Term Subst Notation
 

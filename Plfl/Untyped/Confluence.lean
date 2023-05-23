@@ -6,8 +6,6 @@ import Plfl.Untyped.Substitution
 
 import Mathlib.Tactic
 
-set_option tactic.simp.trace true
-
 namespace Confluence
 
 open Untyped.Notation

@@ -4,8 +4,6 @@ import Plfl.Init
 
 import Mathlib.Tactic
 
-set_option tactic.simp.trace true
-
 -- Sorry, nothing is inherited from previous chapters here. We have to start over.
 namespace DeBruijn
 

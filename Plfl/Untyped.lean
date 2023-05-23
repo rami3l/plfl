@@ -4,8 +4,6 @@ import Plfl.Init
 
 import Mathlib.Tactic
 
-set_option tactic.simp.trace true
-
 namespace Untyped
 
 -- https://plfa.github.io/Untyped/#types

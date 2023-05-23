@@ -5,8 +5,6 @@ import Plfl.More
 
 import Mathlib.Tactic
 
-set_option tactic.simp.trace true
-
 namespace Inference
 
 -- https://plfa.github.io/Inference/#syntax
