@@ -4,7 +4,7 @@ import Plfl.Init
 
 import Mathlib.Tactic
 
--- This module was adapted based on the original one for <https://plfa.github.io/DeBruijn/>.
+-- This module was extended from the original one for <https://plfa.github.io/DeBruijn/>.
 namespace More
 
 -- https://plfa.github.io/More/#types
@@ -305,7 +305,7 @@ namespace Subst
     refine subst ?_ n; exact subst₁σ v
 
   /--
-  Substitution for one two variable `v` and `w'` in the term `n`.
+  Substitution for two free variables `v` and `w'` in the term `n`.
   -/
   @[simp]
   abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ a := by
