@@ -23,8 +23,8 @@ abbrev cons (m : Δ ⊢ a) (σ : Subst Γ Δ) : Subst (Γ‚ a) Δ
 abbrev seq (σ : Subst Γ Δ) (τ : Subst Δ Φ) : Subst Γ Φ := ⟪τ⟫ ∘ σ
 
 namespace Notation
-  infixr:60 " ⦂⦂ " => cons
-  infixr:50 " ⨟ " => seq
+  scoped infixr:60 " ⦂⦂ " => cons
+  scoped infixr:50 " ⨟ " => seq
 end Notation
 
 open Notation
@@ -183,9 +183,11 @@ section
       exts_cons_shift, subst_z_cons_ids, sub_dist, sub_head, sub_assoc, sub_tail, sub_seq_ids
     ]
 
+  variable {n : Γ‚ ✶ ⊢ ✶} {m : Γ ⊢ ✶}
+
   -- https://plfa.github.io/Substitution/#proof-of-the-substitution-lemma
   @[simp]
-  theorem subst_comm {n : Γ‚ ✶ ⊢ ✶} {m : Γ ⊢ ✶} : (⟪exts σ⟫ n) ⇷ (⟪σ⟫ m) = ⟪σ⟫ (n ⇷ m) :=
+  theorem subst_comm : (⟪exts σ⟫ n) ⇷ (⟪σ⟫ m) = ⟪σ⟫ (n ⇷ m) :=
     calc (⟪exts σ⟫ n) ⇷ (⟪σ⟫ m)
       _ = ⟪subst₁σ (⟪σ⟫ m)⟫ (⟪exts σ⟫ n) := rfl
       _ = ⟪⟪σ⟫ m ⦂⦂ ids⟫ (⟪exts σ⟫ n) := by congr; simp only [subst_z_cons_ids]
@@ -199,4 +201,26 @@ section
       _ = ⟪m ⦂⦂ ids ⨟ σ⟫ n := by congr; simp only [sub_dist]
       _ = ⟪σ⟫ (⟪m ⦂⦂ ids⟫ n) := sub_sub.symm
       _ = ⟪σ⟫ (n ⇷ m) := by congr; simp only [subst_z_cons_ids]
+
+  @[simp]
+  theorem rename_subst_comm : (rename (ext ρ) n) ⇷ (rename ρ m) = rename ρ (n ⇷ m) :=
+    calc (rename (ext ρ) n) ⇷ (rename ρ m)
+      _ = (⟪ren (ext ρ)⟫ n) ⇷ (⟪ren ρ⟫ m) := by rw [rename_subst_ren, rename_subst_ren]
+      _ = (⟪exts (ren ρ)⟫ n) ⇷ (⟪ren ρ⟫ m) := by simp only [ren_ext]
+      _ = ⟪ren ρ⟫ (n ⇷ m) := subst_comm
+      _ = rename ρ (n ⇷ m) := rename_subst_ren.symm
 end
+
+/--
+Substitute a term `m` for `♯1` within term `n`.
+-/
+abbrev subst₁_under₁ (m : Γ ⊢ b) (n : Γ‚ b‚ c ⊢ a) : Γ‚ c ⊢ a := ⟪exts (subst₁σ m)⟫ n
+
+namespace Notation
+  scoped infixl:90 " ⇸‚ " => subst₁_under₁
+  scoped infixl:90 " ⇷‚ " => flip subst₁_under₁
+end Notation
+
+theorem substitution {m : Γ‚ ✶‚ ✶ ⊢ ✶} {n : Γ‚ ✶ ⊢ ✶} {l : Γ ⊢ ✶}
+: (m ⇷ n) ⇷ l = (m ⇷‚ l) ⇷ (n ⇷ l)
+:= subst_comm.symm
