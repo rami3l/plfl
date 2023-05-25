@@ -112,4 +112,28 @@ section
     intro _ _; intro
     | .z => exact .var
     | .s i => exact par_rename s
+
+  @[simp]
+  theorem subst_par {σ τ : Subst Γ Δ} {m m' : Γ ⊢ a}
+  (s : par_subst σ τ) (p : m ⇛ m') : (⟪σ⟫ m ⇛ ⟪τ⟫ m')
+  := open PReduce in by
+    match p with
+    | .var => exact s
+    | .lamβ pn pv => rw [←subst_comm]; apply_rules [lamβ, subst_par, par_subst_exts]
+    | .lamζ pn => apply_rules [lamζ, subst_par, par_subst_exts]
+    | .apξ pl pm => apply_rules [apξ, subst_par]
+
+  variable {n n' : Γ‚ a ⊢ b} {m m': Γ ⊢ a}
+
+  @[simp]
+  theorem par_subst₁σ (p : m ⇛ m') : par_subst (subst₁σ m) (subst₁σ m') := by
+    intro _ i; cases i with simp [subst₁σ]
+    | z => exact p
+    | s i => exact .var
+
+  @[simp]
+  theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : (n ⇷ m) ⇛ (n' ⇷ m') := by
+    apply_rules [subst_par, par_subst₁σ]
 end
+
+-- https://plfa.github.io/Confluence/#parallel-reduction-satisfies-the-diamond-property
