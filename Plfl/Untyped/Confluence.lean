@@ -88,4 +88,28 @@ instance : (m ⇛* n) ≃ (m —↠ n) where
   left_inv _ := by simp only
   right_inv _ := by simp only
 
+open Untyped.Subst
+open Substitution
+
 -- https://plfa.github.io/Confluence/#substitution-lemma-for-parallel-reduction
+abbrev par_subst (σ : Subst Γ Δ) (σ' : Subst Γ Δ) := ∀ {a} {x : Γ ∋ a}, σ x ⇛ σ' x
+
+section
+  @[simp]
+  lemma par_rename {ρ : Rename Γ Δ} {m m' : Γ ⊢ a} : (m ⇛ m') → (rename ρ m ⇛ rename ρ m')
+  := open PReduce in by intro
+  | .var => exact .var
+  | .lamζ rn => apply lamζ; apply par_rename; trivial
+  | .apξ rl rm => apply apξ <;> (apply par_rename; trivial)
+  | .lamβ rn rv =>
+    rename_i n n' v v'; have rn' := par_rename (ρ := ext ρ) rn; have rv' := par_rename (ρ := ρ) rv
+    have := lamβ rn' rv'; rwa [rename_subst_comm] at this
+
+  @[simp]
+  theorem par_subst_exts {σ τ : Subst Γ Δ} (s : par_subst σ τ)
+  : ∀ {b}, par_subst (exts (b := b) σ) (exts τ)
+  := by
+    intro _ _; intro
+    | .z => exact .var
+    | .s i => exact par_rename s
+end
