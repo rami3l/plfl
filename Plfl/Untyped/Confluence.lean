@@ -132,8 +132,39 @@ section
     | s i => exact .var
 
   @[simp]
-  theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : (n ⇷ m) ⇛ (n' ⇷ m') := by
-    apply_rules [subst_par, par_subst₁σ]
+  theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : (n ⇷ m) ⇛ (n' ⇷ m') :=
+    subst_par (par_subst₁σ pm) pn
 end
 
 -- https://plfa.github.io/Confluence/#parallel-reduction-satisfies-the-diamond-property
+/--
+Many parallel reduction at once.
+-/
+def PReduce.plus : (Γ ⊢ a) → (Γ ⊢ a)
+| ` i => ` i
+| ƛ n => ƛ (plus n)
+| (ƛ n) □ m => plus n ⇷ plus m
+| l □ m => plus l □ plus m
+
+namespace Notation
+  postfix:max "⁺" => PReduce.plus
+end Notation
+
+section
+  @[simp]
+  theorem par_triangle {m n : Γ ⊢ a} : (m ⇛ n) → (n ⇛ m⁺) := open PReduce in by
+  intro
+  | .var => exact .var
+  | .lamβ pn pv => exact subst_par (par_subst₁σ (par_triangle pv)) (par_triangle pn)
+  | .lamζ pn => exact lamζ (par_triangle pn)
+  | .apξ pl pm => rename_i l l' m m'; match l with
+    | ` _ => exact apξ (par_triangle pl) (par_triangle pm)
+    | _ □ _ => exact apξ (par_triangle pl) (par_triangle pm)
+    | ƛ _  => cases pl with | lamζ pl => exact lamβ (par_triangle pl) (par_triangle pm)
+
+  @[simp]
+  theorem par_diamond {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n') : ∃ (l : Γ ⊢ a), (n ⇛ l) ∧ (n' ⇛ l) := by
+    exists m⁺; constructor <;> (apply par_triangle; trivial)
+end
+
+-- https://plfa.github.io/Confluence/#exercise-practice
