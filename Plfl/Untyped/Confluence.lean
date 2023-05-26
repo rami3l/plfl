@@ -138,9 +138,9 @@ end
 
 -- https://plfa.github.io/Confluence/#parallel-reduction-satisfies-the-diamond-property
 /--
-Many parallel reduction at once.
+Many parallel reductions at once.
 -/
-def PReduce.plus : (Γ ⊢ a) → (Γ ⊢ a)
+abbrev PReduce.plus : (Γ ⊢ a) → (Γ ⊢ a)
 | ` i => ` i
 | ƛ n => ƛ (plus n)
 | (ƛ n) □ m => plus n ⇷ plus m
@@ -163,8 +163,31 @@ section
     | ƛ _  => cases pl with | lamζ pl => exact lamβ (par_triangle pl) (par_triangle pm)
 
   @[simp]
-  theorem par_diamond {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n') : ∃ (l : Γ ⊢ a), (n ⇛ l) ∧ (n' ⇛ l) := by
+  theorem par_diamond {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n')
+  : ∃ (l : Γ ⊢ a), (n ⇛ l) ∧ (n' ⇛ l)
+  := by
     exists m⁺; constructor <;> (apply par_triangle; trivial)
+
+  -- https://plfa.github.io/Confluence/#exercise-practice
+  theorem par_diamond' {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n') : (n ⇛ m⁺) ∧ (n' ⇛ m⁺)
+  := open PReduce in by
+    match p with
+    | .var => cases p' with
+      | var => exact ⟨.var, .var⟩
+    | .lamβ pn pv => cases p' with
+      | lamβ pn' pv' =>
+        have := par_diamond' pn pn'; have this' := par_diamond' pv pv'
+        constructor <;> (apply sub_par <;> simp only [this, this'])
+      | apξ pl pm => cases pl with | lamζ pl =>
+        have := par_diamond' pn pl; have this' := par_diamond' pv pm; constructor
+        · apply sub_par <;> simp only [this, this']
+        · sorry
+    | .lamζ pn => cases p' with
+      | lamζ pn' => have := par_diamond' pn pn'; constructor <;> (apply lamζ; simp only [this])
+    | .apξ pl pm => cases p' with
+      | lamβ pn pv => sorry
+      | apξ pl' pm' =>
+        rename_i l'' m''; have := par_diamond' pl pl'; have this' := par_diamond' pm pm'
+        sorry -- apply apξ; simp only [this, this']
 end
 
--- https://plfa.github.io/Confluence/#exercise-practice
