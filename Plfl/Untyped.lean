@@ -422,17 +422,17 @@ however this won't work for `Prop`.
 We have to find another way.
 -/
 theorem Reduce.ap_congr₁ (rs : l —↠ l') : (l □ m) —↠ (l' □ m) := by
-  refine .head_induction_on rs ?refl ?head
+  refine rs.head_induction_on ?refl ?head
   · rfl
   · introv; intro r _ rs; refine .head ?_ rs; exact apξ₁ r
 
 
 theorem Reduce.ap_congr₂ (rs : m —↠ m') : (l □ m) —↠ (l □ m') := by
-  refine .head_induction_on rs ?refl ?head
+  refine rs.head_induction_on ?refl ?head
   · rfl
   · introv; intro r _ rs; refine .head ?_ rs; exact apξ₂ r
 
 theorem Reduce.lam_congr (rs : n —↠ n') : (ƛ n —↠ ƛ n') := by
-  refine .head_induction_on rs ?refl ?head
+  refine rs.head_induction_on ?refl ?head
   · rfl
   · introv; intro r _ rs; refine .head ?_ rs; exact lamζ r

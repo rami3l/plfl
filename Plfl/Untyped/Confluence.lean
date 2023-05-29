@@ -191,3 +191,16 @@ section
         sorry -- apply apξ; simp only [this, this']
 end
 
+section
+  @[simp]
+  theorem strip {m n n' : Γ ⊢ a} (mn : m ⇛ n) (mn' : m ⇛* n')
+  : ∃ (l : Γ ⊢ a), (n ⇛* l) ∧ (n' ⇛ l)
+  := open Relation.ReflTransGen in by
+    cases mn' using head_induction_on with
+    | refl => exists n
+    | head mm' m'n' =>
+      rename_i m' _; cases strip (par_triangle mm') m'n'; rename_i l hl
+      exists l; refine ⟨?_, hl.2⟩; exact .trans (par_triangle mn) hl.1
+  -- termination_by _ => mn'
+  decreasing_by sorry
+end
