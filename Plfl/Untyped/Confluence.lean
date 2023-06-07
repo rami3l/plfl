@@ -28,7 +28,10 @@ namespace PReduce
     | ƛ n => apply lamζ; apply refl
     | l □ m => apply apξ <;> apply refl
 
-  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) PReduce
+  inductive Clos : (Γ ⊢ a) → (Γ ⊢ a) → Type where
+  | refl : Clos m m
+  | head : PReduce l m → Clos m n → Clos l n
+  attribute [refl] Clos.refl
 end PReduce
 
 namespace Notation
@@ -39,12 +42,17 @@ end Notation
 open Notation
 
 namespace PReduce.Clos
-  instance : Coe (m ⇛ n) (m ⇛* n) where coe := .single
+  abbrev single (p : m ⇛ n) : (m ⇛* n) := .head p .refl
 
-  @[refl] abbrev refl : m ⇛* m := .refl
-  abbrev tail : (m ⇛* n) → (n ⇛ n') → (m ⇛* n') := .tail
-  abbrev head : (m ⇛ n) → (n ⇛* n') → (m ⇛* n') := .head
-  abbrev single : (m ⇛ n) → (m ⇛* n) := .single
+  abbrev tail : (m ⇛* n) → (n ⇛ n') → (m ⇛* n')
+  | .refl, p => .single p
+  | .head p' ps, p => .head p' <| ps.tail p
+
+  abbrev trans : (m ⇛* n) → (n ⇛* n') → (m ⇛* n')
+  | .refl, ps => ps
+  | .head p ps', ps => .head p <| ps'.trans ps
+
+  instance : Coe (m ⇛ n) (m ⇛* n) where coe := .single
 end PReduce.Clos
 
 namespace PReduce
@@ -74,19 +82,20 @@ namespace PReduce
     _ —↠ l' □ m' := ap_congr₂ rm.toReduceClos
 end PReduce
 
-instance : (m ⇛* n) ≃ (m —↠ n) where
-  toFun (rs : m ⇛* n) : m —↠ n := by
-    refine .head_induction_on rs ?_ ?_
-    · rfl
-    · introv; intro r _ rs; refine .trans ?_ rs; exact r.toReduceClos
-
-  invFun (rs : m —↠ n) : m ⇛* n := by
-    refine .head_induction_on rs ?_ ?_
-    · rfl
-    · introv; intro r _ rs; refine .head ?_ rs; exact .fromReduce r
-
+instance : Nonempty (m ⇛* n) ≃ (m —↠ n) where
+  toFun sps := toFun sps.some
+  invFun := invFun
   left_inv _ := by simp only
   right_inv _ := by simp only
+  where
+    toFun {m n} : (m ⇛* n) → (m —↠ n)
+    | .refl => .refl
+    | .head r rs => r.toReduceClos.trans <| toFun rs
+
+    invFun {m n} : (m —↠ n) → Nonempty (m ⇛* n) := open Relation.ReflTransGen in by
+      intro rs; refine rs.head_induction_on ?_ ?_
+      · constructor; rfl
+      · intro _ _ r _ rs; constructor; refine .head (PReduce.fromReduce r) ?_; exact rs.some
 
 open Untyped.Subst
 open Substitution
@@ -167,40 +176,17 @@ section
   : ∃ (l : Γ ⊢ a), (n ⇛ l) ∧ (n' ⇛ l)
   := by
     exists m⁺; constructor <;> (apply par_triangle; trivial)
-
-  -- https://plfa.github.io/Confluence/#exercise-practice
-  theorem par_diamond' {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n') : (n ⇛ m⁺) ∧ (n' ⇛ m⁺)
-  := open PReduce in by
-    match p with
-    | .var => cases p' with
-      | var => exact ⟨.var, .var⟩
-    | .lamβ pn pv => cases p' with
-      | lamβ pn' pv' =>
-        have := par_diamond' pn pn'; have this' := par_diamond' pv pv'
-        constructor <;> (apply sub_par <;> simp only [this, this'])
-      | apξ pl pm => cases pl with | lamζ pl =>
-        have := par_diamond' pn pl; have this' := par_diamond' pv pm; constructor
-        · apply sub_par <;> simp only [this, this']
-        · sorry
-    | .lamζ pn => cases p' with
-      | lamζ pn' => have := par_diamond' pn pn'; constructor <;> (apply lamζ; simp only [this])
-    | .apξ pl pm => cases p' with
-      | lamβ pn pv => sorry
-      | apξ pl' pm' =>
-        rename_i l'' m''; have := par_diamond' pl pl'; have this' := par_diamond' pm pm'
-        sorry -- apply apξ; simp only [this, this']
 end
 
 section
+  -- https://plfa.github.io/Confluence/#proof-of-confluence-for-parallel-reduction
   @[simp]
   theorem strip {m n n' : Γ ⊢ a} (mn : m ⇛ n) (mn' : m ⇛* n')
-  : ∃ (l : Γ ⊢ a), (n ⇛* l) ∧ (n' ⇛ l)
-  := open Relation.ReflTransGen in by
-    cases mn' using head_induction_on with
-    | refl => exists n
-    | head mm' m'n' =>
-      rename_i m' _; cases strip (par_triangle mm') m'n'; rename_i l hl
+  : Σ (l : Γ ⊢ a), PProd (n ⇛* l) (n' ⇛ l)
+  := by
+    match mn' with
+    | .refl => exists n, .refl
+    | .head mm' m'n' =>
+      rename_i m' f; have ⟨l, hl⟩ := strip (par_triangle mm') m'n'
       exists l; refine ⟨?_, hl.2⟩; exact .trans (par_triangle mn) hl.1
-  -- termination_by _ => mn'
-  decreasing_by sorry
 end
