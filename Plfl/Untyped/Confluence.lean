@@ -82,7 +82,7 @@ namespace PReduce
     _ —↠ l' □ m' := ap_congr₂ rm.toReduceClos
 end PReduce
 
-instance : Nonempty (m ⇛* n) ≃ (m —↠ n) where
+instance instNonemptyPReduceReduceClos : Nonempty (m ⇛* n) ≃ (m —↠ n) where
   toFun sps := toFun sps.some
   invFun := invFun
   left_inv _ := by simp only
@@ -159,34 +159,44 @@ namespace Notation
   postfix:max "⁺" => PReduce.plus
 end Notation
 
-section
-  @[simp]
-  theorem par_triangle {m n : Γ ⊢ a} : (m ⇛ n) → (n ⇛ m⁺) := open PReduce in by
-  intro
-  | .var => exact .var
-  | .lamβ pn pv => exact subst_par (par_subst₁σ (par_triangle pv)) (par_triangle pn)
-  | .lamζ pn => exact lamζ (par_triangle pn)
-  | .apξ pl pm => rename_i l l' m m'; match l with
-    | ` _ => exact apξ (par_triangle pl) (par_triangle pm)
-    | _ □ _ => exact apξ (par_triangle pl) (par_triangle pm)
-    | ƛ _  => cases pl with | lamζ pl => exact lamβ (par_triangle pl) (par_triangle pm)
+theorem par_triangle {m n : Γ ⊢ a} : (m ⇛ n) → (n ⇛ m⁺) := open PReduce in by
+intro
+| .var => exact .var
+| .lamβ pn pv => exact subst_par (par_subst₁σ (par_triangle pv)) (par_triangle pn)
+| .lamζ pn => exact lamζ (par_triangle pn)
+| .apξ pl pm => rename_i l l' m m'; match l with
+  | ` _ => exact apξ (par_triangle pl) (par_triangle pm)
+  | _ □ _ => exact apξ (par_triangle pl) (par_triangle pm)
+  | ƛ _  => have .lamζ pl := pl; exact lamβ (par_triangle pl) (par_triangle pm)
 
-  @[simp]
-  theorem par_diamond {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n')
-  : ∃ (l : Γ ⊢ a), (n ⇛ l) ∧ (n' ⇛ l)
-  := by
-    exists m⁺; constructor <;> (apply par_triangle; trivial)
-end
+theorem par_diamond {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n')
+: ∃ (l : Γ ⊢ a), (n ⇛ l) ∧ (n' ⇛ l)
+:= by
+  exists m⁺; constructor <;> (apply par_triangle; trivial)
 
-section
-  -- https://plfa.github.io/Confluence/#proof-of-confluence-for-parallel-reduction
-  @[simp]
-  theorem strip {m n n' : Γ ⊢ a} (mn : m ⇛ n) (mn' : m ⇛* n')
-  : Σ (l : Γ ⊢ a), PProd (n ⇛* l) (n' ⇛ l)
-  := by
-    match mn' with
-    | .refl => exists n, .refl
-    | .head mm' m'n' =>
-      rename_i m' f; have ⟨l, hl⟩ := strip (par_triangle mm') m'n'
-      exists l; refine ⟨?_, hl.2⟩; exact .trans (par_triangle mn) hl.1
-end
+-- https://plfa.github.io/Confluence/#proof-of-confluence-for-parallel-reduction
+theorem strip {m n n' : Γ ⊢ a} (mn : m ⇛ n) (mn' : m ⇛* n')
+: Σ (l : Γ ⊢ a), PProd (n ⇛* l) (n' ⇛ l)
+:= by match mn' with
+| .refl => exists n, .refl
+| .head mm' m'n' =>
+  rename_i m' f; have ⟨l, hl⟩ := strip (par_triangle mm') m'n'
+  exists l; refine ⟨?_, hl.2⟩; exact .trans (par_triangle mn) hl.1
+
+theorem par_confluence {l m m' : Γ ⊢ a} (lm : l ⇛* m) (lm' : l ⇛* m')
+: Σ (n : Γ ⊢ a), (m ⇛* n) × (m' ⇛* n)
+:= by match lm with
+| .refl => exists m', lm'
+| .head lm mm₁ =>
+  have ⟨n, mn, m'n⟩ := strip lm lm'
+  have ⟨n', m₁n', nn'⟩ := par_confluence mm₁ mn
+  exists n', m₁n'; exact .trans m'n nn'
+
+-- https://plfa.github.io/Confluence/#proof-of-confluence-for-reduction
+@[simp]
+theorem confluence {l m m' : Γ ⊢ a} (lm : l —↠ m) (lm' : l —↠ m')
+: ∃ (n : Γ ⊢ a), (m —↠ n) ∧ (m' —↠ n)
+:= by
+  let equiv := @instNonemptyPReduceReduceClos Γ a
+  have ⟨n, mn, m'n⟩:= par_confluence (equiv.invFun lm).some (equiv.invFun lm').some
+  exists n; exact ⟨equiv.toFun ⟨mn⟩, equiv.toFun ⟨m'n⟩⟩
