@@ -53,3 +53,13 @@ example
 := .ap .lam .lam
 
 -- https://plfa.github.io/BigStep/#the-big-step-semantics-is-deterministic
+theorem Eval.determ : γ ⊢ m ⇓ v → γ ⊢ m ⇓ v' → v = v' := by intro
+| .lam, .lam => rfl
+| .var h mc, .var h' mc' =>
+  injection h.symm.trans h'; rename_i h hh hh'; subst h; rw [←hh.eq, ←hh'.eq] at mc'
+  exact determ mc mc'
+| .ap mc mc₁, .ap mc' mc₁' =>
+  have := determ mc mc'; injection this
+  rename_i h hh hh'; subst h; rw [←hh'.eq] at mc₁'
+  injection hh; rename_i h; rw [←h] at mc₁'
+  exact determ mc₁ mc₁'
