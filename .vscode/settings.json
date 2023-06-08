@@ -29,7 +29,9 @@
     "subst": "⇸",
     "tsbus": "⇷",
     "u-": "↥",
-    "unit": "◯"
+    "unit": "◯",
+    "~~": "~~",
+    "~~e": "~~ₑ"
   },
   "cSpell.words": ["determ"]
 }

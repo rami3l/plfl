@@ -10,6 +10,7 @@ namespace BigStep
 
 open Untyped (Context)
 open Untyped.Notation
+open Substitution (Subst ids sub_ids)
 
 -- https://plfa.github.io/BigStep/#environments
 /--
@@ -63,3 +64,36 @@ theorem Eval.determ : γ ⊢ m ⇓ v → γ ⊢ m ⇓ v' → v = v' := by intro
   rename_i h hh hh'; subst h; rw [←hh'.eq] at mc₁'
   injection hh; rename_i h; rw [←h] at mc₁'
   exact determ mc₁ mc₁'
+
+-- https://plfa.github.io/BigStep/#big-step-evaluation-implies-beta-reduction-to-a-lambda
+noncomputable def Clos.equiv : Clos → (∅ ⊢ ✶) → Type
+| .clos (Γ := Γ) m γ, n =>
+  Σ (σ : Subst Γ ∅), PProd (∀ i, Clos.equiv (γ i) (σ i)) (n = ⟪σ⟫ m)
+
+abbrev ClosEnv.equiv (γ : ClosEnv Γ) (σ : Subst Γ ∅) : Type :=
+  ∀ i, Clos.equiv (γ i) (σ i)
+
+namespace Notation
+  -- The default precedence in Agda is 20.
+  -- See: <https://agda.readthedocs.io/en/v2.6.1/language/mixfix-operators.html#precedence>
+  scoped infix:20 " ~~ " => Clos.equiv
+  scoped infix:20 " ~~ₑ " => ClosEnv.equiv
+end Notation
+
+section
+  open Untyped.Subst
+  open Substitution
+
+  lemma ClosEnv.empty_equiv_ids : ∅ ~~ₑ ids := by intro.
+  abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ := ⟪subst₁σ n⟫ ∘ exts σ
+
+  lemma subst₁σ_exts {σ : Subst Γ Δ} {m : Δ ⊢ b} {i : Γ ∋ ✶}
+  : (ext_subst σ m) (.s i) = σ i
+  := by simp only [subst₁σ_exts_cons]
+
+  theorem ClosEnv.ext {γ : ClosEnv Γ} {σ : Subst Γ ∅} {n : ∅ ⊢ ✶} (ee : γ ~~ₑ σ) (e : v ~~ n)
+  : (γ‚' v ~~ₑ ext_subst σ n)
+  := by intro
+  | .z => exact e
+  | .s i => simp only [subst₁σ_exts]; exact ee i
+end
