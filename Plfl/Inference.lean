@@ -94,14 +94,14 @@ namespace Notation
 
   scoped notation:50 "ƛ " v " : " d => lam v d
   scoped notation:50 " μ " v " : " d => mu v d
-  scoped notation:max " 𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
+  scoped notation:max "𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
   scoped infixr:min " $ " => ap
   -- scoped infix:60 " ↓ " => syn
   -- scoped postfix:60 "↑ " => inh
   scoped infixl:70 " □ " => ap
   scoped prefix:80 "ι " => succ
   scoped prefix:90 "` " => var
-  scoped notation " 𝟘 " => zero
+  scoped notation "𝟘" => zero
 end Notation
 
 -- https://plfa.github.io/Inference/#example-terms
