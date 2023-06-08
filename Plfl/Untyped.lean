@@ -12,7 +12,7 @@ inductive Ty where
 deriving BEq, DecidableEq, Repr
 
 namespace Notation
-  scoped notation " ✶ " => Ty.star
+  scoped notation "✶" => Ty.star
 end Notation
 
 open Notation
@@ -369,8 +369,8 @@ namespace Notation
 
   scoped prefix:50 "μ " => mu
   scoped prefix:80 "ι " => succS
-  scoped notation " 𝟘 " => zeroS
-  scoped notation " 𝟘? " => caseS
+  scoped notation "𝟘" => zeroS
+  scoped notation "𝟘? " => caseS
 end Notation
 
 -- https://plfa.github.io/Untyped/#example

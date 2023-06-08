@@ -22,12 +22,12 @@ deriving BEq, DecidableEq, Repr
 namespace Term
   notation:50 "ƛ " v " : " d => lam v d
   notation:50 " μ " v " : " d => mu v d
-  notation:max " 𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
+  notation:max "𝟘? " e " [zero: " o " |succ " n " : " i " ] " => case e o n i
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
   prefix:80 "ι " => succ
   prefix:90 "` " => var
-  notation " 𝟘 " => zero
+  notation "𝟘" => zero
 
   example : Term := `"foo"
   example : Term := 𝟘? `"bar" [zero: 𝟘 |succ "n" : ι 𝟘]
@@ -60,7 +60,7 @@ inductive Value : Term → Type where
 deriving BEq, DecidableEq, Repr
 
 namespace Value
-  notation " V𝟘 " => zero
+  notation "V𝟘" => zero
 
   @[simp]
   def ofNat : (n : ℕ) → Value (Term.ofNat n)
@@ -301,7 +301,7 @@ namespace Context
   def nil : Context := []
   def extend : Context → Sym → Ty → Context | c, s, ts => ⟨s, ts⟩ :: c
 
-  notation " ∅ " => nil
+  notation "∅" => nil
 
   -- The goal is to make `_‚_⦂_` work like an `infixl`.
   -- https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html#From-Precedence-to-Binding-Power

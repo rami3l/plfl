@@ -77,12 +77,12 @@ namespace Term
 
   prefix:50 "ƛ " => lam
   prefix:50 "μ " => mu
-  notation " 𝟘? " => case
+  notation "𝟘? " => case
   infixr:min " $ " => ap
   infixl:70 " □ " => ap
   prefix:80 "ι " => succ
   prefix:90 "` " => var
-  notation " 𝟘 " => zero
+  notation "𝟘" => zero
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
   macro "# " n:term:90 : term => `(`♯$n)
@@ -231,7 +231,7 @@ inductive Value : Γ ⊢ a → Type where
 deriving BEq, DecidableEq, Repr
 
 namespace Value
-  notation " V𝟘 " => zero
+  notation "V𝟘" => zero
 
   @[simp]
   def ofNat : (n : ℕ) → @Value Γ ℕt (Term.ofNat n)

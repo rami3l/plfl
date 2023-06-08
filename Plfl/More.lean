@@ -38,8 +38,8 @@ namespace Notation
   instance : Add Ty where add := sum
 
   scoped infixr:70 " =⇒ " => fn
-  scoped notation " ◯ " => unit
-  scoped notation " ∅ " => void
+  scoped notation "◯" => unit
+  scoped notation "∅" => void
 end Notation
 
 open Notation
@@ -146,15 +146,15 @@ namespace Notation
 
   scoped prefix:50 "ƛ " => lam
   scoped prefix:50 "μ " => mu
-  scoped notation " 𝟘? " => case
+  scoped notation "𝟘? " => case
   scoped infixr:min " $ " => ap
   scoped infixl:70 " □ " => ap
   scoped infixl:70 " ⋄ "   => mulP
   scoped prefix:80 "ι " => succ
   scoped prefix:90 "` " => var
 
-  scoped notation " 𝟘 " => zero
-  scoped notation " ◯ " => unit
+  scoped notation "𝟘" => zero
+  scoped notation "◯" => unit
 
   -- https://plfa.github.io/DeBruijn/#abbreviating-de-bruijn-indices
   scoped macro "#" n:term:90 : term => `(`♯$n)
@@ -354,7 +354,7 @@ inductive Value : Γ ⊢ a → Type where
 deriving DecidableEq, Repr
 
 namespace Notation
-  scoped notation " V𝟘 " => Value.zero
+  scoped notation "V𝟘" => Value.zero
 end Notation
 
 namespace Value
