@@ -54,16 +54,17 @@ example
 := .ap .lam .lam
 
 -- https://plfa.github.io/BigStep/#the-big-step-semantics-is-deterministic
+@[simp]
 theorem Eval.determ : γ ⊢ m ⇓ v → γ ⊢ m ⇓ v' → v = v' := by intro
 | .lam, .lam => rfl
 | .var h mc, .var h' mc' =>
   injection h.symm.trans h'; rename_i h hh hh'; subst h; rw [←hh.eq, ←hh'.eq] at mc'
-  exact determ mc mc'
+  exact mc.determ mc'
 | .ap mc mc₁, .ap mc' mc₁' =>
-  have := determ mc mc'; injection this
+  have := mc.determ mc'; injection this
   rename_i h hh hh'; subst h; rw [←hh'.eq] at mc₁'
   injection hh; rename_i h; rw [←h] at mc₁'
-  exact determ mc₁ mc₁'
+  exact mc₁.determ mc₁'
 
 -- https://plfa.github.io/BigStep/#big-step-evaluation-implies-beta-reduction-to-a-lambda
 noncomputable def Clos.equiv : Clos → (∅ ⊢ ✶) → Type
@@ -84,16 +85,41 @@ section
   open Untyped.Subst
   open Substitution
 
-  lemma ClosEnv.empty_equiv_ids : ∅ ~~ₑ ids := by intro.
-  abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ := ⟪subst₁σ n⟫ ∘ exts σ
+  @[simp] lemma ClosEnv.empty_equiv_ids : ∅ ~~ₑ ids := by intro.
 
+  @[simp]
+  abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ :=
+    ⟪subst₁σ n⟫ ∘ exts σ
+
+  @[simp]
   lemma subst₁σ_exts {σ : Subst Γ Δ} {m : Δ ⊢ b} {i : Γ ∋ ✶}
   : (ext_subst σ m) (.s i) = σ i
   := by simp only [subst₁σ_exts_cons]
 
-  theorem ClosEnv.ext {γ : ClosEnv Γ} {σ : Subst Γ ∅} {n : ∅ ⊢ ✶} (ee : γ ~~ₑ σ) (e : v ~~ n)
-  : (γ‚' v ~~ₑ ext_subst σ n)
+  @[simp]
+  theorem ClosEnv.ext {γ : ClosEnv Γ} {σ : Subst Γ ∅} {n : ∅ ⊢ ✶}
+  (ee : γ ~~ₑ σ) (e : v ~~ n) : (γ‚' v ~~ₑ ext_subst σ n)
   := by intro
   | .z => exact e
   | .s i => simp only [subst₁σ_exts]; exact ee i
+
+  @[simp]
+  theorem Eval.closEnv_equiv {γ : ClosEnv Γ} {σ : Subst Γ ∅} {m : Γ ⊢ ✶}
+  (ev : γ ⊢ m ⇓ v) (ee : γ ~~ₑ σ)
+  : Σ (n : ∅ ⊢ ✶), PProd (⟪σ⟫ m —↠ n) (v ~~ n)
+  := open Untyped.Reduce in by match ev with
+  | .lam => rename_i n; exists ⟪σ⟫ (ƛ n), by rfl, σ, ee
+  | .var h ev =>
+    rename_i i; have := ee i; rw [h] at this; have ⟨τ, eeτ, hτ⟩ := this
+    have ⟨n, rn, en⟩ := ev.closEnv_equiv eeτ; rw [←hτ] at rn; exists n, rn
+  | .ap ev ev' =>
+    have ⟨n, rn, τ, eeτ, hτ⟩ := ev.closEnv_equiv ee; subst hτ
+    have ⟨n', rn', en'⟩ := ev'.closEnv_equiv (ClosEnv.ext eeτ ⟨σ, ee, rfl⟩)
+    refine ⟨n', ?_, en'⟩; simp only [sub_ap]; rename_i n _ m
+    apply (ap_congr₁ rn).trans; unfold ext_subst at rn'
+    calc ⟪τ⟫ (ƛ n) □ ⟪σ⟫ m
+      _ = (ƛ (⟪exts τ⟫ n)) □ ⟪σ⟫ m := rfl
+      _ —→ ⟪subst₁σ (⟪σ⟫ m)⟫ (⟪exts τ⟫ n) := lamβ
+      _ = ⟪⟪subst₁σ (⟪σ⟫ m)⟫ ∘ exts τ⟫ n := Substitution.sub_sub
+      _ —↠ n' := rn'
 end
