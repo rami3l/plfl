@@ -67,18 +67,18 @@ theorem Eval.determ : γ ⊢ m ⇓ v → γ ⊢ m ⇓ v' → v = v' := by intro
   exact mc₁.determ mc₁'
 
 -- https://plfa.github.io/BigStep/#big-step-evaluation-implies-beta-reduction-to-a-lambda
-noncomputable def Clos.equiv : Clos → (∅ ⊢ ✶) → Type
+noncomputable def Clos.Equiv : Clos → (∅ ⊢ ✶) → Type
 | .clos (Γ := Γ) m γ, n =>
-  Σ (σ : Subst Γ ∅), PProd (∀ i, Clos.equiv (γ i) (σ i)) (n = ⟪σ⟫ m)
+  Σ (σ : Subst Γ ∅), PProd (∀ i, Clos.Equiv (γ i) (σ i)) (n = ⟪σ⟫ m)
 
-abbrev ClosEnv.equiv (γ : ClosEnv Γ) (σ : Subst Γ ∅) : Type :=
-  ∀ i, Clos.equiv (γ i) (σ i)
+abbrev ClosEnv.Equiv (γ : ClosEnv Γ) (σ : Subst Γ ∅) : Type :=
+  ∀ i, Clos.Equiv (γ i) (σ i)
 
 namespace Notation
   -- The default precedence in Agda is 20.
   -- See: <https://agda.readthedocs.io/en/v2.6.1/language/mixfix-operators.html#precedence>
-  scoped infix:20 " ~~ " => Clos.equiv
-  scoped infix:20 " ~~ₑ " => ClosEnv.equiv
+  scoped infix:20 " ~~ " => Clos.Equiv
+  scoped infix:20 " ~~ₑ " => ClosEnv.Equiv
 end Notation
 
 section
@@ -104,17 +104,17 @@ section
   | .s i => simp only [subst₁σ_exts]; exact ee i
 
   @[simp]
-  theorem Eval.closEnv_equiv {γ : ClosEnv Γ} {σ : Subst Γ ∅} {m : Γ ⊢ ✶}
+  theorem Eval.closEnvEquiv {γ : ClosEnv Γ} {σ : Subst Γ ∅} {m : Γ ⊢ ✶}
   (ev : γ ⊢ m ⇓ v) (ee : γ ~~ₑ σ)
   : Σ (n : ∅ ⊢ ✶), PProd (⟪σ⟫ m —↠ n) (v ~~ n)
   := open Untyped.Reduce in by match ev with
   | .lam => rename_i n; exists ⟪σ⟫ (ƛ n), by rfl, σ, ee
   | .var h ev =>
     rename_i i; have := ee i; rw [h] at this; have ⟨τ, eeτ, hτ⟩ := this
-    have ⟨n, rn, en⟩ := ev.closEnv_equiv eeτ; rw [←hτ] at rn; exists n, rn
+    have ⟨n, rn, en⟩ := ev.closEnvEquiv eeτ; rw [←hτ] at rn; exists n, rn
   | .ap ev ev' =>
-    have ⟨n, rn, τ, eeτ, hτ⟩ := ev.closEnv_equiv ee; subst hτ
-    have ⟨n', rn', en'⟩ := ev'.closEnv_equiv (ClosEnv.ext eeτ ⟨σ, ee, rfl⟩)
+    have ⟨n, rn, τ, eeτ, hτ⟩ := ev.closEnvEquiv ee; subst hτ
+    have ⟨n', rn', en'⟩ := ev'.closEnvEquiv (ClosEnv.ext eeτ ⟨σ, ee, rfl⟩)
     refine ⟨n', ?_, en'⟩; simp only [sub_ap]; rename_i n _ m
     apply (ap_congr₁ rn).trans; unfold ext_subst at rn'
     calc ⟪τ⟫ (ƛ n) □ ⟪σ⟫ m
@@ -122,4 +122,16 @@ section
       _ —→ ⟪subst₁σ (⟪σ⟫ m)⟫ (⟪exts τ⟫ n) := lamβ
       _ = ⟪⟪subst₁σ (⟪σ⟫ m)⟫ ∘ exts τ⟫ n := Substitution.sub_sub
       _ —↠ n' := rn'
+
+  /--
+  If call-by-name can produce a value,
+  then the program can be reduced to a λ-abstraction via β-rules.
+  -/
+  @[simp]
+  theorem Eval.cbn_reduce {m : ∅ ⊢ ✶} {δ : ClosEnv Δ} {n' : Δ‚ ✶ ⊢ ✶}
+  (ev : ∅ ⊢ m ⇓ .clos (ƛ n') δ)
+  : ∃ (n : ∅‚ ✶ ⊢ ✶), m —↠ ƛ n
+  := by
+    have ⟨n, rn, σ, _, h⟩ := ev.closEnvEquiv ClosEnv.empty_equiv_ids
+    subst h; rw [sub_ids] at rn; exists ⟪exts σ⟫ n'
 end

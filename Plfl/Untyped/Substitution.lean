@@ -41,7 +41,7 @@ section
   @[simp] theorem sub_tail : (shift ⨟ m ⦂⦂ σ) = σ (a := b) := rfl
   @[simp] theorem sub_η {σ : Subst (Γ‚ a) Δ} : (⟪σ⟫ (`.z) ⦂⦂ (shift ⨟ σ)) = σ (a := b) := by ext i; cases i <;> rfl
   @[simp] theorem z_shift : ((`.z) ⦂⦂ shift) = @ids (Γ‚ a) b := by ext i; cases i <;> rfl
-  @[simp] theorem sub_ids_seq : (ids ⨟ σ) = σ (a := a) := rfl
+  @[simp] theorem ids_seq : (ids ⨟ σ) = σ (a := a) := rfl
   @[simp] theorem sub_ap {l m : Γ ⊢ ✶} : ⟪σ⟫ (l □ m) = (⟪σ⟫ l) □ (⟪σ⟫ m) := rfl
   @[simp] theorem sub_dist : @Eq (Γ‚ a ∋ b → Φ ⊢ b) ((m ⦂⦂ σ) ⨟ τ) ((⟪τ⟫ m) ⦂⦂ (σ ⨟ τ)) := by ext i; cases i <;> rfl
 end
@@ -101,7 +101,7 @@ section
 
   -- https://plfa.github.io/Substitution/#proof-of-sub-idr
   @[simp]
-  theorem sub_seq_ids : @Eq (Γ ∋ a → Δ ⊢ a) (σ ⨟ ids) σ := by
+  theorem seq_ids : @Eq (Γ ∋ a → Δ ⊢ a) (σ ⨟ ids) σ := by
     ext; simp only [Function.comp_apply, sub_ids]
 end
 
@@ -150,7 +150,7 @@ section
   variable {ρ : Rename Γ Δ} {σ : Subst Γ Δ} {τ : Subst Δ Φ} {θ : Subst Φ Ψ}
 
   @[simp]
-  theorem exts_seq : @Eq (Γ‚ ✶ ∋ a → _) (exts σ ⨟ exts τ) (exts (σ ⨟ τ)) := by
+  theorem exts_seq_exts : @Eq (Γ‚ ✶ ∋ a → _) (exts σ ⨟ exts τ) (exts (σ ⨟ τ)) := by
     ext i; match i with
     | .z => rfl
     | .s i => conv_lhs =>
@@ -165,7 +165,7 @@ section
   | ƛ n => calc ⟪τ⟫ (⟪σ⟫ (ƛ n))
     _ = (ƛ ⟪exts τ⟫ (⟪exts σ⟫ n)) := rfl
     _ = (ƛ (⟪exts σ ⨟ exts τ⟫ n)) := by apply congr_arg Term.lam; exact sub_sub
-    _ = (ƛ (⟪exts (σ ⨟ τ)⟫ n)) := by apply congr_arg Term.lam; congr; funext _; exact exts_seq
+    _ = (ƛ (⟪exts (σ ⨟ τ)⟫ n)) := by apply congr_arg Term.lam; congr; funext _; exact exts_seq_exts
 
   @[simp]
   theorem rename_subst : ⟪τ⟫ (rename ρ m) = ⟪τ ∘ ρ⟫ m := by
@@ -180,7 +180,7 @@ section
   @[simp]
   theorem subst₁σ_exts_cons {m : Δ ⊢ b} : @Eq (Γ‚ ✶ ∋ a → _) (exts σ ⨟ subst₁σ m) (m ⦂⦂ σ) := by
     simp only [
-      exts_cons_shift, subst_z_cons_ids, sub_dist, sub_head, sub_assoc, sub_tail, sub_seq_ids
+      exts_cons_shift, subst_z_cons_ids, sub_dist, sub_head, sub_assoc, sub_tail, seq_ids
     ]
 
   variable {n : Γ‚ ✶ ⊢ ✶} {m : Γ ⊢ ✶}
@@ -197,7 +197,7 @@ section
       _ = ⟪⟪σ⟫ m ⦂⦂ ((σ ⨟ shift) ⨟ (⟪σ⟫ m ⦂⦂ ids))⟫ n := rfl
       _ = ⟪⟪σ⟫ m ⦂⦂ (σ ⨟ shift ⨟ ⟪σ⟫ m ⦂⦂ ids)⟫ n := by congr; simp only [sub_assoc]
       _ = ⟪⟪σ⟫ m ⦂⦂ (σ ⨟ ids)⟫ n := by congr
-      _ = ⟪⟪σ⟫ m ⦂⦂ (ids ⨟ σ)⟫ n := by congr; simp only [sub_seq_ids, sub_ids_seq]
+      _ = ⟪⟪σ⟫ m ⦂⦂ (ids ⨟ σ)⟫ n := by congr; simp only [seq_ids, ids_seq]
       _ = ⟪m ⦂⦂ ids ⨟ σ⟫ n := by congr; simp only [sub_dist]
       _ = ⟪σ⟫ (⟪m ⦂⦂ ids⟫ n) := sub_sub.symm
       _ = ⟪σ⟫ (n ⇷ m) := by congr; simp only [subst_z_cons_ids]
