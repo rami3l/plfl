@@ -408,16 +408,10 @@ namespace Context
 
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
   def mulTy : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
-    -- TODO: Can we simplify this𝟘?
-    apply tyMu; apply tyLam; apply tyLam; apply tyCase
+    apply_rules [tyMu, tyLam, tyCase]
     · trivial
     · exact tyZero
-    · apply tyAp
-      · apply tyAp <;> try trivial
-        · apply tyMu; apply tyLam; apply tyLam; apply tyCase <;> try trivial
-          · apply tySucc; apply tyAp <;> try trivial
-            · apply tyAp <;> trivial
-      · repeat apply tyAp; repeat trivial
+    · apply_rules [tyAp, tyMu, tyLam, tyCase, tySucc] <;> try trivial
 
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice-1
   theorem mulC_ty : Γ ⊢ mulC ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
