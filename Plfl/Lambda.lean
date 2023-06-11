@@ -398,9 +398,7 @@ namespace Context
     · apply tyAp <;> trivial
 
   def addTy : Γ ⊢ add ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
-    apply tyMu; apply tyLam; apply tyLam; apply tyCase <;> try trivial
-    · apply tySucc; apply tyAp <;> try trivial
-      · apply tyAp <;> trivial
+    repeat apply_rules [tyAp, tyMu, tyLam, tyCase, tySucc, tyZero] <;> trivial
 
   theorem addC_ty : Γ ⊢ addC ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
     repeat apply tyLam <;> try trivial
@@ -408,10 +406,7 @@ namespace Context
 
   -- https://plfa.github.io/Lambda/#exercise-mul-recommended-1
   def mulTy : Γ ⊢ mul ⦂ ℕt =⇒ ℕt =⇒ ℕt := by
-    apply_rules [tyMu, tyLam, tyCase]
-    · trivial
-    · exact tyZero
-    · apply_rules [tyAp, tyMu, tyLam, tyCase, tySucc] <;> try trivial
+    repeat apply_rules [tyAp, tyMu, tyLam, tyCase, tySucc, tyZero] <;> trivial
 
   -- https://plfa.github.io/Lambda/#exercise-mul%E1%B6%9C-practice-1
   theorem mulC_ty : Γ ⊢ mulC ⦂ NatC t =⇒ NatC t =⇒ NatC t := by
