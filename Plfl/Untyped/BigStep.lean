@@ -135,3 +135,25 @@ section
     have ⟨n, rn, σ, _, h⟩ := ev.closEnvEquiv ClosEnv.empty_equiv_ids
     subst h; rw [sub_ids] at rn; exists ⟪exts σ⟫ n'
 end
+
+-- https://plfa.github.io/BigStep/#exercise-big-alt-implies-multi-practice
+namespace BySubst
+
+inductive Eval : (Γ ⊢ ✶) → (Γ ⊢ ✶) → Type where
+-- Hmmm, it's all ƛ's after all?
+| lam: Eval (ƛ m) (ƛ m)
+| ap : Eval n n' → Eval ((ƛ n) □ v) (n ⇷ v)
+
+namespace Notation
+  scoped infix:50 " ↡ "=> Eval
+end Notation
+
+open Notation
+
+/--
+If call-by-name can produce a value,
+then the program can be reduced to a λ-abstraction via β-rules.
+-/
+@[simp]
+theorem Eval.cbn_reduce (ev : m ↡ n') : ∃ (n : ∅‚ ✶ ⊢ ✶), m —↠ ƛ n := by
+  sorry
