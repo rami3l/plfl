@@ -20,7 +20,7 @@ inductive Clos : Type where
 | clos : ∀ {Γ}, (m : Γ ⊢ ✶) → ((Γ ∋ ✶) → Clos) → Clos
 
 /--
-An environment in call-by-name is a map from variables to closures.
+An environment in call-by-name is a mapping from variables to closures.
 -/
 abbrev ClosEnv (Γ : Context) := (Γ ∋ ✶) → Clos
 
@@ -89,7 +89,7 @@ section
 
   @[simp]
   abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ :=
-    ⟪subst₁σ n⟫ ∘ exts σ
+    (n ⇸ ·) ∘ exts σ
 
   @[simp]
   lemma subst₁σ_exts {σ : Subst Γ Δ} {m : Δ ⊢ b} {i : Γ ∋ ✶}
@@ -139,21 +139,37 @@ end
 -- https://plfa.github.io/BigStep/#exercise-big-alt-implies-multi-practice
 namespace BySubst
 
+-- https://github.com/L-TChen/ModalTypeTheory/blob/a4d3cf67236716fa324daa3e5a929f38a33c39e9/src/STLC/BigStep.agda#L96-L121
+-- https://www.cs.cornell.edu/courses/cs6110/2014sp/Handouts/Sestoft.pdf
 inductive Eval : (Γ ⊢ ✶) → (Γ ⊢ ✶) → Type where
 -- Hmmm, it's all ƛ's after all?
-| lam: Eval (ƛ m) (ƛ m)
-| ap : Eval n n' → Eval ((ƛ n) □ v) (n ⇷ v)
+| lam : ∀ {n : ∅‚ ✶ ⊢ ✶}, Eval (ƛ n) (ƛ n)
+| ap : Eval l (ƛ m) → Eval (m ⇷ n) v → Eval (l □ n) v
 
 namespace Notation
-  scoped infix:50 " ↡ "=> Eval
+  scoped infix:50 " ⇓' "=> Eval
 end Notation
 
 open Notation
+
+@[simp]
+theorem Eval.determ : m ⇓' v → m ⇓' v' → v = v' := by intro
+| .lam, .lam => rfl
+| .ap mc mc₁, .ap mc' mc₁' =>
+  have := mc.determ mc'; injection this; subst_vars; exact mc₁.determ mc₁'
+
+open Untyped.Reduce
+open Untyped.Subst
 
 /--
 If call-by-name can produce a value,
 then the program can be reduced to a λ-abstraction via β-rules.
 -/
 @[simp]
-theorem Eval.cbn_reduce (ev : m ↡ n') : ∃ (n : ∅‚ ✶ ⊢ ✶), m —↠ ƛ n := by
-  sorry
+theorem Eval.cbn_reduce {n : ∅‚ ✶ ⊢ ✶} (ev : m ⇓' (ƛ n)) : m —↠ ƛ n := by
+  match ev with
+  | .lam => rfl
+  | .ap evl evmn' => rename_i l m n'; calc l □ n'
+      _ —↠ (ƛ m) □ n' := ap_congr₁ <| cbn_reduce evl
+      _ —→ m ⇷ n' := lamβ
+      _ —↠ (ƛ n) := cbn_reduce evmn'
