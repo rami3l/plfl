@@ -125,3 +125,29 @@ namespace Env.Subset
 end Env.Subset
 
 -- https://plfa.github.io/Denotational/#denotational-semantics
+/--
+`Eval γ m v` means that evaluating the term `m` in the environment `γ` gives `v`.
+-/
+inductive Eval : Env Γ → (Γ ⊢ ✶) → Value → Type where
+| var : Eval γ (` i) (γ i)
+| fnElim : Eval γ l (v ⇾ w) → Eval γ m v → Eval γ (l □ m) w
+| fnIntro : Eval (γ`‚ v) n w → Eval γ (ƛ n) (v ⇾ w)
+| botIntro : Eval γ m ⊥
+| conjIntro : Eval γ m v → Eval γ m w → Eval γ m (v ⊔ w)
+| sub : Eval γ m v → w ⊑ v → Eval γ m w
+
+namespace Notation
+  scoped notation:30 γ " ⊢ " m " ⇓ " v:51 => Eval γ m v
+end Notation
+
+section
+  open Untyped.Term (id)
+
+  -- `id` can be seen as a mapping table for both `⊥ ⇾ ⊥` and `(⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)`.
+  example : γ ⊢ id ⇓ ⊥ ⇾ ⊥ := .fnIntro .var
+  example : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fnIntro .var
+
+  -- `id` also produces a table containing both of the previous tables.
+  example : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) := by
+    refine .conjIntro ?_ ?_ <;> exact .fnIntro .var
+end

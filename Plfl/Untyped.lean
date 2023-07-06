@@ -344,6 +344,8 @@ def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
       ⟨Trans.trans r rs, res⟩
 
 namespace Term
+  abbrev id : Γ ⊢ ✶ := ƛ #0
+
   -- https://plfa.github.io/Untyped/#naturals-and-fixpoint
   /-
   The Scott encoding:
