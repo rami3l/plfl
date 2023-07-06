@@ -49,11 +49,11 @@ def Subset.refl : v ⊑ v := match v with
 
 /-- The `⊔` operation is monotonic with respect to `⊑`. -/
 @[simp]
-theorem subset_subset (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
+def subset_subset (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
   .conjL (.conjR₁ d₁) (.conjR₂ d₂)
 
 @[simp]
-theorem conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
+def conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
   _ ⊑ ((v ⊔ v') ⇾ w) ⊔ ((v ⊔ v') ⇾ w') := .dist
   _ ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := open Subset in by
     apply subset_subset <;> refine .fn ?_ .refl
@@ -61,14 +61,14 @@ theorem conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') :
     · apply conjR₂; rfl
 
 @[simp]
-theorem conj_subset₁ : u ⊔ v ⊑ w → u ⊑ w := by intro
+def conj_subset₁ : u ⊔ v ⊑ w → u ⊑ w := by intro
 | .conjL h _ => exact h
 | .conjR₁ h => refine .conjR₁ ?_; exact conj_subset₁ h
 | .conjR₂ h => refine .conjR₂ ?_; exact conj_subset₁ h
 | .trans h h' => refine .trans ?_ h'; exact conj_subset₁ h
 
 @[simp]
-theorem conj_subset₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
+def conj_subset₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
 | .conjL _ h => exact h
 | .conjR₁ h => refine .conjR₁ ?_; exact conj_subset₂ h
 | .conjR₂ h => refine .conjR₂ ?_; exact conj_subset₂ h
@@ -92,6 +92,8 @@ namespace Env
 end Env
 
 namespace Notation
+  scoped notation "`∅" => (∅ : Env ∅)
+
   -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
   scoped infixl:50 "`‚ " => Env.snoc
 end Notation
@@ -140,14 +142,69 @@ namespace Notation
   scoped notation:30 γ " ⊢ " m " ⇓ " v:51 => Eval γ m v
 end Notation
 
-section
-  open Untyped.Term (id)
+/--
+Relaxation of table lookup in application,
+allowing an argument to match an input entry if the latter is less than the former.
+-/
+def Eval.fnElimSub (d₁ : γ ⊢ l ⇓ v₁ ⇾ w) (d₂ : γ ⊢ m ⇓ v₂) (lt : v₁ ⊑ v₂)
+: γ ⊢ l □ m ⇓ w
+:= d₁.fnElim <| d₂.sub lt
+
+namespace Example
+  open Untyped.Term (id delta omega twoC addC)
+  open Eval
 
   -- `id` can be seen as a mapping table for both `⊥ ⇾ ⊥` and `(⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)`.
-  example : γ ⊢ id ⇓ ⊥ ⇾ ⊥ := .fnIntro .var
-  example : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fnIntro .var
+  def denotId₁ : γ ⊢ id ⇓ ⊥ ⇾ ⊥ := .fnIntro .var
+  def denotId₂ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fnIntro .var
 
   -- `id` also produces a table containing both of the previous tables.
-  example : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) := by
-    refine .conjIntro ?_ ?_ <;> exact .fnIntro .var
-end
+  def denotId₃ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) :=
+    denotId₁.conjIntro denotId₂
+
+  -- Oops, self application!
+  def denotIdApId : `∅ ⊢ id □ id ⇓ v ⇾ v := .fnElim (.fnIntro .var) (.fnIntro .var)
+
+  -- In `def twoC f u := f (f u)`,
+  -- `f`'s table must include two entries, both `u ⇾ v` and `v ⇾ w`.
+  -- `twoC` then merges those two entries into one: `u ⇾ w`.
+  def denotTwoC : `∅ ⊢ twoC ⇓ (u ⇾ v ⊔ v ⇾ w) ⇾ u ⇾ w := by
+    apply fnIntro; apply fnIntro; apply fnElim
+    · apply sub .var; exact .conjR₂ .refl
+    · apply fnElim
+      · apply sub .var; exact .conjR₁ .refl
+      · exact .var
+
+  def denotDelta : `∅ ⊢ delta ⇓ (v ⇾ w ⊔ v) ⇾ w := by
+    apply fnIntro; apply fnElim (v := v) <;> apply sub .var
+    · exact .conjR₁ .refl
+    · exact .conjR₂ .refl
+
+  example : `∅ ⊢ omega ⇓ ⊥ := by
+    apply fnElim denotDelta; apply conjIntro
+    · exact fnIntro (v := ⊥) .botIntro
+    · exact .botIntro
+
+  def denotOmega : `∅ ⊢ omega ⇓ ⊥ := .botIntro
+
+  -- https://plfa.github.io/Denotational/#exercise-denot-plus%E1%B6%9C-practice
+
+  -- For `def addC m n u v := (m u) (n u v)` we have the following mapping table:
+  -- · n u v = w
+  -- · m u w = x
+
+  def denotAddC
+  : let m := u ⇾ w ⇾ x
+    let n := u ⇾ v ⇾ w
+    `∅ ⊢ addC ⇓ m ⇾ n ⇾ u ⇾ v ⇾ x
+  := by apply_rules [fnIntro, fnElim, var]
+end Example
+
+-- https://plfa.github.io/Denotational/#denotations-and-denotational-equality
+/--
+A denotational semantics can be seen as a function from a term
+to some relation between `Env`s and `Value`s.
+-/
+abbrev Denot (Γ : Context) : Type 1 := Env Γ → Value → Type
+
+def ℰ (m : Γ ⊢ ✶) : Denot Γ | γ, v => γ ⊢ m ⇓ v

@@ -306,7 +306,7 @@ lemma Lookup.empty_ext_empty
   intro n ai; is_empty; intro ⟨a, i⟩; apply ai.false; exists a
   cases i <;> trivial
 
-def Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
+def Lookup.lookup (Γ : Context) (x : Sym) : Decidable' (Σ a, Γ ∋ x ⦂ a) := by
   match Γ, x with
   | [], _ => left; is_empty; intro.
   | ⟨y, b⟩ :: Γ, x =>
@@ -329,7 +329,7 @@ lemma TyS.empty_switch : Γ ⊢ m ↥ a → a ≠ b → IsEmpty (Γ ⊢ m ↥ b)
   intro ta n; is_empty; intro tb; have := ta.unique tb; contradiction
 
 mutual
-  def TermS.infer (m : TermS) (Γ : Context) : PDecidable (Σ a, Γ ⊢ m ↥ a) := by
+  def TermS.infer (m : TermS) (Γ : Context) : Decidable' (Σ a, Γ ⊢ m ↥ a) := by
     match m with
     | ` x => match Lookup.lookup Γ x with
       | .inr ⟨a, i⟩ => right; exact ⟨a, .var i⟩
@@ -349,7 +349,7 @@ mutual
       | .inr t => right; exact ⟨a, t⟩
       | .inl n => left; is_empty; intro ⟨a', t'⟩; cases t'; apply n.false; trivial
 
-  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : PDecidable (Γ ⊢ m ↧ a) := by
+  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : Decidable' (Γ ⊢ m ↧ a) := by
     match m with
     | ƛ x : n => match a with
       | a =⇒ b => match n.infer (Γ‚ x ⦂ a) b with
