@@ -12,7 +12,7 @@ require mathlib from git
 
 @[default_target]
 lean_lib Plfl {
-  -- add package configuration options here
+  -- add library configuration options here
 }
 
 -- @[default_target]

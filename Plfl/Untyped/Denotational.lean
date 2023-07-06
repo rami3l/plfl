@@ -42,7 +42,7 @@ end Notation
 instance : Trans Subset Subset Subset where trans := .trans
 
 @[refl]
-theorem Subset.refl : v ⊑ v := match v with
+def Subset.refl : v ⊑ v := match v with
 | ⊥ => .bot
 | _ ⇾ _ => .fn refl refl
 | .conj _ _ => .conjL (.conjR₁ refl) (.conjR₂ refl)
@@ -78,8 +78,50 @@ open Untyped (Context)
 open Untyped.Notation
 
 -- https://plfa.github.io/Denotational/#environments
+/--
+An `Env` gives meaning to a term's free vars by mapping vars to values.
+-/
 abbrev Env (Γ : Context) : Type := ∀ (_ : Γ ∋ ✶), Value
 
 namespace Env
   instance : EmptyCollection (Env ∅) where emptyCollection := by intro.
+
+  abbrev snoc (γ : Env Γ) (v : Value) : Env (Γ‚ ✶)
+  | .z => v
+  | .s i => γ i
 end Env
+
+namespace Notation
+  -- `‚` is not a comma! See: <https://www.compart.com/en/unicode/U+201A>
+  scoped infixl:50 "`‚ " => Env.snoc
+end Notation
+
+namespace Env
+  -- * I could have used Lisp jargons `cdr` and `car` here,
+  -- * instead of the Haskell ones below...
+  abbrev init (γ : Env (Γ‚ ✶)) : Env Γ := (γ ·.s)
+  abbrev last (γ : Env (Γ‚ ✶)) : Value := γ .z
+
+  @[simp]
+  theorem init_last (γ : Env (Γ‚ ✶)) : γ = (γ.init`‚ γ.last) := by
+    ext x; cases x <;> rfl
+
+  /-- We extend the `⊑` relation point-wise to `Env`s. -/
+  abbrev Subset (γ δ : Env Γ) : Type := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
+  abbrev conj (γ δ : Env Γ) : Env Γ | x => γ x ⊔ δ x
+end Env
+
+namespace Notation
+  instance : Bot (Env Γ) where bot _ := ⊥
+  instance : Sup (Env γ) where sup := Env.conj
+
+  scoped infix:40 " `⊑ " => Env.Subset
+end Notation
+
+namespace Env.Subset
+  @[refl] def refl : γ `⊑ γ | _ => .refl
+  @[simp] def conjR₁ (γ δ : Env Γ) : γ `⊑ (γ ⊔ δ) | _ => .conjR₁ .refl
+  @[simp] def conjR₂ (γ δ : Env Γ) : δ `⊑ (γ ⊔ δ) | _ => .conjR₂ .refl
+end Env.Subset
+
+-- https://plfa.github.io/Denotational/#denotational-semantics
