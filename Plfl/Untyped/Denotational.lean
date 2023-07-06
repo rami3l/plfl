@@ -2,6 +2,7 @@
 
 import Plfl.Init
 import Plfl.Untyped
+import Plfl.Untyped.Substitution
 
 import Mathlib.Tactic
 
@@ -147,6 +148,7 @@ end Notation
 Relaxation of table lookup in application,
 allowing an argument to match an input entry if the latter is less than the former.
 -/
+@[simp]
 def Eval.ap_sub (d₁ : γ ⊢ l ⇓ v₁ ⇾ w) (d₂ : γ ⊢ m ⇓ v₂) (lt : v₁ ⊑ v₂) : γ ⊢ l □ m ⇓ w
 := d₁.ap <| d₂.sub lt
 
@@ -213,3 +215,28 @@ def ℰ (m : Γ ⊢ ✶) : Denot Γ | γ, v => γ ⊢ m ⇓ v
 -- Nothing to do thanks to proof irrelevance.
 -- Instead of defining a new `≃` operator to denote the equivalence of `Denot`s,
 -- the regular `=` should be enough in our case.
+
+-- https://plfa.github.io/Denotational/#renaming-preserves-denotations
+section
+  open Untyped.Subst
+  open Substitution
+  open Eval
+
+  @[simp]
+  def ext_sub {γ : Env Γ} {δ : Env Δ} (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
+  : (γ`‚ v) `⊑ (δ`‚ v) ∘ ext ρ
+  | .z => .refl
+  | .s i => lt i
+
+  /-- The result of evaluation is conserved after renaming. -/
+  @[simp]
+  theorem rename_pres {γ : Env Γ} {δ : Env Δ} (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
+  (d : γ ⊢ m ⇓ v) : δ ⊢ rename ρ m ⇓ v
+  := by induction d generalizing Δ δ with
+  | var => apply sub .var; apply lt
+  | ap _ _ r r' => exact .ap (r ρ lt) (r' ρ lt)
+  | fn _ r => apply fn; rename_i v _ _ _; exact r (ext ρ) (ext_sub ρ lt)
+  | bot => exact .bot
+  | conj _ _ r r' => exact .conj (r ρ lt) (r' ρ lt)
+  | sub _ lt' r => exact (r ρ lt).sub lt'
+end
