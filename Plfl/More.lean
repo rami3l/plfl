@@ -350,7 +350,7 @@ inductive Value : Γ ⊢ a → Type where
 | right : Value v → Value (.right v)
 | unit : Value ◯
 | nil : Value .nil
-| cons : Value (v : Γ ⊢ a) → Value (vs : Γ ⊢ .list a) → Value (.cons v vs)
+| cons : ∀ {v : Γ ⊢ a} {vs : Γ ⊢ .list a}, Value v → Value vs → Value (.cons v vs)
 deriving DecidableEq, Repr
 
 namespace Notation

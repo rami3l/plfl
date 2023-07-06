@@ -317,8 +317,8 @@ namespace Context
   -/
   @[aesop safe [constructors, cases]]
   inductive Lookup : Context → Sym → Ty → Type where
-  | z : Lookup (Γ‚ x ⦂ tx) x tx
-  | s : x ≠ y → Lookup Γ x tx → Lookup (Γ‚ y ⦂ ty) x tx
+  | z : Lookup (Γ‚ x ⦂ t) x t
+  | s : x ≠ y → Lookup Γ x t → Lookup (Γ‚ y ⦂ u) x t
   deriving DecidableEq
 
   notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
@@ -331,7 +331,7 @@ namespace Context
 
   -- https://plfa.github.io/Lambda/#lookup-is-functional
   @[simp]
-  theorem Lookup.functional : Γ ∋ x ⦂ tx → Γ ∋ x ⦂ tx' → tx = tx' := by
+  theorem Lookup.functional : Γ ∋ x ⦂ t → Γ ∋ x ⦂ t' → t = t' := by
     intro
     | z, z => rfl
     | z, s _ e => trivial
@@ -344,9 +344,9 @@ namespace Context
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
   inductive IsTy : Context → Term → Ty → Type where
-  | tyVar : Γ ∋ x ⦂ tx → IsTy Γ (` x) tx
-  | tyLam : IsTy (Γ‚ x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
-  | tyAp : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
+  | tyVar : Γ ∋ x ⦂ t → IsTy Γ (` x) t
+  | tyLam : IsTy (Γ‚ x ⦂ t) n u → IsTy Γ (ƛ x : n) (t =⇒ u)
+  | tyAp : IsTy Γ l (t =⇒ u) → IsTy Γ x t → IsTy Γ (l □ x) u
   | tyZero : IsTy Γ 𝟘 ℕt
   | tySucc : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
   | tyCase : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ‚ x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
@@ -442,7 +442,7 @@ section examples
   example : ∅‚ "y" ⦂ ℕt =⇒ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt =⇒ ℕt := by
     apply tyLam; apply tyAp <;> trivial
 
-  example : ∅‚ "x" ⦂ tx ⊬ `"x" □ `"x" := by
+  example : ∅‚ "x" ⦂ t ⊬ `"x" □ `"x" := by
     by_contra h; simp_all
     let ⟨ht⟩ := h
     cases ht; rename_i hx

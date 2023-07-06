@@ -206,8 +206,8 @@ mutual
   : TyS Γ l ℕt → TyI Γ m a → TyI (Γ‚ x ⦂ ℕt) n a
   → TyI Γ (𝟘? l [zero: m |succ x : n]) a
   | mu : TyI (Γ‚ x ⦂ a) n a → TyI Γ (μ x : n) a
-  | fst: TyS Γ mn (a * b) → TyI Γ (.fst mn) a
-  | snd: TyS Γ mn (a * b) → TyI Γ (.snd mn) b
+  | fst: TyS Γ p (a * b) → TyI Γ (.fst p) a
+  | snd: TyS Γ p (a * b) → TyI Γ (.snd p) b
   | inh : TyS Γ m a → TyI Γ m a
   deriving Repr
 end

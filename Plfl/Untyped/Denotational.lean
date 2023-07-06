@@ -74,4 +74,12 @@ theorem conj_subset₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
 | .conjR₂ h => refine .conjR₂ ?_; exact conj_subset₂ h
 | .trans h h' => refine .trans ?_ h'; exact conj_subset₂ h
 
+open Untyped (Context)
+open Untyped.Notation
+
 -- https://plfa.github.io/Denotational/#environments
+abbrev Env (Γ : Context) : Type := ∀ (_ : Γ ∋ ✶), Value
+
+namespace Env
+  instance : EmptyCollection (Env ∅) where emptyCollection := by intro.
+end Env

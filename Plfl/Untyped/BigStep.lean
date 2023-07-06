@@ -170,6 +170,6 @@ theorem Eval.cbn_reduce {n : ∅‚ ✶ ⊢ ✶} (ev : m ⇓' (ƛ n)) : m —↠
   match ev with
   | .lam => rfl
   | .ap evl evmn' => rename_i l m n'; calc l □ n'
-      _ —↠ (ƛ m) □ n' := ap_congr₁ <| cbn_reduce evl
+      _ —↠ (ƛ m) □ n' := ap_congr₁ evl.cbn_reduce
       _ —→ m ⇷ n' := lamβ
-      _ —↠ (ƛ n) := cbn_reduce evmn'
+      _ —↠ (ƛ n) := evmn'.cbn_reduce

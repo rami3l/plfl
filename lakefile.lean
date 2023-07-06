@@ -2,7 +2,9 @@ import Lake
 open Lake DSL
 
 package plfl {
-  -- add package configuration options here
+  -- https://leanprover.zulipchat.com/#narrow/stream/270676-lean4/topic/.60autoImplicit.20true.60.20is.20evil/near/355145527
+  moreLeanArgs := #["-DrelaxedAutoImplicit=false"]
+  moreServerArgs := #["-DrelaxedAutoImplicit=false"]
 }
 
 require mathlib from git
@@ -10,7 +12,7 @@ require mathlib from git
 
 @[default_target]
 lean_lib Plfl {
-  -- add library configuration options here
+  -- add package configuration options here
 }
 
 -- @[default_target]
