@@ -26,53 +26,54 @@ end Notation
 
 open Notation
 
-inductive Subset : Value → Value → Type where
-| bot : Subset ⊥ v
-| conjL : Subset v u → Subset w u → Subset (v ⊔ w) u
-| conjR₁ : Subset u v → Subset u (v ⊔ w)
-| conjR₂ : Subset u w → Subset u (v ⊔ w)
-| trans : Subset u v → Subset v w → Subset u w
-| fn : Subset v' v → Subset w w' → Subset (v ⇾ w) (v' ⇾ w')
-| dist : Subset (v ⇾ (w ⊔ w')) ((v ⇾ w) ⊔ (v ⇾ w'))
+/-- `Sub` adapts the familiar notion of subset to the `Value` type. -/
+inductive Sub : Value → Value → Type where
+| bot : Sub ⊥ v
+| conjL : Sub v u → Sub w u → Sub (v ⊔ w) u
+| conjR₁ : Sub u v → Sub u (v ⊔ w)
+| conjR₂ : Sub u w → Sub u (v ⊔ w)
+| trans : Sub u v → Sub v w → Sub u w
+| fn : Sub v' v → Sub w w' → Sub (v ⇾ w) (v' ⇾ w')
+| dist : Sub (v ⇾ (w ⊔ w')) ((v ⇾ w) ⊔ (v ⇾ w'))
 
 namespace Notation
-  scoped infix:40 " ⊑ " => Subset
+  scoped infix:40 " ⊑ " => Sub
 end Notation
 
-instance : Trans Subset Subset Subset where trans := .trans
+instance : Trans Sub Sub Sub where trans := .trans
 
 @[refl]
-def Subset.refl : v ⊑ v := match v with
+def Sub.refl : v ⊑ v := match v with
 | ⊥ => .bot
 | _ ⇾ _ => .fn refl refl
 | .conj _ _ => .conjL (.conjR₁ refl) (.conjR₂ refl)
 
 /-- The `⊔` operation is monotonic with respect to `⊑`. -/
 @[simp]
-def subset_subset (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
+def sub_sub (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
   .conjL (.conjR₁ d₁) (.conjR₂ d₂)
 
 @[simp]
 def conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
   _ ⊑ ((v ⊔ v') ⇾ w) ⊔ ((v ⊔ v') ⇾ w') := .dist
-  _ ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := open Subset in by
-    apply subset_subset <;> refine .fn ?_ .refl
+  _ ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := open Sub in by
+    apply sub_sub <;> refine .fn ?_ .refl
     · apply conjR₁; rfl
     · apply conjR₂; rfl
 
 @[simp]
-def conj_subset₁ : u ⊔ v ⊑ w → u ⊑ w := by intro
+def conj_sub₁ : u ⊔ v ⊑ w → u ⊑ w := by intro
 | .conjL h _ => exact h
-| .conjR₁ h => refine .conjR₁ ?_; exact conj_subset₁ h
-| .conjR₂ h => refine .conjR₂ ?_; exact conj_subset₁ h
-| .trans h h' => refine .trans ?_ h'; exact conj_subset₁ h
+| .conjR₁ h => refine .conjR₁ ?_; exact conj_sub₁ h
+| .conjR₂ h => refine .conjR₂ ?_; exact conj_sub₁ h
+| .trans h h' => refine .trans ?_ h'; exact conj_sub₁ h
 
 @[simp]
-def conj_subset₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
+def conj_sub₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
 | .conjL _ h => exact h
-| .conjR₁ h => refine .conjR₁ ?_; exact conj_subset₂ h
-| .conjR₂ h => refine .conjR₂ ?_; exact conj_subset₂ h
-| .trans h h' => refine .trans ?_ h'; exact conj_subset₂ h
+| .conjR₁ h => refine .conjR₁ ?_; exact conj_sub₂ h
+| .conjR₂ h => refine .conjR₂ ?_; exact conj_sub₂ h
+| .trans h h' => refine .trans ?_ h'; exact conj_sub₂ h
 
 open Untyped (Context)
 open Untyped.Notation
@@ -109,7 +110,7 @@ namespace Env
     ext x; cases x <;> rfl
 
   /-- We extend the `⊑` relation point-wise to `Env`s. -/
-  abbrev Subset (γ δ : Env Γ) : Type := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
+  abbrev Sub (γ δ : Env Γ) : Type := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
   abbrev conj (γ δ : Env Γ) : Env Γ | x => γ x ⊔ δ x
 end Env
 
@@ -117,25 +118,25 @@ namespace Notation
   instance : Bot (Env Γ) where bot _ := ⊥
   instance : Sup (Env γ) where sup := Env.conj
 
-  scoped infix:40 " `⊑ " => Env.Subset
+  scoped infix:40 " `⊑ " => Env.Sub
 end Notation
 
-namespace Env.Subset
+namespace Env.Sub
   @[refl] def refl : γ `⊑ γ | _ => .refl
   @[simp] def conjR₁ (γ δ : Env Γ) : γ `⊑ (γ ⊔ δ) | _ => .conjR₁ .refl
   @[simp] def conjR₂ (γ δ : Env Γ) : δ `⊑ (γ ⊔ δ) | _ => .conjR₂ .refl
-end Env.Subset
+end Env.Sub
 
 -- https://plfa.github.io/Denotational/#denotational-semantics
 /--
 `Eval γ m v` means that evaluating the term `m` in the environment `γ` gives `v`.
 -/
-inductive Eval : Env Γ → (Γ ⊢ ✶) → Value → Type where
+inductive Eval : Env Γ → (Γ ⊢ ✶) → Value → Prop where
 | var : Eval γ (` i) (γ i)
-| fnElim : Eval γ l (v ⇾ w) → Eval γ m v → Eval γ (l □ m) w
-| fnIntro : Eval (γ`‚ v) n w → Eval γ (ƛ n) (v ⇾ w)
-| botIntro : Eval γ m ⊥
-| conjIntro : Eval γ m v → Eval γ m w → Eval γ m (v ⊔ w)
+| ap : Eval γ l (v ⇾ w) → Eval γ m v → Eval γ (l □ m) w
+| fn : Eval (γ`‚ v) n w → Eval γ (ƛ n) (v ⇾ w)
+| bot : Eval γ m ⊥
+| conj : Eval γ m v → Eval γ m w → Eval γ m (v ⊔ w)
 | sub : Eval γ m v → w ⊑ v → Eval γ m w
 
 namespace Notation
@@ -146,46 +147,44 @@ end Notation
 Relaxation of table lookup in application,
 allowing an argument to match an input entry if the latter is less than the former.
 -/
-def Eval.fnElimSub (d₁ : γ ⊢ l ⇓ v₁ ⇾ w) (d₂ : γ ⊢ m ⇓ v₂) (lt : v₁ ⊑ v₂)
-: γ ⊢ l □ m ⇓ w
-:= d₁.fnElim <| d₂.sub lt
+def Eval.ap_sub (d₁ : γ ⊢ l ⇓ v₁ ⇾ w) (d₂ : γ ⊢ m ⇓ v₂) (lt : v₁ ⊑ v₂) : γ ⊢ l □ m ⇓ w
+:= d₁.ap <| d₂.sub lt
 
 namespace Example
   open Untyped.Term (id delta omega twoC addC)
   open Eval
 
   -- `id` can be seen as a mapping table for both `⊥ ⇾ ⊥` and `(⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)`.
-  def denotId₁ : γ ⊢ id ⇓ ⊥ ⇾ ⊥ := .fnIntro .var
-  def denotId₂ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fnIntro .var
+  def denot_id₁ : γ ⊢ id ⇓ ⊥ ⇾ ⊥ := .fn .var
+  def denot_id₂ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fn .var
 
   -- `id` also produces a table containing both of the previous tables.
-  def denotId₃ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) :=
-    denotId₁.conjIntro denotId₂
+  def denot_id₃ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) := denot_id₁.conj denot_id₂
 
   -- Oops, self application!
-  def denotIdApId : `∅ ⊢ id □ id ⇓ v ⇾ v := .fnElim (.fnIntro .var) (.fnIntro .var)
+  def denot_id_ap_id : `∅ ⊢ id □ id ⇓ v ⇾ v := .ap (.fn .var) (.fn .var)
 
   -- In `def twoC f u := f (f u)`,
   -- `f`'s table must include two entries, both `u ⇾ v` and `v ⇾ w`.
   -- `twoC` then merges those two entries into one: `u ⇾ w`.
-  def denotTwoC : `∅ ⊢ twoC ⇓ (u ⇾ v ⊔ v ⇾ w) ⇾ u ⇾ w := by
-    apply fnIntro; apply fnIntro; apply fnElim
+  def denot_twoC : `∅ ⊢ twoC ⇓ (u ⇾ v ⊔ v ⇾ w) ⇾ u ⇾ w := by
+    apply fn; apply fn; apply ap
     · apply sub .var; exact .conjR₂ .refl
-    · apply fnElim
+    · apply ap
       · apply sub .var; exact .conjR₁ .refl
       · exact .var
 
-  def denotDelta : `∅ ⊢ delta ⇓ (v ⇾ w ⊔ v) ⇾ w := by
-    apply fnIntro; apply fnElim (v := v) <;> apply sub .var
+  def denot_delta : `∅ ⊢ delta ⇓ (v ⇾ w ⊔ v) ⇾ w := by
+    apply fn; apply ap (v := v) <;> apply sub .var
     · exact .conjR₁ .refl
     · exact .conjR₂ .refl
 
   example : `∅ ⊢ omega ⇓ ⊥ := by
-    apply fnElim denotDelta; apply conjIntro
-    · exact fnIntro (v := ⊥) .botIntro
-    · exact .botIntro
+    apply ap denot_delta; apply conj
+    · exact fn (v := ⊥) .bot
+    · exact .bot
 
-  def denotOmega : `∅ ⊢ omega ⇓ ⊥ := .botIntro
+  def denot_omega : `∅ ⊢ omega ⇓ ⊥ := .bot
 
   -- https://plfa.github.io/Denotational/#exercise-denot-plus%E1%B6%9C-practice
 
@@ -193,11 +192,11 @@ namespace Example
   -- · n u v = w
   -- · m u w = x
 
-  def denotAddC
+  def denot_addC
   : let m := u ⇾ w ⇾ x
     let n := u ⇾ v ⇾ w
     `∅ ⊢ addC ⇓ m ⇾ n ⇾ u ⇾ v ⇾ x
-  := by apply_rules [fnIntro, fnElim, var]
+  := by apply_rules [fn, ap, var]
 end Example
 
 -- https://plfa.github.io/Denotational/#denotations-and-denotational-equality
@@ -205,6 +204,12 @@ end Example
 A denotational semantics can be seen as a function from a term
 to some relation between `Env`s and `Value`s.
 -/
-abbrev Denot (Γ : Context) : Type 1 := Env Γ → Value → Type
+abbrev Denot (Γ : Context) : Type := Env Γ → Value → Prop
 
 def ℰ (m : Γ ⊢ ✶) : Denot Γ | γ, v => γ ⊢ m ⇓ v
+
+-- Denotational Equality
+
+-- Nothing to do thanks to proof irrelevance.
+-- Instead of defining a new `≃` operator to denote the equivalence of `Denot`s,
+-- the regular `=` should be enough in our case.
