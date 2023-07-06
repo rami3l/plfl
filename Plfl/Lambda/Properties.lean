@@ -25,7 +25,7 @@ def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
 
 -- https://plfa.github.io/Properties/#exercise-canonical--practice
 inductive Canonical : Term → Ty → Type where
-| canLam : ∅‚ x ⦂ tx ⊢ n ⦂ tn → Canonical (ƛ x : n) (tx =⇒ tn)
+| canLam : ∅‚ x ⦂ t ⊢ n ⦂ u → Canonical (ƛ x : n) (t =⇒ u)
 | canZero : Canonical 𝟘 ℕt
 | canSucc : Canonical n ℕt → Canonical (ι n) ℕt
 
