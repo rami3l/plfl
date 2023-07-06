@@ -345,6 +345,8 @@ def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
 
 namespace Term
   abbrev id : Γ ⊢ ✶ := ƛ #0
+  abbrev delta : Γ ⊢ ✶ := ƛ #0 □ #0
+  abbrev omega : Γ ⊢ ✶ := delta □ delta
 
   -- https://plfa.github.io/Untyped/#naturals-and-fixpoint
   /-
