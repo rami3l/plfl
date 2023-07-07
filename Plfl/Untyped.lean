@@ -129,7 +129,6 @@ namespace Subst
   If one context maps to another,
   the mapping holds after adding the same variable to both contexts.
   -/
-  @[simp]
   def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
     intro ρ; intro
     | .z => exact .z
@@ -148,7 +147,6 @@ namespace Subst
   abbrev shift : Γ ⊢ a → Γ‚ b ⊢ a := rename .s
 
   -- https://plfa.github.io/Untyped/#simultaneous-substitution
-  @[simp]
   def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
     intro σ; intro
     | .z => exact `.z
@@ -175,7 +173,6 @@ namespace Subst
   /--
   Substitution for one free variable `v` in the term `n`.
   -/
-  @[simp]
   abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
     refine subst ?_ n; exact subst₁σ v
 end Subst
@@ -345,7 +342,6 @@ deriving Repr
 inductive Steps (l : Γ ⊢ a) where
 | steps : ∀{n : Γ ⊢ a}, (l —↠ n) → Result n → Steps l
 
-@[simp]
 def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
   if gas = 0 then
     ⟨.refl, .dnf⟩

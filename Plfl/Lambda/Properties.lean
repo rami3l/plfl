@@ -11,13 +11,11 @@ open Context Context.IsTy Term.Reduce
 open Sum
 
 -- https://plfa.github.io/Properties/#values-do-not-reduce
-@[simp]
 def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
   · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
 
-@[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
   have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
@@ -30,20 +28,17 @@ inductive Canonical : Term → Ty → Type where
 | canSucc : Canonical n ℕt → Canonical (ι n) ℕt
 
 namespace Canonical
-  @[simp]
   def ofIsTy : ∅ ⊢ m ⦂ t → Value m → Canonical m t
   | tyLam l, Value.lam => canLam l
   | tyZero, V𝟘 => canZero
   | tySucc t, Value.succ m => canSucc <| ofIsTy t m
 
-  @[simp]
   def wellTyped : Canonical v t → ∅ ⊢ v ⦂ t × Value v := by
     intro
     | canLam h => exact ⟨tyLam h, Value.lam⟩
     | canZero => exact ⟨tyZero, V𝟘⟩
     | canSucc h => have ⟨ty, v⟩ := wellTyped h; exact ⟨tySucc ty, Value.succ v⟩
 
-  @[simp]
   def wellTypedInv : ∅ ⊢ v ⦂ t × Value v → Canonical v t := by
     intro
     | ⟨tyLam ty, Value.lam⟩ => exact canLam ty
@@ -70,7 +65,6 @@ namespace Canonical
   /--
   The Canonical forms are exactly the well-typed values.
   -/
-  @[simp]
   instance : Canonical v t ≃ (∅ ⊢ v ⦂ t) × Value v where
     toFun := wellTyped
     invFun := wellTypedInv
@@ -90,7 +84,6 @@ inductive Progress (m : Term) where
 --^ In general, the rule of thumb is to consider the easy case (`step`) before the hard case (`done`) for easier proofs.
 
 namespace Progress
-  @[simp]
   def ofIsTy : ∅ ⊢ m ⦂ t → Progress m := by
     intro
     | tyVar _ => contradiction
@@ -118,19 +111,16 @@ end Progress
 def progress : ∅ ⊢ m ⦂ t → Progress m := Progress.ofIsTy
 
 -- https://plfa.github.io/Properties/#exercise-value-practice
-@[simp]
 def IsTy.isValue : ∅ ⊢ m ⦂ t → Decidable (Nonempty (Value m)) := by
   intro j; cases progress j
   · rename_i n r; have := Reduce.emptyValue r
     apply isFalse; simp_all only [not_nonempty_iff]
   · exact isTrue ⟨by trivial⟩
 
-@[simp]
 def Progress' (m : Term) : Type := Value m ⊕ Σ n, m —→ n
 
 namespace Progress'
   -- https://plfa.github.io/Properties/#exercise-progress-practice
-  @[simp]
   def ofIsTy : ∅ ⊢ m ⦂ t → Progress' m := by
     intro
     | tyVar _ => contradiction
@@ -173,7 +163,6 @@ namespace Renaming
   /--
   If one context maps to another, the mapping holds after adding the same variable to both contexts.
   -/
-  @[simp]
   def ext
   : (∀ {x tx}, Γ ∋ x ⦂ tx → Δ ∋ x ⦂ tx)
   → (∀ {x y tx ty}, Γ‚ y ⦂ ty ∋ x ⦂ tx → Δ‚ y ⦂ ty ∋ x ⦂ tx)
@@ -182,7 +171,6 @@ namespace Renaming
     | z => exact z
     | s nxy lx => exact s nxy <| ρ lx
 
-  @[simp]
   def rename
   : (∀ {x t}, Γ ∋ x ⦂ t → Δ ∋ x ⦂ t)
   → (∀ {m t}, Γ ⊢ m ⦂ t → Δ ⊢ m ⦂ t)
@@ -203,15 +191,12 @@ namespace Renaming
         · exact rename (ext ρ) jn
     | tyMu j => apply tyMu; exact rename (ext ρ) j
 
-  @[simp]
   def Lookup.weaken : ∅ ∋ m ⦂ t → Γ ∋ m ⦂ t := by
     intro.
 
-  @[simp]
   def weaken : ∅ ⊢ m ⦂ t → Γ ⊢ m ⦂ t := by
     intro j; refine rename ?_ j; exact Lookup.weaken
 
-  @[simp]
   def drop
   : Γ‚ x ⦂ t'‚ x ⦂ t ⊢ y ⦂ u
   → Γ‚ x ⦂ t ⊢ y ⦂ u
@@ -224,7 +209,6 @@ namespace Renaming
       · contradiction
       · case s j => refine s ?_ j; trivial
 
-  @[simp]
   def Lookup.swap
   : (x ≠ x') → (Γ‚ x' ⦂ t'‚ x ⦂ t ∋ y ⦂ u)
   → (Γ‚ x ⦂ t‚ x' ⦂ t' ∋ y ⦂ u)
@@ -238,7 +222,6 @@ namespace Renaming
         · trivial
         · apply s <;> trivial
 
-  @[simp]
   def swap
   : x ≠ x' → Γ‚ x' ⦂ t'‚ x ⦂ t ⊢ y ⦂ u
   → Γ‚ x ⦂ t‚ x' ⦂ t' ⊢ y ⦂ u
@@ -247,7 +230,6 @@ namespace Renaming
 end Renaming
 
 -- https://plfa.github.io/Properties/#substitution
-@[simp]
 def subst
 : ∅ ⊢ y ⦂ t → Γ‚ x ⦂ t ⊢ n ⦂ u
 → Γ ⊢ n[x := y] ⦂ u
@@ -280,7 +262,6 @@ def subst
     · apply tyMu; apply subst j; exact swap (by trivial) k
 
 -- https://plfa.github.io/Properties/#preservation
-@[simp]
 def preserve : ∅ ⊢ m ⦂ t → (m —→ n) → ∅ ⊢ n ⦂ t := by
   intro
   | tyAp jl jm, lamβ _ => apply subst jm; cases jl; · trivial
@@ -310,7 +291,6 @@ deriving Repr
 
 open Result Steps
 
-@[simp]
 def eval (gas : ℕ) (j : ∅ ⊢ l ⦂ t) : Steps l := open Clos in
   if gas = 0 then
     ⟨nil, dnf⟩
@@ -390,7 +370,6 @@ example : Stuck (` "x") := by
 /--
 No well-typed term can be stuck.
 -/
-@[simp]
 def unstuck : ∅ ⊢ m ⦂ t → IsEmpty (Stuck m) := by
   intro j; is_empty; simp_all only [and_imp]
   intro n ns; cases progress j
@@ -400,7 +379,6 @@ def unstuck : ∅ ⊢ m ⦂ t → IsEmpty (Stuck m) := by
 /--
 After any number of steps, a well-typed term remains well typed.
 -/
-@[simp]
 def preserves : ∅ ⊢ m ⦂ t → (m —↠ n) → ∅ ⊢ n ⦂ t := by
   intro j; intro
   | Clos.nil => trivial
@@ -410,12 +388,10 @@ def preserves : ∅ ⊢ m ⦂ t → (m —↠ n) → ∅ ⊢ n ⦂ t := by
 _Well-typed terms don't get stuck_ (WTTDGS):
 starting from a well-typed term, taking any number of reduction steps leads to a term that is not stuck.
 -/
-@[simp]
 def preserves_unstuck : ∅ ⊢ m ⦂ t → (m —↠ n) → IsEmpty (Stuck n) := by
   intro j r; have := preserves j r; exact unstuck this
 
 -- https://plfa.github.io/Properties/#reduction-is-deterministic
-@[simp]
 def Reduce.det : (m —→ n) → (m —→ n') → n = n' := by
   intro r r'; cases r
   · case lamβ =>
