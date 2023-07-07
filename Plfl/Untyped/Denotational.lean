@@ -4,6 +4,7 @@ import Plfl.Init
 import Plfl.Untyped
 import Plfl.Untyped.Substitution
 
+import Mathlib.Data.Vector.Basic
 import Mathlib.Tactic
 
 namespace Denotational
@@ -126,6 +127,11 @@ namespace Env.Sub
   @[refl] def refl : γ `⊑ γ | _ => .refl
   @[simp] def conjR₁ (γ δ : Env Γ) : γ `⊑ (γ ⊔ δ) | _ => .conjR₁ .refl
   @[simp] def conjR₂ (γ δ : Env Γ) : δ `⊑ (γ ⊔ δ) | _ => .conjR₂ .refl
+
+  @[simp]
+  def ext_le (lt : v ⊑ v') : (γ`‚ v) `⊑ (γ`‚ v')
+  | .z => lt
+  | .s _ => .refl
 end Env.Sub
 
 -- https://plfa.github.io/Denotational/#denotational-semantics
@@ -216,27 +222,75 @@ def ℰ (m : Γ ⊢ ✶) : Denot Γ | γ, v => γ ⊢ m ⇓ v
 -- Instead of defining a new `≃` operator to denote the equivalence of `Denot`s,
 -- the regular `=` should be enough in our case.
 
--- https://plfa.github.io/Denotational/#renaming-preserves-denotations
 section
   open Untyped.Subst
   open Substitution
   open Eval
 
+  -- https://plfa.github.io/Denotational/#renaming-preserves-denotations
+
+  variable {γ : Env Γ} {δ : Env Δ}
+
   @[simp]
-  def ext_sub {γ : Env Γ} {δ : Env Δ} (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
+  def ext_sub (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
   : (γ`‚ v) `⊑ (δ`‚ v) ∘ ext ρ
   | .z => .refl
   | .s i => lt i
 
   /-- The result of evaluation is conserved after renaming. -/
   @[simp]
-  theorem rename_pres {γ : Env Γ} {δ : Env Δ} (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
-  (d : γ ⊢ m ⇓ v) : δ ⊢ rename ρ m ⇓ v
-  := by induction d generalizing Δ δ with
+  def rename_pres (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ) (d : γ ⊢ m ⇓ v)
+  : δ ⊢ rename ρ m ⇓ v
+  := by induction d generalizing Δ with
   | var => apply sub .var; apply lt
   | ap _ _ r r' => exact .ap (r ρ lt) (r' ρ lt)
   | fn _ r => apply fn; rename_i v _ _ _; exact r (ext ρ) (ext_sub ρ lt)
   | bot => exact .bot
   | conj _ _ r r' => exact .conj (r ρ lt) (r' ρ lt)
   | sub _ lt' r => exact (r ρ lt).sub lt'
+
+  -- https://plfa.github.io/Denotational/#environment-strengthening-and-identity-renaming
+
+  variable {γ δ : Env Γ}
+
+  /-- The result of evaluation is conserved under a superset. -/
+  @[simp]
+  def sub_env (d : γ ⊢ m ⇓ v) (lt : γ `⊑ δ) : δ ⊢ m ⇓ v := by
+    convert rename_pres id lt d; exact rename_id.symm
+
+  @[simp]
+  lemma up_env (d : (γ`‚ u₁) ⊢ m ⇓ v) (lt : u₁ ⊑ u₂) : (γ`‚ u₂) ⊢ m ⇓ v := by
+    apply sub_env d; exact Env.Sub.ext_le lt
+end
+
+-- https://plfa.github.io/Denotational/#exercise-denot-church-recommended
+/--
+A path consists of `n` edges (`⇾`s) and `n + 1` vertices (`Value`s).
+-/
+def Value.path : (n : ℕ) → Vector Value (n + 1) → Value
+| 0, _ => ⊥
+| i + 1, vs => by
+  refine path i ?_ ⊔ vs[i] ⇾ vs[i + 1]
+  convert vs.take (i + 1) using 1; simp_arith
+
+/--
+Returns the denotation of the nth Church numeral for a given path.
+-/
+def Value.church (n : ℕ) (vs : Vector Value (n + 1)) : Value :=
+  path n vs ⇾ vs.head ⇾ vs.last
+
+namespace Example
+  example : Value.church 0 ⟨[u], rfl⟩ = (⊥ ⇾ u ⇾ u) := rfl
+  example : Value.church 1 ⟨[u, v], rfl⟩ = ((⊥ ⊔ u ⇾ v) ⇾ u ⇾ v) := rfl
+  example : Value.church 2 ⟨[u, v, w], rfl⟩ = ((⊥ ⊔ u ⇾ v ⊔ v ⇾ w) ⇾ u ⇾ w) := rfl
+end Example
+
+section
+  open Untyped.Term (church)
+  open Eval
+
+  def denot_church {vs} : `∅ ⊢ church n ⇓ Value.church n vs := by
+    apply_rules [fn]; induction n with
+    | zero => let ⟨_ :: [], _⟩ := vs; exact var
+    | succ n r => sorry -- apply ap;
 end

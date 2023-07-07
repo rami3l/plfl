@@ -115,6 +115,12 @@ namespace Term
   abbrev fourC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #1 $ #1 $ #0)
   abbrev addC : Γ ⊢ ✶ := ƛ ƛ ƛ ƛ (#3 □ #1 $ #2 □ #1 □ #0)
   abbrev fourC' : Γ ⊢ ✶ := addC □ twoC □ twoC
+
+  def church (n : ℕ) : Γ ⊢ ✶ := ƛ ƛ applyN n
+  where
+    applyN
+    | 0 => #0
+    | n + 1 => #1 □ applyN n
 end Term
 
 namespace Subst
