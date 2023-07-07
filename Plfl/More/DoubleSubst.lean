@@ -130,7 +130,6 @@ lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
       exact subst_var n
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L104
-@[simp]
 theorem subst₁_shift : (t' : Γ ⊢ b) ⇸ shift (t : Γ ⊢ a) = t := by
   simp_all only [subst₁, subst₁σ, subst_comp]
   conv_lhs => arg 1; ext a t'; simp
@@ -259,7 +258,6 @@ lemma exts_subst_comp
   | .s i => exact shift_subst (σ i)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L170
-@[simp]
 theorem subst_subst_comp
 {σ : ∀ {a}, Γ ∋ a → Δ ⊢ a} {σ' : ∀ {a}, Δ ∋ a → Φ ⊢ a}
 (t : Γ ⊢ a)

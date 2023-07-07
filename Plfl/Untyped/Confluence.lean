@@ -98,7 +98,6 @@ open Substitution
 abbrev par_subst (σ : Subst Γ Δ) (σ' : Subst Γ Δ) := ∀ {a} {x : Γ ∋ a}, σ x ⇛ σ' x
 
 section
-  @[simp]
   lemma par_rename {ρ : Rename Γ Δ} {m m' : Γ ⊢ a} : (m ⇛ m') → (rename ρ m ⇛ rename ρ m')
   := open PReduce in by intro
   | .var => exact .var
@@ -108,7 +107,6 @@ section
     rename_i n n' v v'; have rn' := par_rename (ρ := ext ρ) rn; have rv' := par_rename (ρ := ρ) rv
     have := lamβ rn' rv'; rwa [rename_subst_comm] at this
 
-  @[simp]
   theorem par_subst_exts {σ τ : Subst Γ Δ} (s : par_subst σ τ)
   : ∀ {b}, par_subst (exts (b := b) σ) (exts τ)
   := by
@@ -116,7 +114,6 @@ section
     | .z => exact .var
     | .s i => exact par_rename s
 
-  @[simp]
   theorem subst_par {σ τ : Subst Γ Δ} {m m' : Γ ⊢ a}
   (s : par_subst σ τ) (p : m ⇛ m') : (⟪σ⟫ m ⇛ ⟪τ⟫ m')
   := open PReduce in by
@@ -128,13 +125,11 @@ section
 
   variable {n n' : Γ‚ a ⊢ b} {m m': Γ ⊢ a}
 
-  @[simp]
   theorem par_subst₁σ (p : m ⇛ m') : par_subst (subst₁σ m) (subst₁σ m') := by
     intro _ i; cases i with simp only [subst₁σ]
     | z => exact p
     | s i => exact .var
 
-  @[simp]
   theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : (n ⇷ m) ⇛ (n' ⇷ m') :=
     subst_par (par_subst₁σ pm) pn
 end
@@ -187,7 +182,6 @@ theorem par_confluence {l m m' : Γ ⊢ a} (lm : l ⇛* m) (lm' : l ⇛* m')
   exists n', mn'; exact .trans m'n nn'
 
 -- https://plfa.github.io/Confluence/#proof-of-confluence-for-reduction
-@[simp]
 theorem confluence {l m m' : Γ ⊢ a} (lm : l —↠ m) (lm' : l —↠ m')
 : ∃ (n : Γ ⊢ a), (m —↠ n) ∧ (m' —↠ n)
 := by

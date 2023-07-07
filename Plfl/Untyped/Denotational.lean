@@ -51,11 +51,9 @@ def Sub.refl : v ⊑ v := match v with
 | .conj _ _ => .conjL (.conjR₁ refl) (.conjR₂ refl)
 
 /-- The `⊔` operation is monotonic with respect to `⊑`. -/
-@[simp]
 def sub_sub (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
   .conjL (.conjR₁ d₁) (.conjR₂ d₂)
 
-@[simp]
 def conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
   _ ⊑ ((v ⊔ v') ⇾ w) ⊔ ((v ⊔ v') ⇾ w') := .dist
   _ ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := open Sub in by
@@ -63,14 +61,12 @@ def conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := ca
     · apply conjR₁; rfl
     · apply conjR₂; rfl
 
-@[simp]
 def conj_sub₁ : u ⊔ v ⊑ w → u ⊑ w := by intro
 | .conjL h _ => exact h
 | .conjR₁ h => refine .conjR₁ ?_; exact conj_sub₁ h
 | .conjR₂ h => refine .conjR₂ ?_; exact conj_sub₁ h
 | .trans h h' => refine .trans ?_ h'; exact conj_sub₁ h
 
-@[simp]
 def conj_sub₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
 | .conjL _ h => exact h
 | .conjR₁ h => refine .conjR₁ ?_; exact conj_sub₂ h
@@ -107,7 +103,6 @@ namespace Env
   abbrev init (γ : Env (Γ‚ ✶)) : Env Γ := (γ ·.s)
   abbrev last (γ : Env (Γ‚ ✶)) : Value := γ .z
 
-  @[simp]
   theorem init_last (γ : Env (Γ‚ ✶)) : γ = (γ.init`‚ γ.last) := by
     ext x; cases x <;> rfl
 
@@ -128,7 +123,6 @@ namespace Env.Sub
   @[simp] def conjR₁ (γ δ : Env Γ) : γ `⊑ (γ ⊔ δ) | _ => .conjR₁ .refl
   @[simp] def conjR₂ (γ δ : Env Γ) : δ `⊑ (γ ⊔ δ) | _ => .conjR₂ .refl
 
-  @[simp]
   def ext_le (lt : v ⊑ v') : (γ`‚ v) `⊑ (γ`‚ v')
   | .z => lt
   | .s _ => .refl
@@ -154,7 +148,6 @@ end Notation
 Relaxation of table lookup in application,
 allowing an argument to match an input entry if the latter is less than the former.
 -/
-@[simp]
 def Eval.ap_sub (d₁ : γ ⊢ l ⇓ v₁ ⇾ w) (d₂ : γ ⊢ m ⇓ v₂) (lt : v₁ ⊑ v₂) : γ ⊢ l □ m ⇓ w
 := d₁.ap <| d₂.sub lt
 
@@ -231,14 +224,12 @@ section
 
   variable {γ : Env Γ} {δ : Env Δ}
 
-  @[simp]
   def ext_sub (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
   : (γ`‚ v) `⊑ (δ`‚ v) ∘ ext ρ
   | .z => .refl
   | .s i => lt i
 
   /-- The result of evaluation is conserved after renaming. -/
-  @[simp]
   def rename_pres (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ) (d : γ ⊢ m ⇓ v)
   : δ ⊢ rename ρ m ⇓ v
   := by induction d generalizing Δ with
@@ -254,11 +245,9 @@ section
   variable {γ δ : Env Γ}
 
   /-- The result of evaluation is conserved under a superset. -/
-  @[simp]
   def sub_env (d : γ ⊢ m ⇓ v) (lt : γ `⊑ δ) : δ ⊢ m ⇓ v := by
     convert rename_pres id lt d; exact rename_id.symm
 
-  @[simp]
   lemma up_env (d : (γ`‚ u₁) ⊢ m ⇓ v) (lt : u₁ ⊑ u₂) : (γ`‚ u₂) ⊢ m ⇓ v := by
     apply sub_env d; exact Env.Sub.ext_le lt
 end
@@ -290,7 +279,12 @@ section
   open Eval
 
   def denot_church {vs} : `∅ ⊢ church n ⇓ Value.church n vs := by
-    apply_rules [fn]; induction n with
+    induction n with apply_rules [fn]
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
-    | succ n r => sorry -- apply ap;
+    | succ n r =>
+      have vsInit : Vector Value (n + 1) := by convert vs.take (n + 1) using 1; simp_arith
+      have := @r vsInit
+      apply ap (v := Value.path n vsInit ⇾ vs.head)
+      · sorry
+      · sorry
 end

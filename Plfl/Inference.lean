@@ -282,14 +282,12 @@ Nothing to do. Relevant definitions have been derived.
 -/
 
 -- https://plfa.github.io/Inference/#unique-types
-@[simp]
 theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
   cases i with try trivial
   | z => cases j <;> trivial
   | s => cases j with try trivial
     | s => apply unique <;> trivial
 
-@[simp]
 theorem TyS.unique (t : Γ ⊢ x ↥ a) (u : Γ ⊢ x ↥ b) : a = b := by
   match t with
   | .var i => cases u with | var j => apply Lookup.unique <;> trivial

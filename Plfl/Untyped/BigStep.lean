@@ -54,7 +54,6 @@ example
 := .ap .lam .lam
 
 -- https://plfa.github.io/BigStep/#the-big-step-semantics-is-deterministic
-@[simp]
 theorem Eval.determ : γ ⊢ m ⇓ v → γ ⊢ m ⇓ v' → v = v' := by intro
 | .lam, .lam => rfl
 | .var h mc, .var h' mc' =>
@@ -87,23 +86,19 @@ section
 
   @[simp] lemma ClosEnv.empty_equiv_ids : ∅ ~~ₑ ids := by intro.
 
-  @[simp]
   abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ :=
     (n ⇸ ·) ∘ exts σ
 
-  @[simp]
   lemma subst₁σ_exts {σ : Subst Γ Δ} {m : Δ ⊢ b} {i : Γ ∋ ✶}
   : (ext_subst σ m) (.s i) = σ i
   := by simp only [subst₁σ_exts_cons]
 
-  @[simp]
   theorem ClosEnv.ext {γ : ClosEnv Γ} {σ : Subst Γ ∅} {n : ∅ ⊢ ✶}
   (ee : γ ~~ₑ σ) (e : v ~~ n) : (γ‚' v ~~ₑ ext_subst σ n)
   := by intro
   | .z => exact e
   | .s i => simp only [subst₁σ_exts]; exact ee i
 
-  @[simp]
   theorem Eval.closEnvEquiv {γ : ClosEnv Γ} {σ : Subst Γ ∅} {m : Γ ⊢ ✶}
   (ev : γ ⊢ m ⇓ v) (ee : γ ~~ₑ σ)
   : Σ (n : ∅ ⊢ ✶), PProd (⟪σ⟫ m —↠ n) (v ~~ n)
@@ -127,7 +122,6 @@ section
   If call-by-name can produce a value,
   then the program can be reduced to a λ-abstraction via β-rules.
   -/
-  @[simp]
   theorem Eval.cbn_reduce {m : ∅ ⊢ ✶} {δ : ClosEnv Δ} {n' : Δ‚ ✶ ⊢ ✶}
   (ev : ∅ ⊢ m ⇓ .clos (ƛ n') δ)
   : ∃ (n : ∅‚ ✶ ⊢ ✶), m —↠ ƛ n
@@ -152,7 +146,6 @@ end Notation
 
 open Notation
 
-@[simp]
 theorem Eval.determ : m ⇓' v → m ⇓' v' → v = v' := by intro
 | .lam, .lam => rfl
 | .ap mc mc₁, .ap mc' mc₁' =>
@@ -165,7 +158,6 @@ open Untyped.Subst
 If call-by-name can produce a value,
 then the program can be reduced to a λ-abstraction via β-rules.
 -/
-@[simp]
 theorem Eval.cbn_reduce {n : ∅‚ ✶ ⊢ ✶} (ev : m ⇓' (ƛ n)) : m —↠ ƛ n := by
   match ev with
   | .lam => rfl
