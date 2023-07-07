@@ -203,7 +203,9 @@ namespace Term.Reduce
   lemma Clos.toClos'_left_inv : ∀ {x : m —↠ n}, x.toClos'.toClos = x := by
     intro
     | nil => rfl
-    | cons car cdr => simp_all; exact toClos'_left_inv (x := cdr)
+    | cons car cdr =>
+      simp_all only [Clos'.toClos, trans, cons.injEq, heq_eq_eq, true_and]
+      exact toClos'_left_inv (x := cdr)
 
   lemma Clos.toClos'_inj
   : @Function.Injective (m —↠ n) (m —↠' n) Clos.toClos'
@@ -229,7 +231,7 @@ section confluence
 
   def Deterministic.toDiamond : Deterministic → Diamond := by
     unfold Deterministic Diamond; intro h l m n lm ln
-    have heq := h lm ln; simp_all
+    have heq := h lm ln; simp_all only
     exists n; exact ⟨nil, nil⟩
 
   def Deterministic.toConfluence : Deterministic → Confluence
@@ -419,21 +421,22 @@ section examples
 
   -- https://plfa.github.io/Lambda/#non-examples
   example : ∅ ⊬ 𝟘 □ 1 := by
-    by_contra h; simp_all; cases h.some; contradiction
+    by_contra h; simp_all only [not_isEmpty_iff]
+    cases h.some; contradiction
 
   abbrev illLam := ƛ "x" : `"x" □ `"x"
 
   lemma nty_illLam : ∅ ⊬ illLam := by
-    by_contra h; simp_all
+    by_contra h; simp_all only [not_isEmpty_iff]
     let tyLam (tyAp (tyVar hx) (tyVar hx')) := h.some
-    have := Lookup.functional hx hx'; simp_all
+    have := Lookup.functional hx hx'; simp_all only [Ty.t_to_t'_ne_t]
 
   -- https://plfa.github.io/Lambda/#quiz-3
   example : ∅‚ "y" ⦂ ℕt =⇒ ℕt‚ "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := by
     apply tyAp <;> trivial
 
   example : ∅‚ "y" ⦂ ℕt =⇒ ℕt‚ "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
-    by_contra h; simp_all
+    by_contra h; simp_all only [not_isEmpty_iff]
     let ⟨ht⟩ := h
     cases ht; rename_i hy hx
     · cases hx; rename_i ty hx
@@ -443,7 +446,7 @@ section examples
     apply tyLam; apply tyAp <;> trivial
 
   example : ∅‚ "x" ⦂ t ⊬ `"x" □ `"x" := by
-    by_contra h; simp_all
+    by_contra h; simp_all only [not_isEmpty_iff]
     let ⟨ht⟩ := h
     cases ht; rename_i hx
     · cases hx; rename_i hx
