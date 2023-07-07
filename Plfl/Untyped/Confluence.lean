@@ -130,7 +130,7 @@ section
 
   @[simp]
   theorem par_subst₁σ (p : m ⇛ m') : par_subst (subst₁σ m) (subst₁σ m') := by
-    intro _ i; cases i with simp [subst₁σ]
+    intro _ i; cases i with simp only [subst₁σ]
     | z => exact p
     | s i => exact .var
 

@@ -26,7 +26,7 @@ instance : Ty ≃ Unit where
 
 instance : Unique Ty where
   default := ✶
-  uniq := by simp
+  uniq := by simp only [implies_true]
 
 -- https://plfa.github.io/Untyped/#contexts
 abbrev Context : Type := List Ty
@@ -306,12 +306,17 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
   intro
   | ` x => apply done; exact ′`ₙ x
   | ƛ n =>
-    have : sizeOf n < sizeOf (ƛ n) := by aesop?
+    have : sizeOf n < sizeOf (ƛ n) := by simp only [
+      Term.lam.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff, true_or
+    ]
     match progress n with
     | .done n => apply done; exact ƛₙ n
     | .step n => apply step; exact lamζ n
   | ` x □ m =>
-    have : sizeOf m < sizeOf (` x □ m) := by aesop?
+    have : sizeOf m < sizeOf (` x □ m) := by simp only [
+      Term.ap.sizeOf_spec, Term.var.sizeOf_spec, Ty.star.sizeOf_spec,
+      lt_add_iff_pos_left, add_pos_iff, true_or, or_self
+    ]
     match progress m with
     | .done m => apply done; exact ′`ₙx □ₙ m
     | .step m => apply step; exact apξ₂ m
@@ -321,8 +326,10 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
     match progress l with
     | .step l => simp_all only [namedPattern]; apply step; exact apξ₁ l
     | .done (′l') =>
-      simp_all only [namedPattern]; rename_i h; simp_all [h.symm]
-      have : sizeOf m < sizeOf (l □ m) := by aesop?
+      simp_all only [namedPattern]; rename_i h; simp only [h.symm, Term.ap.sizeOf_spec]
+      have : sizeOf m < sizeOf (l □ m) := by
+        aesop_subst h
+        simp only [Term.ap.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff, true_or, or_self]
       match progress m with
       | .done m => apply done; exact ′l' □ₙ m
       | .step m => apply step; exact apξ₂ m
