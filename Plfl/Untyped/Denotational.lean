@@ -4,7 +4,7 @@ import Plfl.Init
 import Plfl.Untyped
 import Plfl.Untyped.Substitution
 
-import Mathlib.Data.Vector.Basic
+import Mathlib.Data.Vector
 import Mathlib.Tactic
 
 namespace Denotational
@@ -126,6 +126,10 @@ namespace Env.Sub
   def ext_le (lt : v ⊑ v') : (γ`‚ v) `⊑ (γ`‚ v')
   | .z => lt
   | .s _ => .refl
+
+  def le_ext (lt : γ `⊑ γ') : (γ`‚ v) `⊑ (γ'`‚ v)
+  | .z => .refl
+  | .s _ => by apply lt
 end Env.Sub
 
 -- https://plfa.github.io/Denotational/#denotational-semantics
@@ -148,8 +152,8 @@ end Notation
 Relaxation of table lookup in application,
 allowing an argument to match an input entry if the latter is less than the former.
 -/
-def Eval.ap_sub (d₁ : γ ⊢ l ⇓ v₁ ⇾ w) (d₂ : γ ⊢ m ⇓ v₂) (lt : v₁ ⊑ v₂) : γ ⊢ l □ m ⇓ w
-:= d₁.ap <| d₂.sub lt
+def Eval.ap_sub (d : γ ⊢ l ⇓ v ⇾ w) (d' : γ ⊢ m ⇓ v') (lt : v ⊑ v') : γ ⊢ l □ m ⇓ w
+:= d.ap <| d'.sub lt
 
 namespace Example
   open Untyped.Term (id delta omega twoC addC)
@@ -248,7 +252,7 @@ section
   def sub_env (d : γ ⊢ m ⇓ v) (lt : γ `⊑ δ) : δ ⊢ m ⇓ v := by
     convert rename_pres id lt d; exact rename_id.symm
 
-  lemma up_env (d : (γ`‚ u₁) ⊢ m ⇓ v) (lt : u₁ ⊑ u₂) : (γ`‚ u₂) ⊢ m ⇓ v := by
+  lemma up_env (d : (γ`‚ u) ⊢ m ⇓ v) (lt : u ⊑ u') : (γ`‚ u') ⊢ m ⇓ v := by
     apply sub_env d; exact Env.Sub.ext_le lt
 end
 
@@ -266,7 +270,7 @@ def Value.path : (n : ℕ) → Vector Value (n + 1) → Value
 Returns the denotation of the nth Church numeral for a given path.
 -/
 def Value.church (n : ℕ) (vs : Vector Value (n + 1)) : Value :=
-  path n vs ⇾ vs.head ⇾ vs.last
+  path n vs ⇾ vs[0] ⇾ vs[n]
 
 namespace Example
   example : Value.church 0 ⟨[u], rfl⟩ = (⊥ ⇾ u ⇾ u) := rfl
@@ -277,14 +281,25 @@ end Example
 section
   open Untyped.Term (church)
   open Eval
+  open Env.Sub
 
   def denot_church {vs} : `∅ ⊢ church n ⇓ Value.church n vs := by
-    induction n with apply_rules [fn]
+    apply_rules [fn]; induction n with
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
-      have vsInit : Vector Value (n + 1) := by convert vs.take (n + 1) using 1; simp_arith
-      have := @r vsInit
-      apply ap (v := Value.path n vsInit ⇾ vs.head)
-      · sorry
-      · sorry
+      let vsInit := vs.take (n + 1)
+      have vsInit_eq : Vector Value (min (n + 1) (n + 2)) = Vector Value (n + 1) := by
+        simp_arith
+      let vsInit' : Vector Value (n + 1) := vsInit_eq ▸ vsInit
+      unfold church.applyN; apply ap (v := vs[n])
+      · apply sub var; simp only [Env.snoc, Value.path]; apply Sub.conjR₂; rfl
+      · convert sub_env (@r vsInit') ?_ using 1
+        · -- TODO: Should be trivial with the right lemmas.
+          change List.get _ _ = List.get _ _
+          rw [List.get_take (i := n) (j := n + 1)]; congr <;> simp_arith
+          · change List.take (n + 1) (Vector.toList _) = Vector.toList _
+            rw [←vs.toList_take]; -- apply congr_arg
+            · sorry
+        · have : vsInit'[0] = vs[0] := by sorry -- TODO: Same as before
+          rw [this]; apply_rules [le_ext, ext_le]; exact .conjR₁ .refl
 end
