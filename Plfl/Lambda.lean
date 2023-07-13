@@ -62,7 +62,6 @@ deriving BEq, DecidableEq, Repr
 namespace Value
   notation "V𝟘" => zero
 
-  @[simp]
   def ofNat : (n : ℕ) → Value (Term.ofNat n)
   | 0 => V𝟘
   | n + 1 => succ <| ofNat n
@@ -76,7 +75,6 @@ namespace Term
   /--
   `x.subst y v` substitutes term `v` for all free occurrences of variable `y` in term `x`.
   -/
-  @[simp]
   def subst : Term → Sym → Term → Term
   | ` x, y, v => if x = y then v else ` x
   | ƛ x : n, y, v => if x = y then ƛ x : n else ƛ x : n.subst y v
@@ -148,7 +146,6 @@ namespace Term.Reduce
   infix:20 " —↠ " => Clos
 
   namespace Clos
-    @[simp]
     def length : (m —↠ n) → Nat
     | nil => 0
     | cons _ cdr => 1 + cdr.length
@@ -156,7 +153,6 @@ namespace Term.Reduce
     abbrev one (car : m —→ n) : (m —↠ n) := cons car nil
     instance : Coe (m —→ n) (m —↠ n) where coe := one
 
-    @[simp]
     def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
@@ -170,7 +166,6 @@ namespace Term.Reduce
     instance : Trans Reduce Reduce Clos where
       trans c c' := cons c <| cons c' nil
 
-    @[simp]
     def transOne : (l —↠ m) → (m —→ n) → (l —↠ n)
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
@@ -186,13 +181,11 @@ namespace Term.Reduce
 
   infix:20 " —↠' " => Clos'
 
-  @[simp]
   def Clos.toClos' : (m —↠ n) → (m —↠' n) := by
     intro
     | nil => exact Clos'.refl
     | cons h h' => exact Clos'.trans (Clos'.step h) h'.toClos'
 
-  @[simp]
   def Clos'.toClos : (m —↠' n) → (m —↠ n) := by
     intro
     | refl => exact Clos.nil
@@ -200,10 +193,11 @@ namespace Term.Reduce
     | trans h h' => apply Clos.trans <;> (apply toClos; assumption)
 
   -- https://plfa.github.io/Lambda/#exercise-practice
-  lemma Clos.toClos'_left_inv : ∀ {x : m —↠ n}, x.toClos'.toClos = x := by
-    intro
-    | nil => rfl
-    | cons car cdr => simp_all; exact toClos'_left_inv (x := cdr)
+  lemma Clos.toClos'_left_inv : ∀ {x : m —↠ n}, x.toClos'.toClos = x := by intro
+  | nil => rfl
+  | cons car cdr =>
+    simp_all only [Clos'.toClos, trans, cons.injEq, heq_eq_eq, true_and]
+    exact toClos'_left_inv (x := cdr)
 
   lemma Clos.toClos'_inj
   : @Function.Injective (m —↠ n) (m —↠' n) Clos.toClos'
@@ -229,7 +223,7 @@ section confluence
 
   def Deterministic.toDiamond : Deterministic → Diamond := by
     unfold Deterministic Diamond; intro h l m n lm ln
-    have heq := h lm ln; simp_all
+    have heq := h lm ln; simp_all only
     exists n; exact ⟨nil, nil⟩
 
   def Deterministic.toConfluence : Deterministic → Confluence
@@ -285,7 +279,6 @@ namespace Ty
 
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
 
-  @[simp]
   theorem t_to_t'_ne_t (t t' : Ty) : (t =⇒ t') ≠ t := by
     by_contra h; match t with
     | nat => trivial
@@ -317,8 +310,8 @@ namespace Context
   -/
   @[aesop safe [constructors, cases]]
   inductive Lookup : Context → Sym → Ty → Type where
-  | z : Lookup (Γ‚ x ⦂ tx) x tx
-  | s : x ≠ y → Lookup Γ x tx → Lookup (Γ‚ y ⦂ ty) x tx
+  | z : Lookup (Γ‚ x ⦂ t) x t
+  | s : x ≠ y → Lookup Γ x t → Lookup (Γ‚ y ⦂ u) x t
   deriving DecidableEq
 
   notation:40 c " ∋ " s " ⦂ " t:51 => Lookup c s t
@@ -330,13 +323,11 @@ namespace Context
     apply s _; apply s _; apply z; repeat trivial
 
   -- https://plfa.github.io/Lambda/#lookup-is-functional
-  @[simp]
-  theorem Lookup.functional : Γ ∋ x ⦂ tx → Γ ∋ x ⦂ tx' → tx = tx' := by
-    intro
-    | z, z => rfl
-    | z, s _ e => trivial
-    | s _ e, z => trivial
-    | s _ e, s _ e' => exact functional e e'
+  theorem Lookup.functional : Γ ∋ x ⦂ t → Γ ∋ x ⦂ t' → t = t' := by intro
+  | z, z => rfl
+  | z, s _ e => trivial
+  | s _ e, z => trivial
+  | s _ e, s _ e' => exact functional e e'
 
   -- https://plfa.github.io/Lambda/#typing-judgment
   /--
@@ -344,9 +335,9 @@ namespace Context
   `IsTy c t tt` means that `t` can be inferred to be of type `tt` in the context `c`.
   -/
   inductive IsTy : Context → Term → Ty → Type where
-  | tyVar : Γ ∋ x ⦂ tx → IsTy Γ (` x) tx
-  | tyLam : IsTy (Γ‚ x ⦂ tx) n tn → IsTy Γ (ƛ x : n) (tx =⇒ tn)
-  | tyAp : IsTy Γ l (tx =⇒ tn) → IsTy Γ x tx → IsTy Γ (l □ x) tn
+  | tyVar : Γ ∋ x ⦂ t → IsTy Γ (` x) t
+  | tyLam : IsTy (Γ‚ x ⦂ t) n u → IsTy Γ (ƛ x : n) (t =⇒ u)
+  | tyAp : IsTy Γ l (t =⇒ u) → IsTy Γ x t → IsTy Γ (l □ x) u
   | tyZero : IsTy Γ 𝟘 ℕt
   | tySucc : IsTy Γ n ℕt → IsTy Γ (ι n) ℕt
   | tyCase : IsTy Γ l ℕt → IsTy Γ m t → IsTy (Γ‚ x ⦂ ℕt) n t → IsTy Γ (𝟘? l [zero: m |succ x: n]) t
@@ -419,21 +410,22 @@ section examples
 
   -- https://plfa.github.io/Lambda/#non-examples
   example : ∅ ⊬ 𝟘 □ 1 := by
-    by_contra h; simp_all; cases h.some; contradiction
+    by_contra h; simp_all only [not_isEmpty_iff]
+    cases h.some; contradiction
 
   abbrev illLam := ƛ "x" : `"x" □ `"x"
 
   lemma nty_illLam : ∅ ⊬ illLam := by
-    by_contra h; simp_all
+    by_contra h; simp_all only [not_isEmpty_iff]
     let tyLam (tyAp (tyVar hx) (tyVar hx')) := h.some
-    have := Lookup.functional hx hx'; simp_all
+    have := Lookup.functional hx hx'; simp_all only [Ty.t_to_t'_ne_t]
 
   -- https://plfa.github.io/Lambda/#quiz-3
   example : ∅‚ "y" ⦂ ℕt =⇒ ℕt‚ "x" ⦂ ℕt ⊢ `"y" □ `"x" ⦂ ℕt := by
     apply tyAp <;> trivial
 
   example : ∅‚ "y" ⦂ ℕt =⇒ ℕt‚ "x" ⦂ ℕt ⊬ `"x" □ `"y" := by
-    by_contra h; simp_all
+    by_contra h; simp_all only [not_isEmpty_iff]
     let ⟨ht⟩ := h
     cases ht; rename_i hy hx
     · cases hx; rename_i ty hx
@@ -442,8 +434,8 @@ section examples
   example : ∅‚ "y" ⦂ ℕt =⇒ ℕt ⊢ ƛ "x" : `"y" □ `"x" ⦂ ℕt =⇒ ℕt := by
     apply tyLam; apply tyAp <;> trivial
 
-  example : ∅‚ "x" ⦂ tx ⊬ `"x" □ `"x" := by
-    by_contra h; simp_all
+  example : ∅‚ "x" ⦂ t ⊬ `"x" □ `"x" := by
+    by_contra h; simp_all only [not_isEmpty_iff]
     let ⟨ht⟩ := h
     cases ht; rename_i hx
     · cases hx; rename_i hx

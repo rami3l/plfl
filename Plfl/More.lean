@@ -48,7 +48,6 @@ namespace Ty
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
   example : Ty := ℕp * ℕt
 
-  @[simp]
   theorem t_to_t'_ne_t (t t' : Ty) : (t =⇒ t') ≠ t := by
     by_contra h; match t with
     | nat => contradiction
@@ -167,7 +166,6 @@ namespace Term
   example : ∅‚ ℕt =⇒ ℕt‚ ℕt ⊢ ℕt := #1 $ #1 $ #0
   example : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
 
-  @[simp]
   def ofNat : ℕ → Γ ⊢ ℕt
   | 0 => .zero
   | n + 1 => .succ <| ofNat n
@@ -208,7 +206,6 @@ namespace Subst
   If one context maps to another,
   the mapping holds after adding the same variable to both contexts.
   -/
-  @[simp]
   def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
     intro ρ; intro
     | .z => exact .z
@@ -218,7 +215,6 @@ namespace Subst
   If one context maps to another,
   then the type judgements are the same in both contexts.
   -/
-  @[simp]
   def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
     intro ρ; intro
     | ` x => exact ` (ρ x)
@@ -256,7 +252,6 @@ namespace Subst
   If the variables in one context maps to some terms in another,
   the mapping holds after adding the same variable to both contexts.
   -/
-  @[simp]
   def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
     intro σ; intro
     | .z => exact `.z
@@ -300,14 +295,12 @@ namespace Subst
   /--
   Substitution for one free variable `v` in the term `n`.
   -/
-  @[simp]
-  abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
+    abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
     refine subst ?_ n; exact subst₁σ v
 
   /--
   Substitution for two free variables `v` and `w'` in the term `n`.
   -/
-  @[simp]
   abbrev subst₂ (v : Γ ⊢ b) (w : Γ ⊢ c) (n : Γ‚ b‚ c ⊢ a) : Γ ⊢ a := by
     refine subst ?_ n; introv; intro
     | .z => exact w
@@ -350,7 +343,7 @@ inductive Value : Γ ⊢ a → Type where
 | right : Value v → Value (.right v)
 | unit : Value ◯
 | nil : Value .nil
-| cons : Value (v : Γ ⊢ a) → Value (vs : Γ ⊢ .list a) → Value (.cons v vs)
+| cons : ∀ {v : Γ ⊢ a} {vs : Γ ⊢ .list a}, Value v → Value vs → Value (.cons v vs)
 deriving DecidableEq, Repr
 
 namespace Notation
@@ -358,7 +351,6 @@ namespace Notation
 end Notation
 
 namespace Value
-  @[simp]
   def ofNat : (n : ℕ) → @Value Γ ℕt (Term.ofNat n)
   | 0 => V𝟘
   | n + 1 => succ <| ofNat n
@@ -463,7 +455,6 @@ namespace Reduce
 end Reduce
 
 -- https://plfa.github.io/DeBruijn/#values-do-not-reduce
-@[simp]
 def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v with try contradiction
@@ -477,7 +468,6 @@ def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
     | consξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
     | consξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
 
-@[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
   have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
@@ -570,7 +560,6 @@ deriving BEq, DecidableEq, Repr
 inductive Steps (l : Γ ⊢ a) where
 | steps : ∀{n : Γ ⊢ a}, (l —↠ n) → Result n → Steps l
 
-@[simp]
 def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
   if gas = 0 then
     ⟨.refl, .dnf⟩

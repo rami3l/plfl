@@ -28,11 +28,10 @@ namespace PReduce
     | ƛ n => apply lamζ; apply refl
     | l □ m => apply apξ <;> apply refl
 
-  inductive Clos : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-  | refl : Clos m m
-  | head : PReduce l m → Clos m n → Clos l n
-  attribute [refl] Clos.refl
+  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) PReduce
 end PReduce
+
+open Relation.ReflTransGen (head_induction_on)
 
 namespace Notation
   scoped infix:20 " ⇛ " => PReduce
@@ -43,14 +42,8 @@ open Notation
 
 namespace PReduce.Clos
   abbrev single (p : m ⇛ n) : (m ⇛* n) := .head p .refl
-
-  abbrev tail : (m ⇛* n) → (n ⇛ n') → (m ⇛* n')
-  | .refl, p => .single p
-  | .head p' ps, p => .head p' <| ps.tail p
-
-  abbrev trans : (m ⇛* n) → (n ⇛* n') → (m ⇛* n')
-  | .refl, ps => ps
-  | .head p ps', ps => .head p <| ps'.trans ps
+  abbrev tail : (m ⇛* n) → (n ⇛ n') → (m ⇛* n') := .tail
+  abbrev trans : (m ⇛* n) → (n ⇛* n') → (m ⇛* n') := .trans
 
   instance : Coe (m ⇛ n) (m ⇛* n) where coe := .single
 end PReduce.Clos
@@ -82,20 +75,21 @@ namespace PReduce
     _ —↠ l' □ m' := ap_congr₂ rm.toReduceClos
 end PReduce
 
-instance instNonemptyPReduceReduceClos : Nonempty (m ⇛* n) ≃ (m —↠ n) where
-  toFun sps := toFun sps.some
+instance instNonemptyPReduceReduceClos : (m ⇛* n) ≃ (m —↠ n) where
+  toFun := toFun
   invFun := invFun
   left_inv _ := by simp only
   right_inv _ := by simp only
   where
-    toFun {m n} : (m ⇛* n) → (m —↠ n)
-    | .refl => .refl
-    | .head r rs => r.toReduceClos.trans <| toFun rs
+    toFun {m n} : (m ⇛* n) → (m —↠ n) := by
+      intro rs; induction rs using head_induction_on with
+      | refl => rfl
+      | head r _ => apply r.toReduceClos.trans; trivial
 
-    invFun {m n} : (m —↠ n) → Nonempty (m ⇛* n) := open Relation.ReflTransGen in by
-      intro rs; refine rs.head_induction_on ?_ ?_
-      · constructor; rfl
-      · intro _ _ r _ rs; constructor; refine .head (PReduce.fromReduce r) ?_; exact rs.some
+    invFun {m n} : (m —↠ n) → (m ⇛* n) := by
+      intro rs; induction rs using head_induction_on with
+      | refl => rfl
+      | head r _ => refine .head (PReduce.fromReduce r) ?_; trivial
 
 open Untyped.Subst
 open Substitution
@@ -104,7 +98,6 @@ open Substitution
 abbrev par_subst (σ : Subst Γ Δ) (σ' : Subst Γ Δ) := ∀ {a} {x : Γ ∋ a}, σ x ⇛ σ' x
 
 section
-  @[simp]
   lemma par_rename {ρ : Rename Γ Δ} {m m' : Γ ⊢ a} : (m ⇛ m') → (rename ρ m ⇛ rename ρ m')
   := open PReduce in by intro
   | .var => exact .var
@@ -114,7 +107,6 @@ section
     rename_i n n' v v'; have rn' := par_rename (ρ := ext ρ) rn; have rv' := par_rename (ρ := ρ) rv
     have := lamβ rn' rv'; rwa [rename_subst_comm] at this
 
-  @[simp]
   theorem par_subst_exts {σ τ : Subst Γ Δ} (s : par_subst σ τ)
   : ∀ {b}, par_subst (exts (b := b) σ) (exts τ)
   := by
@@ -122,7 +114,6 @@ section
     | .z => exact .var
     | .s i => exact par_rename s
 
-  @[simp]
   theorem subst_par {σ τ : Subst Γ Δ} {m m' : Γ ⊢ a}
   (s : par_subst σ τ) (p : m ⇛ m') : (⟪σ⟫ m ⇛ ⟪τ⟫ m')
   := open PReduce in by
@@ -134,13 +125,11 @@ section
 
   variable {n n' : Γ‚ a ⊢ b} {m m': Γ ⊢ a}
 
-  @[simp]
   theorem par_subst₁σ (p : m ⇛ m') : par_subst (subst₁σ m) (subst₁σ m') := by
-    intro _ i; cases i with simp [subst₁σ]
+    intro _ i; cases i with simp only [subst₁σ]
     | z => exact p
     | s i => exact .var
 
-  @[simp]
   theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : (n ⇷ m) ⇛ (n' ⇷ m') :=
     subst_par (par_subst₁σ pm) pn
 end
@@ -176,27 +165,26 @@ theorem par_diamond {m n n' : Γ ⊢ a} (p : m ⇛ n) (p' : m ⇛ n')
 
 -- https://plfa.github.io/Confluence/#proof-of-confluence-for-parallel-reduction
 theorem strip {m n n' : Γ ⊢ a} (mn : m ⇛ n) (mn' : m ⇛* n')
-: Σ (l : Γ ⊢ a), PProd (n ⇛* l) (n' ⇛ l)
-:= by match mn' with
-| .refl => exists n, .refl
-| .head mm' m'n' =>
-  rename_i m' f; have ⟨l, hl⟩ := strip (par_triangle mm') m'n'
+: ∃ (l : Γ ⊢ a), (n ⇛* l) ∧ (n' ⇛ l)
+:= by induction mn' using head_induction_on generalizing n with
+| refl => exists n, .refl
+| head mm' _ r =>
+  rename_i m' f; have ⟨l, hl⟩ := r (par_triangle mm')
   exists l; refine ⟨?_, hl.2⟩; exact .trans (par_triangle mn) hl.1
 
 theorem par_confluence {l m m' : Γ ⊢ a} (lm : l ⇛* m) (lm' : l ⇛* m')
-: Σ (n : Γ ⊢ a), (m ⇛* n) × (m' ⇛* n)
-:= by match lm with
-| .refl => exists m', lm'
-| .head lm mm₁ =>
-  have ⟨n, mn, m'n⟩ := strip lm lm'
-  have ⟨n', m₁n', nn'⟩ := par_confluence mm₁ mn
-  exists n', m₁n'; exact .trans m'n nn'
+: ∃ (n : Γ ⊢ a), (m ⇛* n) ∧ (m' ⇛* n)
+:= by induction lm using head_induction_on generalizing m' with
+| refl => exists m', lm'
+| head lm₁ _ r =>
+  have ⟨n, m₁n, m'n⟩ := strip lm₁ lm'
+  have ⟨n', mn', nn'⟩ := r m₁n
+  exists n', mn'; exact .trans m'n nn'
 
 -- https://plfa.github.io/Confluence/#proof-of-confluence-for-reduction
-@[simp]
 theorem confluence {l m m' : Γ ⊢ a} (lm : l —↠ m) (lm' : l —↠ m')
 : ∃ (n : Γ ⊢ a), (m —↠ n) ∧ (m' —↠ n)
 := by
   let equiv := @instNonemptyPReduceReduceClos Γ a
-  have ⟨n, mn, m'n⟩:= par_confluence (equiv.invFun lm).some (equiv.invFun lm').some
-  exists n; exact ⟨equiv.toFun ⟨mn⟩, equiv.toFun ⟨m'n⟩⟩
+  have ⟨n, mn, m'n⟩:= par_confluence (equiv.invFun lm) (equiv.invFun lm')
+  exists n; exact ⟨equiv.toFun mn, equiv.toFun m'n⟩

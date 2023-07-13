@@ -19,7 +19,6 @@ deriving BEq, DecidableEq, Repr
 namespace Sim
   scoped infix:40 " ~ " => Sim
 
-  @[simp]
   noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (Nonempty (t ~ t)) :=
     open Classical (choice) in by
       cases t with try (apply isFalse; intro ⟨s⟩; contradiction)
@@ -44,7 +43,6 @@ namespace Sim
   def fromEq {s : (m : Γ ⊢ a) ~ m'} : (m' = n) → (m ~ n) := by
     intro h; rwa [h] at s
 
-  @[simp]
   theorem toEq {s : (m : Γ ⊢ a) ~ m'} : (m ~ n) → (m' = n) := by
     intro s'; match s, s' with
     | s, .var => cases s with
@@ -57,17 +55,14 @@ namespace Sim
       | «let» sm' sn' => simp only [toEq (s := sm') sm, toEq (s := sn') sn]
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-values
-  @[simp]
   def commValue {m m' : Γ ⊢ a} : (m ~ m') → Value m → Value m'
   | .lam _, .lam => .lam
 
   -- https://plfa.github.io/Bisimulation/#exercise-val¹-practice
-  @[simp]
   def commValue_inv {m m' : Γ ⊢ a} : (m ~ m') → Value m' → Value m
   | .lam _, .lam => .lam
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-renaming
-  @[simp]
   def commRename (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) {m m' : Γ ⊢ a}
   : m ~ m' → rename ρ m ~ rename ρ m'
   := by
@@ -80,7 +75,6 @@ namespace Sim
       trivial
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-substitution
-  @[simp]
   def commExts {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
   (gs : ∀ {a}, (x : Γ ∋ a) → σ x ~ σ' x)
   : (∀ {a b}, (x : Γ‚ b ∋ a) → exts σ x ~ exts σ' x)
@@ -89,7 +83,6 @@ namespace Sim
     | .z => simp only [exts]; exact .var
     | .s x => simp only [exts]; apply commRename Lookup.s; apply gs
 
-  @[simp]
   def commSubst {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
   (gs : ∀ {a}, (x : Γ ∋ a) → @σ a x ~ @σ' a x)
   {m m' : Γ ⊢ a}
@@ -103,7 +96,6 @@ namespace Sim
       first | apply commSubst gs | apply commSubst (commExts gs)
       trivial
 
-  @[simp]
   def commSubst₁ {m m' : Γ ⊢ b} {n n' : Γ‚ b ⊢ a}
   (sm : m ~ m') (sn : n ~ n') : m ⇸ n ~ m' ⇸ n'
   := by

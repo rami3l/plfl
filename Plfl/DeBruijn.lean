@@ -19,7 +19,6 @@ namespace Ty
 
   example : Ty := (ℕt =⇒ ℕt) =⇒ ℕt
 
-  @[simp]
   theorem t_to_t'_ne_t (t t' : Ty) : (t =⇒ t') ≠ t := by
     by_contra h; match t with
     | nat => trivial
@@ -94,7 +93,6 @@ namespace Term
   example : ∅‚ ℕt =⇒ ℕt ⊢ ℕt =⇒ ℕt := ƛ (#1 $ #1 $ #0)
   example : ∅ ⊢ (ℕt =⇒ ℕt) =⇒ ℕt =⇒ ℕt := ƛ ƛ (#1 $ #1 $ #0)
 
-  @[simp]
   def ofNat : ℕ → Γ ⊢ ℕt
   | 0 => zero
   | n + 1 => succ <| ofNat n
@@ -130,7 +128,6 @@ end Term
 If one context maps to another,
 the mapping holds after adding the same variable to both contexts.
 -/
-@[simp]
 def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
   intro ρ; intro
   | .z => exact .z
@@ -140,7 +137,6 @@ def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a :
 If one context maps to another,
 then the type judgements are the same in both contexts.
 -/
-@[simp]
 def rename : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ ⊢ a → Δ ⊢ a := by
   intro ρ; intro
   | ` x => exact ` (ρ x)
@@ -169,7 +165,6 @@ example
 If the variables in one context maps to some terms in another,
 the mapping holds after adding the same variable to both contexts.
 -/
-@[simp]
 def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
   intro σ; intro
   | .z => exact `.z
@@ -181,7 +176,6 @@ If the variables in one context maps to some terms in another,
 then the type judgements are the same before and after the mapping,
 i.e. after replacing the free variables in the former with (expanded) terms.
 -/
-@[simp]
 def subst : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ ⊢ a → Δ ⊢ a := by
   intro σ; intro
   | ` x => exact σ x
@@ -233,7 +227,6 @@ deriving BEq, DecidableEq, Repr
 namespace Value
   notation "V𝟘" => zero
 
-  @[simp]
   def ofNat : (n : ℕ) → @Value Γ ℕt (Term.ofNat n)
   | 0 => V𝟘
   | n + 1 => succ <| ofNat n
@@ -270,7 +263,6 @@ namespace Reduce
   infix:20 " —↠ " => Clos
 
   namespace Clos
-    @[simp]
     def length : (m —↠ n) → Nat
     | nil => 0
     | cons _ cdr => 1 + cdr.length
@@ -278,7 +270,6 @@ namespace Reduce
     @[simp] abbrev one (car : m —→ n) : (m —↠ n) := cons car nil
     instance : Coe (m —→ n) (m —↠ n) where coe := one
 
-    @[simp]
     def trans : (l —↠ m) → (m —↠ n) → (l —↠ n)
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
@@ -292,7 +283,6 @@ namespace Reduce
     instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where
       trans c c' := cons c <| cons c' nil
 
-    @[simp]
     def transOne : (l —↠ m) → (m —→ n) → (l —↠ n)
     | nil, c => c
     | cons h c, c' => cons h <| c.trans c'
@@ -313,13 +303,11 @@ namespace Reduce
 end Reduce
 
 -- https://plfa.github.io/DeBruijn/#values-do-not-reduce
-@[simp]
 def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
   · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
 
-@[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
   have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
@@ -332,7 +320,6 @@ inductive Progress (m : ∅ ⊢ a) where
 | step : (m —→ n) → Progress m
 | done : Value m → Progress m
 
-@[simp]
 def progress : (m : ∅ ⊢ a) → Progress m := open Progress Reduce in by
   intro
   | ` _ => contradiction
@@ -363,7 +350,6 @@ inductive Steps (l : Γ ⊢ a) where
 | steps : ∀{n : Γ ⊢ a}, (l —↠ n) → Result n → Steps l
 deriving Repr
 
-@[simp]
 def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
   if gas = 0 then
     ⟨.nil, .dnf⟩

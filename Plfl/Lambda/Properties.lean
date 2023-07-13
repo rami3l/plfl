@@ -11,13 +11,11 @@ open Context Context.IsTy Term.Reduce
 open Sum
 
 -- https://plfa.github.io/Properties/#values-do-not-reduce
-@[simp]
 def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
   · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
 
-@[simp]
 def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
   have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
@@ -25,25 +23,22 @@ def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
 
 -- https://plfa.github.io/Properties/#exercise-canonical--practice
 inductive Canonical : Term → Ty → Type where
-| canLam : ∅‚ x ⦂ tx ⊢ n ⦂ tn → Canonical (ƛ x : n) (tx =⇒ tn)
+| canLam : ∅‚ x ⦂ t ⊢ n ⦂ u → Canonical (ƛ x : n) (t =⇒ u)
 | canZero : Canonical 𝟘 ℕt
 | canSucc : Canonical n ℕt → Canonical (ι n) ℕt
 
 namespace Canonical
-  @[simp]
   def ofIsTy : ∅ ⊢ m ⦂ t → Value m → Canonical m t
   | tyLam l, Value.lam => canLam l
   | tyZero, V𝟘 => canZero
   | tySucc t, Value.succ m => canSucc <| ofIsTy t m
 
-  @[simp]
   def wellTyped : Canonical v t → ∅ ⊢ v ⦂ t × Value v := by
     intro
     | canLam h => exact ⟨tyLam h, Value.lam⟩
     | canZero => exact ⟨tyZero, V𝟘⟩
     | canSucc h => have ⟨ty, v⟩ := wellTyped h; exact ⟨tySucc ty, Value.succ v⟩
 
-  @[simp]
   def wellTypedInv : ∅ ⊢ v ⦂ t × Value v → Canonical v t := by
     intro
     | ⟨tyLam ty, Value.lam⟩ => exact canLam ty
@@ -53,15 +48,15 @@ namespace Canonical
   lemma wellTyped_left_inv (c : Canonical v t)
   : wellTypedInv (wellTyped c) = c
   := by
-    cases c with simp_all
+    cases c with simp_all only [wellTypedInv, Prod.mk.eta, canSucc.injEq]
     | canSucc c' => rename_i v'; exact @wellTyped_left_inv v' ℕt c'
 
   lemma wellTyped_right_inv (c : ∅ ⊢ v ⦂ t × Value v)
   : wellTyped (wellTypedInv c) = c
   := by
     match c with
-    | ⟨tyLam ty, Value.lam⟩ => simp_all
-    | ⟨tyZero, Value.zero⟩ => simp_all
+    | ⟨tyLam ty, Value.lam⟩ => simp_all only [wellTyped]
+    | ⟨tyZero, Value.zero⟩ => simp_all only
     | ⟨tySucc ty, Value.succ n⟩ =>
         rename_i v'; have := @wellTyped_right_inv v' ℕt ⟨ty, n⟩;
         rw [wellTypedInv, wellTyped]; split
@@ -70,7 +65,6 @@ namespace Canonical
   /--
   The Canonical forms are exactly the well-typed values.
   -/
-  @[simp]
   instance : Canonical v t ≃ (∅ ⊢ v ⦂ t) × Value v where
     toFun := wellTyped
     invFun := wellTypedInv
@@ -90,7 +84,6 @@ inductive Progress (m : Term) where
 --^ In general, the rule of thumb is to consider the easy case (`step`) before the hard case (`done`) for easier proofs.
 
 namespace Progress
-  @[simp]
   def ofIsTy : ∅ ⊢ m ⦂ t → Progress m := by
     intro
     | tyVar _ => contradiction
@@ -118,18 +111,16 @@ end Progress
 def progress : ∅ ⊢ m ⦂ t → Progress m := Progress.ofIsTy
 
 -- https://plfa.github.io/Properties/#exercise-value-practice
-@[simp]
 def IsTy.isValue : ∅ ⊢ m ⦂ t → Decidable (Nonempty (Value m)) := by
   intro j; cases progress j
-  · rename_i n r; have := Reduce.emptyValue r; apply isFalse; simp_all
+  · rename_i n r; have := Reduce.emptyValue r
+    apply isFalse; simp_all only [not_nonempty_iff]
   · exact isTrue ⟨by trivial⟩
 
-@[simp]
 def Progress' (m : Term) : Type := Value m ⊕ Σ n, m —→ n
 
 namespace Progress'
   -- https://plfa.github.io/Properties/#exercise-progress-practice
-  @[simp]
   def ofIsTy : ∅ ⊢ m ⦂ t → Progress' m := by
     intro
     | tyVar _ => contradiction
@@ -161,8 +152,8 @@ namespace Progress
   instance : Progress m ≃ Progress' m where
     toFun := toProgress'
     invFun := fromProgress'
-    left_inv := by intro x; cases x <;> simp_all
-    right_inv := by intro x; cases x <;> simp_all
+    left_inv := by intro x; cases x <;> simp_all only [fromProgress', Progress', toProgress']
+    right_inv := by intro x; cases x <;> simp_all only [Progress', toProgress', fromProgress']
 end Progress
 
 -- https://plfa.github.io/Properties/#renaming
@@ -172,7 +163,6 @@ namespace Renaming
   /--
   If one context maps to another, the mapping holds after adding the same variable to both contexts.
   -/
-  @[simp]
   def ext
   : (∀ {x tx}, Γ ∋ x ⦂ tx → Δ ∋ x ⦂ tx)
   → (∀ {x y tx ty}, Γ‚ y ⦂ ty ∋ x ⦂ tx → Δ‚ y ⦂ ty ∋ x ⦂ tx)
@@ -181,7 +171,6 @@ namespace Renaming
     | z => exact z
     | s nxy lx => exact s nxy <| ρ lx
 
-  @[simp]
   def rename
   : (∀ {x t}, Γ ∋ x ⦂ t → Δ ∋ x ⦂ t)
   → (∀ {m t}, Γ ⊢ m ⦂ t → Δ ⊢ m ⦂ t)
@@ -202,15 +191,12 @@ namespace Renaming
         · exact rename (ext ρ) jn
     | tyMu j => apply tyMu; exact rename (ext ρ) j
 
-  @[simp]
   def Lookup.weaken : ∅ ∋ m ⦂ t → Γ ∋ m ⦂ t := by
     intro.
 
-  @[simp]
   def weaken : ∅ ⊢ m ⦂ t → Γ ⊢ m ⦂ t := by
     intro j; refine rename ?_ j; exact Lookup.weaken
 
-  @[simp]
   def drop
   : Γ‚ x ⦂ t'‚ x ⦂ t ⊢ y ⦂ u
   → Γ‚ x ⦂ t ⊢ y ⦂ u
@@ -223,7 +209,6 @@ namespace Renaming
       · contradiction
       · case s j => refine s ?_ j; trivial
 
-  @[simp]
   def Lookup.swap
   : (x ≠ x') → (Γ‚ x' ⦂ t'‚ x ⦂ t ∋ y ⦂ u)
   → (Γ‚ x ⦂ t‚ x' ⦂ t' ∋ y ⦂ u)
@@ -237,7 +222,6 @@ namespace Renaming
         · trivial
         · apply s <;> trivial
 
-  @[simp]
   def swap
   : x ≠ x' → Γ‚ x' ⦂ t'‚ x ⦂ t ⊢ y ⦂ u
   → Γ‚ x ⦂ t‚ x' ⦂ t' ⊢ y ⦂ u
@@ -246,25 +230,26 @@ namespace Renaming
 end Renaming
 
 -- https://plfa.github.io/Properties/#substitution
-@[simp]
 def subst
 : ∅ ⊢ y ⦂ t → Γ‚ x ⦂ t ⊢ n ⦂ u
 → Γ ⊢ n[x := y] ⦂ u
 := open Renaming in by
   intro j; intro
   | tyVar k =>
-    rename_i y; by_cases y = x <;> simp_all
+    rename_i y; by_cases y = x <;> simp_all only [Term.subst, ite_true]
     · have := weaken (Γ := Γ) j; cases k <;> try trivial
-    · cases k <;> simp_all; · repeat trivial
+    · cases k <;> simp_all only [not_true]; · repeat trivial
   | tyLam k =>
-    rename_i y _ _ _; by_cases y = x <;> (simp_all; apply tyLam)
+    rename_i y _ _ _; by_cases y = x <;> (
+      simp_all only [Term.subst, ite_true]; apply tyLam
+    )
     · subst h; apply drop; trivial
     · apply subst j; exact swap (by trivial) k
   | tyAp k l => apply tyAp <;> (apply subst j; trivial)
   | tyZero => exact tyZero
   | tySucc _ => apply tySucc; apply subst j; trivial
   | tyCase k l m =>
-    rename_i y _; by_cases y = x <;> simp_all
+    rename_i y _; by_cases y = x <;> simp_all only [Term.subst, ite_true]
     · apply tyCase
       · apply subst j; exact k
       · apply subst j; exact l
@@ -272,12 +257,11 @@ def subst
     · apply tyCase <;> (apply subst j; try trivial)
       · exact swap (by trivial) m
   | tyMu k =>
-    rename_i y _; by_cases y = x <;> simp_all
+    rename_i y _; by_cases y = x <;> simp_all only [Term.subst, ite_true]
     · subst h; apply tyMu; exact drop k
     · apply tyMu; apply subst j; exact swap (by trivial) k
 
 -- https://plfa.github.io/Properties/#preservation
-@[simp]
 def preserve : ∅ ⊢ m ⦂ t → (m —→ n) → ∅ ⊢ n ⦂ t := by
   intro
   | tyAp jl jm, lamβ _ => apply subst jm; cases jl; · trivial
@@ -307,7 +291,6 @@ deriving Repr
 
 open Result Steps
 
-@[simp]
 def eval (gas : ℕ) (j : ∅ ⊢ l ⦂ t) : Steps l := open Clos in
   if gas = 0 then
     ⟨nil, dnf⟩
@@ -352,19 +335,19 @@ section subject_expansion
 
   -- https://plfa.github.io/Properties/#exercise-subject_expansion-practice
   example : IsEmpty (∀ {n t m}, ∅ ⊢ n ⦂ t → (m —→ n) → ∅ ⊢ m ⦂ t) := by
-    by_contra; simp_all
+    by_contra; simp_all only [isEmpty_pi, not_exists, not_isEmpty_iff]
     let illCase := 𝟘? 𝟘 [zero: 𝟘 |succ "x" : add]
     have nty_ill : ∅ ⊬ illCase := by
-      by_contra; simp_all; rename_i t _ j
+      by_contra; simp_all only [not_isEmpty_iff]; rename_i t _ j
       cases t <;> (cases j; · contradiction)
     rename_i f; have := f 𝟘 ℕt illCase tyZero zeroβ
     exact nty_ill.false this.some
 
   example : IsEmpty (∀ {n t m}, ∅ ⊢ n ⦂ t → (m —→ n) → ∅ ⊢ m ⦂ t) := by
-    by_contra; simp_all
+    by_contra; simp_all only [isEmpty_pi, not_exists, not_isEmpty_iff]
     let illAp := (ƛ "x" : 𝟘) □ illLam
     have nty_ill : ∅ ⊬ illAp := by
-      by_contra; simp_all; rename_i t _ j
+      by_contra; simp_all only [not_isEmpty_iff]; rename_i t _ j
       cases t <;> (
         · cases j
           · rename_i j; cases j
@@ -387,9 +370,8 @@ example : Stuck (` "x") := by
 /--
 No well-typed term can be stuck.
 -/
-@[simp]
 def unstuck : ∅ ⊢ m ⦂ t → IsEmpty (Stuck m) := by
-  intro j; is_empty; simp_all
+  intro j; is_empty; simp_all only [and_imp]
   intro n ns; cases progress j
   · case step s => exact n.false s
   · case done v => exact ns.false v
@@ -397,7 +379,6 @@ def unstuck : ∅ ⊢ m ⦂ t → IsEmpty (Stuck m) := by
 /--
 After any number of steps, a well-typed term remains well typed.
 -/
-@[simp]
 def preserves : ∅ ⊢ m ⦂ t → (m —↠ n) → ∅ ⊢ n ⦂ t := by
   intro j; intro
   | Clos.nil => trivial
@@ -407,12 +388,10 @@ def preserves : ∅ ⊢ m ⦂ t → (m —↠ n) → ∅ ⊢ n ⦂ t := by
 _Well-typed terms don't get stuck_ (WTTDGS):
 starting from a well-typed term, taking any number of reduction steps leads to a term that is not stuck.
 -/
-@[simp]
 def preserves_unstuck : ∅ ⊢ m ⦂ t → (m —↠ n) → IsEmpty (Stuck n) := by
   intro j r; have := preserves j r; exact unstuck this
 
 -- https://plfa.github.io/Properties/#reduction-is-deterministic
-@[simp]
 def Reduce.det : (m —→ n) → (m —→ n') → n = n' := by
   intro r r'; cases r
   · case lamβ =>
@@ -420,22 +399,22 @@ def Reduce.det : (m —→ n) → (m —→ n') → n = n' := by
     · case apξ₂ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
   · case apξ₁ =>
     cases r' <;> try trivial
-    · case apξ₁ => simp_all; apply det <;> trivial
+    · case apξ₁ => simp only [Term.ap.injEq, and_true]; apply det <;> trivial
     · case apξ₂ => exfalso; rename_i r _ v _; exact (Value.emptyReduce v).false r
   · case apξ₂ =>
     cases r' <;> try trivial
     · case lamβ => exfalso; rename_i r _ _ _ v; exact (Value.emptyReduce v).false r
     · case apξ₁ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
-    · case apξ₂ => simp_all; apply det <;> trivial
+    · case apξ₂ => simp only [Term.ap.injEq, true_and]; apply det <;> trivial
   · case zeroβ => cases r' <;> try trivial
   · case succβ =>
     cases r' <;> try trivial
     · case caseξ => exfalso; rename_i v _ r; exact (Value.emptyReduce (Value.succ v)).false r
-  · case succξ => cases r'; · case succξ => simp_all; apply det <;> trivial
+  · case succξ => cases r'; · case succξ => simp only [Term.succ.injEq]; apply det <;> trivial
   · case caseξ =>
     cases r' <;> try trivial
     · case succβ => exfalso; rename_i v r; exact (Value.emptyReduce (Value.succ v)).false r
-    · case caseξ => simp_all; apply det <;> trivial
+    · case caseξ => simp only [Term.case.injEq, and_self, and_true]; apply det <;> trivial
   · case muβ => cases r'; try trivial
 
 -- https://plfa.github.io/Properties/#quiz

@@ -9,3 +9,4 @@ import Plfl.Untyped
 import Plfl.Untyped.Confluence
 import Plfl.Untyped.Substitution
 import Plfl.Untyped.BigStep
+import Plfl.Untyped.Denotational

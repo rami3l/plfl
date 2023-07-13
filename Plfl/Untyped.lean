@@ -26,7 +26,7 @@ instance : Ty ≃ Unit where
 
 instance : Unique Ty where
   default := ✶
-  uniq := by simp
+  uniq := by simp only [implies_true]
 
 -- https://plfa.github.io/Untyped/#contexts
 abbrev Context : Type := List Ty
@@ -115,6 +115,12 @@ namespace Term
   abbrev fourC : Γ ⊢ ✶ := ƛ ƛ (#1 $ #1 $ #1 $ #1 $ #0)
   abbrev addC : Γ ⊢ ✶ := ƛ ƛ ƛ ƛ (#3 □ #1 $ #2 □ #1 □ #0)
   abbrev fourC' : Γ ⊢ ✶ := addC □ twoC □ twoC
+
+  def church (n : ℕ) : Γ ⊢ ✶ := ƛ ƛ applyN n
+  where
+    applyN
+    | 0 => #0
+    | n + 1 => #1 □ applyN n
 end Term
 
 namespace Subst
@@ -123,7 +129,6 @@ namespace Subst
   If one context maps to another,
   the mapping holds after adding the same variable to both contexts.
   -/
-  @[simp]
   def ext : (∀ {a}, Γ ∋ a → Δ ∋ a) → Γ‚ b ∋ a → Δ‚ b ∋ a := by
     intro ρ; intro
     | .z => exact .z
@@ -142,7 +147,6 @@ namespace Subst
   abbrev shift : Γ ⊢ a → Γ‚ b ⊢ a := rename .s
 
   -- https://plfa.github.io/Untyped/#simultaneous-substitution
-  @[simp]
   def exts : (∀ {a}, Γ ∋ a → Δ ⊢ a) → Γ‚ b ∋ a → Δ‚ b ⊢ a := by
     intro σ; intro
     | .z => exact `.z
@@ -169,7 +173,6 @@ namespace Subst
   /--
   Substitution for one free variable `v` in the term `n`.
   -/
-  @[simp]
   abbrev subst₁ (v : Γ ⊢ b) (n : Γ‚ b ⊢ a) : Γ ⊢ a := by
     refine subst ?_ n; exact subst₁σ v
 end Subst
@@ -300,12 +303,17 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
   intro
   | ` x => apply done; exact ′`ₙ x
   | ƛ n =>
-    have : sizeOf n < sizeOf (ƛ n) := by aesop?
+    have : sizeOf n < sizeOf (ƛ n) := by simp only [
+      Term.lam.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff, true_or
+    ]
     match progress n with
     | .done n => apply done; exact ƛₙ n
     | .step n => apply step; exact lamζ n
   | ` x □ m =>
-    have : sizeOf m < sizeOf (` x □ m) := by aesop?
+    have : sizeOf m < sizeOf (` x □ m) := by simp only [
+      Term.ap.sizeOf_spec, Term.var.sizeOf_spec, Ty.star.sizeOf_spec,
+      lt_add_iff_pos_left, add_pos_iff, true_or, or_self
+    ]
     match progress m with
     | .done m => apply done; exact ′`ₙx □ₙ m
     | .step m => apply step; exact apξ₂ m
@@ -315,8 +323,10 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
     match progress l with
     | .step l => simp_all only [namedPattern]; apply step; exact apξ₁ l
     | .done (′l') =>
-      simp_all only [namedPattern]; rename_i h; simp_all [h.symm]
-      have : sizeOf m < sizeOf (l □ m) := by aesop?
+      simp_all only [namedPattern]; rename_i h; simp only [h.symm, Term.ap.sizeOf_spec]
+      have : sizeOf m < sizeOf (l □ m) := by
+        aesop_subst h
+        simp only [Term.ap.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff, true_or, or_self]
       match progress m with
       | .done m => apply done; exact ′l' □ₙ m
       | .step m => apply step; exact apξ₂ m
@@ -332,7 +342,6 @@ deriving Repr
 inductive Steps (l : Γ ⊢ a) where
 | steps : ∀{n : Γ ⊢ a}, (l —↠ n) → Result n → Steps l
 
-@[simp]
 def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
   if gas = 0 then
     ⟨.refl, .dnf⟩
@@ -344,6 +353,10 @@ def eval (gas : ℕ) (l : ∅ ⊢ a) : Steps l :=
       ⟨Trans.trans r rs, res⟩
 
 namespace Term
+  abbrev id : Γ ⊢ ✶ := ƛ #0
+  abbrev delta : Γ ⊢ ✶ := ƛ #0 □ #0
+  abbrev omega : Γ ⊢ ✶ := delta □ delta
+
   -- https://plfa.github.io/Untyped/#naturals-and-fixpoint
   /-
   The Scott encoding:

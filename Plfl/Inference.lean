@@ -206,8 +206,8 @@ mutual
   : TyS Γ l ℕt → TyI Γ m a → TyI (Γ‚ x ⦂ ℕt) n a
   → TyI Γ (𝟘? l [zero: m |succ x : n]) a
   | mu : TyI (Γ‚ x ⦂ a) n a → TyI Γ (μ x : n) a
-  | fst: TyS Γ mn (a * b) → TyI Γ (.fst mn) a
-  | snd: TyS Γ mn (a * b) → TyI Γ (.snd mn) b
+  | fst: TyS Γ p (a * b) → TyI Γ (.fst p) a
+  | snd: TyS Γ p (a * b) → TyI Γ (.snd p) b
   | inh : TyS Γ m a → TyI Γ m a
   deriving Repr
 end
@@ -282,14 +282,12 @@ Nothing to do. Relevant definitions have been derived.
 -/
 
 -- https://plfa.github.io/Inference/#unique-types
-@[simp]
 theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
   cases i with try trivial
   | z => cases j <;> trivial
   | s => cases j with try trivial
     | s => apply unique <;> trivial
 
-@[simp]
 theorem TyS.unique (t : Γ ⊢ x ↥ a) (u : Γ ⊢ x ↥ b) : a = b := by
   match t with
   | .var i => cases u with | var j => apply Lookup.unique <;> trivial
@@ -306,7 +304,7 @@ lemma Lookup.empty_ext_empty
   intro n ai; is_empty; intro ⟨a, i⟩; apply ai.false; exists a
   cases i <;> trivial
 
-def Lookup.lookup (Γ : Context) (x : Sym) : PDecidable (Σ a, Γ ∋ x ⦂ a) := by
+def Lookup.lookup (Γ : Context) (x : Sym) : Decidable' (Σ a, Γ ∋ x ⦂ a) := by
   match Γ, x with
   | [], _ => left; is_empty; intro.
   | ⟨y, b⟩ :: Γ, x =>
@@ -329,7 +327,7 @@ lemma TyS.empty_switch : Γ ⊢ m ↥ a → a ≠ b → IsEmpty (Γ ⊢ m ↥ b)
   intro ta n; is_empty; intro tb; have := ta.unique tb; contradiction
 
 mutual
-  def TermS.infer (m : TermS) (Γ : Context) : PDecidable (Σ a, Γ ⊢ m ↥ a) := by
+  def TermS.infer (m : TermS) (Γ : Context) : Decidable' (Σ a, Γ ⊢ m ↥ a) := by
     match m with
     | ` x => match Lookup.lookup Γ x with
       | .inr ⟨a, i⟩ => right; exact ⟨a, .var i⟩
@@ -349,7 +347,7 @@ mutual
       | .inr t => right; exact ⟨a, t⟩
       | .inl n => left; is_empty; intro ⟨a', t'⟩; cases t'; apply n.false; trivial
 
-  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : PDecidable (Γ ⊢ m ↧ a) := by
+  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : Decidable' (Γ ⊢ m ↧ a) := by
     match m with
     | ƛ x : n => match a with
       | a =⇒ b => match n.infer (Γ‚ x ⦂ a) b with
