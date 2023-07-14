@@ -4,6 +4,7 @@ import Plfl.Init
 import Plfl.Untyped
 import Plfl.Untyped.Substitution
 
+import Std.Data.List.Lemmas
 import Mathlib.Data.Vector
 import Mathlib.Tactic
 
@@ -193,10 +194,11 @@ namespace Example
 
   -- https://plfa.github.io/Denotational/#exercise-denot-plus%E1%B6%9C-practice
 
-  -- For `def addC m n u v := (m u) (n u v)` we have the following mapping table:
-  -- · n u v = w
-  -- · m u w = x
-
+  /-
+  For `def addC m n u v := (m u) (n u v)` we have the following mapping table:
+  · n u v = w
+  · m u w = x
+  -/
   def denot_addC
   : let m := u ⇾ w ⇾ x
     let n := u ⇾ v ⇾ w
@@ -225,7 +227,6 @@ section
   open Eval
 
   -- https://plfa.github.io/Denotational/#renaming-preserves-denotations
-
   variable {γ : Env Γ} {δ : Env Δ}
 
   def ext_sub (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
@@ -256,21 +257,33 @@ section
     apply sub_env d; exact Env.Sub.ext_le lt
 end
 
+-- TODO: Move this.
+def Vector.dropLast (v : Vector α n) : Vector α (n - 1) := by
+  exists v.1.dropLast; simp only [List.length_dropLast, Vector.length_val]
+
+theorem Vector.get_dropLast (v : Vector α (n + 1)) (i : Fin n)
+: (Vector.dropLast v).get i = v.get i.1
+:= by
+  simp only [
+    Vector.get, dropLast, v.1.dropLast_eq_take,
+    Vector.length_val, Nat.pred_succ, Fin.coe_eq_castSucc
+  ]
+  change List.get _ _ = List.get _ _
+  rw [←List.get_take]; rfl; simp only [Fin.is_lt]
+
 -- https://plfa.github.io/Denotational/#exercise-denot-church-recommended
 /--
 A path consists of `n` edges (`⇾`s) and `n + 1` vertices (`Value`s).
 -/
 def Value.path : (n : ℕ) → Vector Value (n + 1) → Value
 | 0, _ => ⊥
-| i + 1, vs => by
-  refine path i ?_ ⊔ vs[i] ⇾ vs[i + 1]
-  convert vs.take (i + 1) using 1; simp_arith
+| i + 1, vs => path i (Vector.dropLast vs) ⊔ vs.get i ⇾ vs.get (i + 1)
 
 /--
 Returns the denotation of the nth Church numeral for a given path.
 -/
 def Value.church (n : ℕ) (vs : Vector Value (n + 1)) : Value :=
-  path n vs ⇾ vs[0] ⇾ vs[n]
+  path n vs ⇾ vs.get 0 ⇾ vs.get n
 
 namespace Example
   example : Value.church 0 ⟨[u], rfl⟩ = (⊥ ⇾ u ⇾ u) := rfl
@@ -287,19 +300,12 @@ section
     apply_rules [fn]; induction n with
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
-      let vsInit := vs.take (n + 1)
-      have vsInit_eq : Vector Value (min (n + 1) (n + 2)) = Vector Value (n + 1) := by
-        simp_arith
-      let vsInit' : Vector Value (n + 1) := vsInit_eq ▸ vsInit
-      unfold church.applyN; apply ap (v := vs[n])
-      · apply sub var; simp only [Env.snoc, Value.path]; apply Sub.conjR₂; rfl
-      · convert sub_env (@r vsInit') ?_ using 1
-        · -- TODO: Should be trivial with the right lemmas.
-          change List.get _ _ = List.get _ _
-          rw [List.get_take (i := n) (j := n + 1)]; congr <;> simp_arith
-          · change List.take (n + 1) (Vector.toList _) = Vector.toList _
-            rw [←vs.toList_take]; -- apply congr_arg
-            · sorry
-        · have : vsInit'[0] = vs[0] := by sorry -- TODO: Same as before
-          rw [this]; apply_rules [le_ext, ext_le]; exact .conjR₁ .refl
+      let vsInit := Vector.dropLast vs
+      unfold church.applyN; apply ap (v := vs.get n)
+      · apply sub var; simp only [Env.snoc, Value.path]; simp_arith; exact .conjR₂ .refl
+      · convert sub_env (@r vsInit) ?_ using 1
+        · simp only [Vector.get_dropLast vs n, Fin.coe_ofNat_eq_mod]
+          congr; simp_arith [Nat.mod_eq_of_lt]
+        · simp only [Vector.get_dropLast vs 0, Fin.coe_ofNat_eq_mod]
+          apply_rules [le_ext, ext_le]; exact .conjR₁ .refl
 end
