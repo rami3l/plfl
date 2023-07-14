@@ -204,7 +204,7 @@ end
 namespace Notation
   open Neutral Normal
 
-  scoped prefix:60 " ′" => norm
+  scoped prefix:60 " ′" => Normal.norm
   scoped macro "#′" n:term:90 : term => `(var (♯$n))
 
   scoped prefix:50 "ƛₙ " => lam
@@ -435,17 +435,14 @@ however this won't work for `Prop`.
 We have to find another way.
 -/
 theorem Reduce.ap_congr₁ (rs : l —↠ l') : (l □ m) —↠ (l' □ m) := by
-  refine rs.head_induction_on ?refl ?head
-  · rfl
+  refine rs.head_induction_on .refl ?_
   · introv; intro r _ rs; refine .head ?_ rs; exact apξ₁ r
 
 
 theorem Reduce.ap_congr₂ (rs : m —↠ m') : (l □ m) —↠ (l □ m') := by
-  refine rs.head_induction_on ?refl ?head
-  · rfl
+  refine rs.head_induction_on .refl ?_
   · introv; intro r _ rs; refine .head ?_ rs; exact apξ₂ r
 
 theorem Reduce.lam_congr (rs : n —↠ n') : (ƛ n —↠ ƛ n') := by
-  refine rs.head_induction_on ?refl ?head
-  · rfl
+  refine rs.head_induction_on .refl ?_
   · introv; intro r _ rs; refine .head ?_ rs; exact lamζ r
