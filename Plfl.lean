@@ -10,3 +10,4 @@ import Plfl.Untyped.Confluence
 import Plfl.Untyped.Substitution
 import Plfl.Untyped.BigStep
 import Plfl.Untyped.Denotational
+import Plfl.Untyped.Denotational.Compositional

@@ -19,7 +19,7 @@ My journey of learning LEAN4 by implementing proofs from the wonderful book [_Pr
 ### Volume 3
 
 - [x] 1. [Denotational](https://plfa.github.io/Denotational/): Denotational semantics of untyped lambda calculus
-- [ ] 2. [Compositional](https://plfa.github.io/Compositional/): The denotational semantics is compositional
+- [x] 2. [Compositional](https://plfa.github.io/Compositional/): The denotational semantics is compositional
 - [ ] 3. [Soundness](https://plfa.github.io/Soundness/): Soundness of reduction with respect to denotational semantics
 - [ ] 4. [Adequacy](https://plfa.github.io/Adequacy/): Adequacy of denotational semantics with respect to operational semantics
 - [ ] 5. [ContextualEquivalence](https://plfa.github.io/ContextualEquivalence/): Denotational equality implies contextual equivalence

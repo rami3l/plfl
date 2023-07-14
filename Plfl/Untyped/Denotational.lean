@@ -209,6 +209,9 @@ to some relation between `Env`s and `Value`s.
 -/
 abbrev Denot (Γ : Context) : Type := Env Γ → Value → Prop
 
+/--
+`ℰ` is the instance of `Denot` that corresponds to `Eval`.
+-/
 def ℰ (m : Γ ⊢ ✶) : Denot Γ | γ, v => γ ⊢ m ⇓ v
 
 -- Denotational Equality
@@ -282,10 +285,9 @@ section
     apply_rules [fn]; induction n with
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
-      let vsInit := vs.dropLast
       unfold church.applyN; apply ap (v := vs.get n)
       · apply sub var; simp only [Env.snoc, Value.path]; simp_arith; exact .conjR₂ .refl
-      · convert sub_env (@r vsInit) ?_ using 1
+      · convert sub_env (@r vs.dropLast) ?_ using 1
         · simp only [vs.get_dropLast n, Fin.coe_ofNat_eq_mod]
           congr; simp_arith [Nat.mod_eq_of_lt]
         · simp only [vs.get_dropLast 0, Fin.coe_ofNat_eq_mod]
