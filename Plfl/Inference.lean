@@ -3,8 +3,6 @@
 import Plfl.Init
 import Plfl.More
 
-import Mathlib.Tactic
-
 namespace Inference
 
 -- https://plfa.github.io/Inference/#syntax

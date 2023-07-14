@@ -5,8 +5,6 @@
 import Plfl.Init
 import Plfl.More
 
-import Mathlib.Tactic
-
 open More
 open Term Subst Notation
 

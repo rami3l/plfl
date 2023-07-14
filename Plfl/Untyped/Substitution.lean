@@ -3,8 +3,6 @@
 import Plfl.Init
 import Plfl.Untyped
 
-import Mathlib.Tactic
-
 namespace Substitution
 
 open Untyped Notation

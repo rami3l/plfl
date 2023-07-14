@@ -2,8 +2,6 @@
 
 import Plfl.Init
 
-import Mathlib.Tactic
-
 -- This module was extended from the original one for <https://plfa.github.io/DeBruijn/>.
 namespace More
 

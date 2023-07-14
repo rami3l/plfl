@@ -4,10 +4,6 @@ import Plfl.Init
 import Plfl.Untyped
 import Plfl.Untyped.Substitution
 
-import Std.Data.List.Lemmas
-import Mathlib.Data.Vector
-import Mathlib.Tactic
-
 namespace Denotational
 
 -- https://plfa.github.io/Denotational/#values
@@ -256,20 +252,6 @@ section
   lemma up_env (d : (γ`‚ u) ⊢ m ⇓ v) (lt : u ⊑ u') : (γ`‚ u') ⊢ m ⇓ v := by
     apply sub_env d; exact Env.Sub.ext_le lt
 end
-
--- TODO: Move this.
-def Vector.dropLast (v : Vector α n) : Vector α (n - 1) := by
-  exists v.1.dropLast; simp only [List.length_dropLast, Vector.length_val]
-
-theorem Vector.get_dropLast (v : Vector α (n + 1)) (i : Fin n)
-: (Vector.dropLast v).get i = v.get i.1
-:= by
-  simp only [
-    Vector.get, dropLast, v.1.dropLast_eq_take,
-    Vector.length_val, Nat.pred_succ, Fin.coe_eq_castSucc
-  ]
-  change List.get _ _ = List.get _ _
-  rw [←List.get_take]; rfl; simp only [Fin.is_lt]
 
 -- https://plfa.github.io/Denotational/#exercise-denot-church-recommended
 /--
