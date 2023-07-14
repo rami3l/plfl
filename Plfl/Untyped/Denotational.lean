@@ -259,7 +259,7 @@ A path consists of `n` edges (`⇾`s) and `n + 1` vertices (`Value`s).
 -/
 def Value.path : (n : ℕ) → Vector Value (n + 1) → Value
 | 0, _ => ⊥
-| i + 1, vs => path i (Vector.dropLast vs) ⊔ vs.get i ⇾ vs.get (i + 1)
+| i + 1, vs => path i vs.dropLast ⊔ vs.get i ⇾ vs.get (i + 1)
 
 /--
 Returns the denotation of the nth Church numeral for a given path.
@@ -282,12 +282,12 @@ section
     apply_rules [fn]; induction n with
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
-      let vsInit := Vector.dropLast vs
+      let vsInit := vs.dropLast
       unfold church.applyN; apply ap (v := vs.get n)
       · apply sub var; simp only [Env.snoc, Value.path]; simp_arith; exact .conjR₂ .refl
       · convert sub_env (@r vsInit) ?_ using 1
-        · simp only [Vector.get_dropLast vs n, Fin.coe_ofNat_eq_mod]
+        · simp only [vs.get_dropLast n, Fin.coe_ofNat_eq_mod]
           congr; simp_arith [Nat.mod_eq_of_lt]
-        · simp only [Vector.get_dropLast vs 0, Fin.coe_ofNat_eq_mod]
+        · simp only [vs.get_dropLast 0, Fin.coe_ofNat_eq_mod]
           apply_rules [le_ext, ext_le]; exact .conjR₁ .refl
 end
