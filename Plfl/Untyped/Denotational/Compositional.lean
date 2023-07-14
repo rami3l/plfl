@@ -23,3 +23,9 @@ theorem sub_ℱ (d : ℱ (ℰ n) γ v) : u ⊑ v → ℱ (ℰ n) γ u
 | .trans lt lt' => sub_ℱ (sub_ℱ d lt') lt
 | .fn lt lt' => .sub (up_env d lt) lt'
 | .dist => .conj d.1 d.2
+
+-- theorem ℱ_ℰ {γ : Env Γ} (d : ℰ (ƛ n) γ v) : ℱ (ℰ n) γ v := by induction d with
+-- | fn d => exact d
+-- | bot => exact True.intro
+-- | conj d d' => exact ⟨ℱ_ℰ d, ℱ_ℰ d'⟩
+-- | sub d lt => exact sub_ℱ (ℱ_ℰ d) lt
