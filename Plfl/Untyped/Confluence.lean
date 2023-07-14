@@ -4,8 +4,6 @@ import Plfl.Init
 import Plfl.Untyped
 import Plfl.Untyped.Substitution
 
-import Mathlib.Tactic
-
 namespace Confluence
 
 open Untyped.Notation

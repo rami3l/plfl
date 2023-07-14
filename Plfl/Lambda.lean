@@ -1,6 +1,6 @@
 -- https://plfa.github.io/Lambda/
 
-import Mathlib.Tactic
+import Plfl.Init
 
 namespace Lambda
 

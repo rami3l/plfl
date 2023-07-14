@@ -1,4 +1,8 @@
+import Std.Data.List.Lemmas
+
+import Mathlib.Data.Vector
 import Mathlib.Logic.IsEmpty
+import Mathlib.Tactic
 
 /--
 `is_empty` converts `IsEmpty α` to `α → False`.
@@ -35,3 +39,16 @@ theorem congr_arg₃
 (hx : x = x') (hy : y = y') (hz : z = z')
 : f x y z = f x' y' z'
 := by subst hx hy hz; rfl
+
+def Vector.dropLast (v : Vector α n) : Vector α (n - 1) := by
+  exists v.1.dropLast; simp only [List.length_dropLast, Vector.length_val]
+
+theorem Vector.get_dropLast (v : Vector α (n + 1)) (i : Fin n)
+: (Vector.dropLast v).get i = v.get i.1
+:= by
+  simp only [
+    Vector.get, dropLast, v.1.dropLast_eq_take,
+    Vector.length_val, Nat.pred_succ, Fin.coe_eq_castSucc
+  ]
+  change List.get _ _ = List.get _ _
+  rw [←List.get_take]; rfl; simp only [Fin.is_lt]

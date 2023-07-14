@@ -2,8 +2,6 @@
 
 import Plfl.Init
 
-import Mathlib.Tactic
-
 namespace Untyped
 
 -- https://plfa.github.io/Untyped/#types
