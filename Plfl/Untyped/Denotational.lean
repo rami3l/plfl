@@ -26,7 +26,7 @@ end Notation
 open Notation
 
 /-- `Sub` adapts the familiar notion of subset to the `Value` type. -/
-inductive Sub : Value → Value → Type where
+inductive Sub : Value → Value → Prop where
 | bot : Sub ⊥ v
 | conjL : Sub v u → Sub w u → Sub (v ⊔ w) u
 | conjR₁ : Sub u v → Sub u (v ⊔ w)
@@ -58,17 +58,22 @@ def conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := ca
     · apply conjR₁; rfl
     · apply conjR₂; rfl
 
-def conj_sub₁ : u ⊔ v ⊑ w → u ⊑ w := by intro
-| .conjL h _ => exact h
-| .conjR₁ h => refine .conjR₁ ?_; exact conj_sub₁ h
-| .conjR₂ h => refine .conjR₂ ?_; exact conj_sub₁ h
-| .trans h h' => refine .trans ?_ h'; exact conj_sub₁ h
+-- https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/topic/Termination.20of.20head.20induction.20on.20.60ReflTransGen.60/near/375468050
+def conj_sub₁ (h : u ⊔ v ⊑ w) : u ⊑ w := by
+  generalize hx : u ⊔ v = x at *
+  induction h with (subst_vars; try cases hx)
+  | conjL h _ => exact h
+  | conjR₁ h ih => exact .conjR₁ (ih rfl)
+  | conjR₂ h ih => exact .conjR₂ (ih rfl)
+  | trans h h' ih => exact .trans (ih rfl) h'
 
-def conj_sub₂ : u ⊔ v ⊑ w → v ⊑ w := by intro
-| .conjL _ h => exact h
-| .conjR₁ h => refine .conjR₁ ?_; exact conj_sub₂ h
-| .conjR₂ h => refine .conjR₂ ?_; exact conj_sub₂ h
-| .trans h h' => refine .trans ?_ h'; exact conj_sub₂ h
+def conj_sub₂ (h : u ⊔ v ⊑ w) : v ⊑ w := by
+  generalize hx : u ⊔ v = x at *
+  induction h with (subst_vars; try cases hx)
+  | conjL _ h => exact h
+  | conjR₁ h ih => exact .conjR₁ (ih rfl)
+  | conjR₂ h ih => exact .conjR₂ (ih rfl)
+  | trans h h' ih => exact .trans (ih rfl) h'
 
 open Untyped (Context)
 open Untyped.Notation
@@ -104,7 +109,7 @@ namespace Env
     ext x; cases x <;> rfl
 
   /-- We extend the `⊑` relation point-wise to `Env`s. -/
-  abbrev Sub (γ δ : Env Γ) : Type := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
+  abbrev Sub (γ δ : Env Γ) : Prop := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
   abbrev conj (γ δ : Env Γ) : Env Γ | x => γ x ⊔ δ x
 end Env
 
