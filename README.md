@@ -1,4 +1,4 @@
-# [WIP] plfl
+# plfl
 
 My journey of learning LEAN4 by implementing proofs from the wonderful book [_Programming Language Foundations in Agda_](https://plfa.github.io).
 
