@@ -89,7 +89,6 @@ theorem var_inv (d : ℰ (` i) γ v) : 𝒱 i γ v := by
 theorem var_equiv : ℰ (` i) = 𝒱 i := by ext; exact ⟨var_inv, .sub .var⟩
 
 -- https://plfa.github.io/Compositional/#congruence
-
 lemma lam_congr (h : ℰ n = ℰ n') : ℰ (ƛ n) = ℰ (ƛ n') := calc _
   _ = ℱ (ℰ n) := lam_equiv
   _ = ℱ (ℰ n') := by rw [h]
@@ -133,3 +132,20 @@ theorem compositionality {c : Holed Γ Δ} (h : ℰ m = ℰ n) : ℰ (c.plug m) 
   | apR _ _ ih => exact ap_congr (by rfl) (ih h)
 
 -- https://plfa.github.io/Compositional/#the-denotational-semantics-defined-as-a-function
+/--
+`ℰ₀ m` is the instance of `Denot` that corresponds to the `Eval` of `m`.
+It is like `ℰ m`, but defined computationally.
+-/
+def ℰ₀ : (Γ ⊢ ✶) → Denot Γ
+| ` i => 𝒱 i
+| ƛ n => ℱ (ℰ₀ n)
+| l □ m => ℰ₀ l ● ℰ₀ m
+
+/-- The two definitions of `ℰ` are equivalent. -/
+theorem ℰ_eq_ℰ₀ : ℰ (Γ := Γ) = ℰ₀ := by ext; rw [impl]
+  where
+    impl {a} {m : Γ ⊢ a} : ℰ m = ℰ₀ m := by
+      induction m with (ext γ v; simp only [ℰ₀])
+      | var i => rw [var_equiv]
+      | lam n ih => rw [←ih, lam_equiv]
+      | ap l m ih ih' => rw [←ih, ←ih', ap_equiv]

@@ -217,7 +217,7 @@ to some relation between `Env`s and `Value`s.
 abbrev Denot (Γ : Context) : Type := Env Γ → Value → Prop
 
 /--
-`ℰ` is the instance of `Denot` that corresponds to `Eval`.
+`ℰ m` is the instance of `Denot` that corresponds to the `Eval` of `m`.
 -/
 abbrev ℰ : (Γ ⊢ ✶) → Denot Γ | m, γ, v => γ ⊢ m ⇓ v
 
