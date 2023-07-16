@@ -47,11 +47,13 @@ def Sub.refl : v ⊑ v := match v with
 | _ ⇾ _ => .fn refl refl
 | .conj _ _ => .conjL (.conjR₁ refl) (.conjR₂ refl)
 
+def sub_of_sub_bot (d : v ⊑ ⊥) : v ⊑ u := d.trans .bot
+
 /-- The `⊔` operation is monotonic with respect to `⊑`. -/
 def sub_sub (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
   .conjL (.conjR₁ d₁) (.conjR₂ d₂)
 
-def conj_fn_conj : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
+def fn_conj_sub_conj_fn : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
   _ ⊑ ((v ⊔ v') ⇾ w) ⊔ ((v ⊔ v') ⇾ w') := .dist
   _ ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := open Sub in by
     apply sub_sub <;> refine .fn ?_ .refl
@@ -217,7 +219,7 @@ abbrev Denot (Γ : Context) : Type := Env Γ → Value → Prop
 /--
 `ℰ` is the instance of `Denot` that corresponds to `Eval`.
 -/
-def ℰ (m : Γ ⊢ ✶) : Denot Γ | γ, v => γ ⊢ m ⇓ v
+abbrev ℰ : (Γ ⊢ ✶) → Denot Γ | m, γ, v => γ ⊢ m ⇓ v
 
 -- Denotational Equality
 
