@@ -90,8 +90,46 @@ theorem var_equiv : ℰ (` i) = 𝒱 i := by ext; exact ⟨var_inv, .sub .var⟩
 
 -- https://plfa.github.io/Compositional/#congruence
 
--- Congruence Lemmas
+lemma lam_congr (h : ℰ n = ℰ n') : ℰ (ƛ n) = ℰ (ƛ n') := calc _
+  _ = ℱ (ℰ n) := lam_equiv
+  _ = ℱ (ℰ n') := by rw [h]
+  _ = ℰ (ƛ n') := lam_equiv.symm
 
--- Nothing to do!
--- Since we chose to use `=` instead of `≃` in `Denotational`,
--- everything is handled automagically!
+lemma ap_congr (hl : ℰ l = ℰ l') (hm : ℰ m = ℰ m') : ℰ (l □ m) = ℰ (l' □ m') := calc _
+  _ = ℰ l ● ℰ m := ap_equiv
+  _ = ℰ l' ● ℰ m' := by rw [hl, hm]
+  _ = ℰ (l' □ m') := ap_equiv.symm
+
+-- https://plfa.github.io/Compositional/#compositionality
+open Untyped (Context)
+
+/--
+`Holed Γ Δ` describes a program with a hole in it:
+- `Γ` is the `Context` for the hole.
+- `Δ` is the `Context` for the terms that result from filling the hole.
+-/
+inductive Holed : Context → Context → Type where
+/-- A basic hole. -/
+| hole : Holed Γ Γ
+/-- λ-abstracting the hole makes a bigger hole. -/
+| lam : Holed (Γ‚ ✶) (Δ‚ ✶) → Holed (Γ‚ ✶) Δ
+/-- Applying to a holed function makes a bigger hole. -/
+| apL : Holed Γ Δ → (Δ ⊢ ✶) → Holed Γ Δ
+/-- Applying a holed parameter makes a bigger hole. -/
+| apR : (Δ ⊢ ✶) → Holed Γ Δ → Holed Γ Δ
+
+/-- `plug`s a term into a `Holed` context, making a new term. -/
+def Holed.plug : Holed Γ Δ → (Γ ⊢ ✶) → (Δ ⊢ ✶)
+| .hole, m => m
+| .lam c, n => ƛ c.plug n
+| .apL c n, l => c.plug l □ n
+| .apR l c, m => l □ c.plug m
+
+theorem compositionality {c : Holed Γ Δ} (h : ℰ m = ℰ n) : ℰ (c.plug m) = ℰ (c.plug n) := by
+  induction c with unfold Holed.plug
+  | hole => exact h
+  | lam _ ih => exact lam_congr (ih h)
+  | apL _ _ ih => exact ap_congr (ih h) (by rfl)
+  | apR _ _ ih => exact ap_congr (by rfl) (ih h)
+
+-- https://plfa.github.io/Compositional/#the-denotational-semantics-defined-as-a-function
