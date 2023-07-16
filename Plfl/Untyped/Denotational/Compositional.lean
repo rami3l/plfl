@@ -6,8 +6,7 @@ import Plfl.Untyped.Denotational
 namespace Compositional
 
 open Untyped.Notation
-open Denotational
-open Denotational.Notation
+open Denotational Denotational.Notation
 
 -- https://plfa.github.io/Compositional/#equation-for-lambda-abstraction
 def ℱ (d : Denot (Γ‚ ✶)) : Denot Γ

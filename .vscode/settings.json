@@ -35,5 +35,11 @@
     "unit": "◯",
     "vto": "⇾"
   },
-  "cSpell.words": ["compositionality", "congr", "denot", "determ"]
+  "cSpell.words": [
+    "Bisimulation",
+    "compositionality",
+    "congr",
+    "denot",
+    "determ"
+  ]
 }
