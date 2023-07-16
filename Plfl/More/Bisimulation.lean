@@ -16,7 +16,7 @@ inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 namespace Sim
   scoped infix:40 " ~ " => Sim
 
-  noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (t ~ t) := by
+  theorem refl_dec (t : Γ ⊢ a) : Decidable (t ~ t) := by
     cases t with try (apply isFalse; intro s; contradiction)
     | var i => exact isTrue .var
     | lam t =>
@@ -33,19 +33,19 @@ namespace Sim
         else apply isFalse; intro (.let s s'); exact h ⟨s, s'⟩
 
   -- https://plfa.github.io/Bisimulation/#exercise-_-practice
-  def fromEq {s : (m : Γ ⊢ a) ~ m'} : (m' = n) → (m ~ n) := by
+  lemma of_eq {s : (m : Γ ⊢ a) ~ m'} : (m' = n) → (m ~ n) := by
     intro h; rwa [h] at s
 
-  theorem toEq {s : (m : Γ ⊢ a) ~ m'} : (m ~ n) → (m' = n) := by
+  lemma to_eq {s : (m : Γ ⊢ a) ~ m'} : (m ~ n) → (m' = n) := by
     intro s'; match s, s' with
     | s, .var => cases s with
       | var => rfl
     | s, .lam s' => cases s with
-      | lam s'' => simp only [toEq (s := s'') s']
+      | lam s'' => simp only [to_eq (s := s'') s']
     | s, .ap sl sm => cases s with
-      | ap sl' sm' => simp only [toEq (s := sl') sl, toEq (s := sm') sm]
+      | ap sl' sm' => simp only [to_eq (s := sl') sl, to_eq (s := sm') sm]
     | s, .let sm sn => cases s with
-      | «let» sm' sn' => simp only [toEq (s := sm') sm, toEq (s := sn') sn]
+      | «let» sm' sn' => simp only [to_eq (s := sm') sm, to_eq (s := sn') sn]
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-values
   def commValue {m m' : Γ ⊢ a} : (m ~ m') → Value m → Value m' := by
@@ -54,43 +54,43 @@ namespace Sim
       | lam => exact .lam
 
   -- https://plfa.github.io/Bisimulation/#exercise-val¹-practice
-  def commValue_inv {m m' : Γ ⊢ a} : (m ~ m') → Value m' → Value m := by
+  def commValue' {m m' : Γ ⊢ a} : (m ~ m') → Value m' → Value m := by
     intro s v; cases v with try contradiction
     | lam => cases m with try contradiction
       | lam => exact .lam
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-renaming
-  def commRename (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) {m m' : Γ ⊢ a}
+  def comm_rename (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) {m m' : Γ ⊢ a}
   : m ~ m' → rename ρ m ~ rename ρ m'
   := by intro
   | .var => exact .var
-  | .lam s => apply lam; exact commRename (ext ρ) s
-  | .ap sl sm => apply ap; repeat (apply commRename ρ; trivial)
+  | .lam s => apply lam; exact comm_rename (ext ρ) s
+  | .ap sl sm => apply ap; repeat (apply comm_rename ρ; trivial)
   | .let sl sm => apply «let»; repeat
-    first | apply commRename ρ | apply commRename (ext ρ)
+    first | apply comm_rename ρ | apply comm_rename (ext ρ)
     trivial
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-substitution
-  def commExts {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
+  def comm_exts {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
   (gs : ∀ {a}, (x : Γ ∋ a) → σ x ~ σ' x)
   : (∀ {a b}, (x : Γ‚ b ∋ a) → exts σ x ~ exts σ' x)
   := by introv; match x with
   | .z => simp only [exts]; exact .var
-  | .s x => simp only [exts]; apply commRename Lookup.s; apply gs
+  | .s x => simp only [exts]; apply comm_rename Lookup.s; apply gs
 
-  def commSubst {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
+  def comm_subst {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
   (gs : ∀ {a}, (x : Γ ∋ a) → @σ a x ~ @σ' a x)
   {m m' : Γ ⊢ a}
   : m ~ m' → subst σ m ~ subst σ' m'
   := by intro
   | .var => apply gs
-  | .lam s => apply lam; exact commSubst (commExts gs) s
-  | .ap sl sm => apply ap; repeat (apply commSubst gs; trivial)
+  | .lam s => apply lam; exact comm_subst (comm_exts gs) s
+  | .ap sl sm => apply ap; repeat (apply comm_subst gs; trivial)
   | .let sm sn => apply «let»; repeat
-    first | apply commSubst gs | apply commSubst (commExts gs)
+    first | apply comm_subst gs | apply comm_subst (comm_exts gs)
     trivial
 
-  def commSubst₁ {m m' : Γ ⊢ b} {n n' : Γ‚ b ⊢ a}
+  def comm_subst₁ {m m' : Γ ⊢ b} {n n' : Γ‚ b ⊢ a}
   (sm : m ~ m') (sn : n ~ n') : m ⇸ n ~ m' ⇸ n'
   := by
     let σ {a} : Γ‚ b ∋ a → Γ ⊢ a := subst₁σ m
@@ -99,7 +99,7 @@ namespace Sim
     | .z => sm
     | .s x => .var
     simp only [subst₁];
-    exact commSubst (Γ := Γ‚ b) (Δ := Γ) (σ := σ) (σ' := σ') gs sn
+    exact comm_subst (Γ := Γ‚ b) (Δ := Γ) (σ := σ) (σ' := σ') gs sn
 end Sim
 
 /-
@@ -128,7 +128,7 @@ def Leg.fromLegInv {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Leg m' n 
   | .ap sl sm => match r with
     | .lamβ v => cases sl with | lam sl =>
       constructor
-      · apply commSubst₁ <;> trivial
+      · apply comm_subst₁ <;> trivial
       · apply lamβ; exact commValue sm v
     | .apξ₁ r =>
       have ⟨s', r'⟩ := fromLegInv sl r; constructor
@@ -145,7 +145,7 @@ def Leg.fromLegInv {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Leg m' n 
       · apply letξ; exact r'
     | .letβ v =>
       constructor
-      · apply commSubst₁ <;> trivial
+      · apply comm_subst₁ <;> trivial
       · apply letβ; exact commValue sm v
 
 -- https://plfa.github.io/Bisimulation/#exercise-sim¹-practice
@@ -167,8 +167,8 @@ def LegInv.fromLeg {m m' n' : Γ ⊢ a} (s : m ~ m') (r : m' —→ n') : LegInv
   | .ap sl sm => match r with
     | .lamβ v => cases sl with | lam sl =>
       constructor
-      · apply commSubst₁ <;> trivial
-      · apply lamβ; exact commValue_inv sm v
+      · apply comm_subst₁ <;> trivial
+      · apply lamβ; exact commValue' sm v
     | .apξ₁ r =>
       have ⟨s', r'⟩ := fromLeg sl r; constructor
       · apply ap <;> trivial
@@ -176,7 +176,7 @@ def LegInv.fromLeg {m m' n' : Γ ⊢ a} (s : m ~ m') (r : m' —→ n') : LegInv
     | .apξ₂ v r =>
       have ⟨s', r'⟩ := fromLeg sm r; constructor
       · apply ap <;> trivial
-      · refine apξ₂ ?_ r'; exact commValue_inv sl v
+      · refine apξ₂ ?_ r'; exact commValue' sl v
   | .let sm sn => match r with
     | .letξ r =>
       have ⟨s', r'⟩ := fromLeg sm r; constructor
@@ -184,5 +184,5 @@ def LegInv.fromLeg {m m' n' : Γ ⊢ a} (s : m ~ m') (r : m' —→ n') : LegInv
       · apply letξ; exact r'
     | .letβ v =>
       constructor
-      · apply commSubst₁ <;> trivial
-      · apply letβ; exact commValue_inv sm v
+      · apply comm_subst₁ <;> trivial
+      · apply letβ; exact commValue' sm v
