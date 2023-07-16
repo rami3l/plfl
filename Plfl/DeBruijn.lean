@@ -301,14 +301,14 @@ namespace Reduce
 end Reduce
 
 -- https://plfa.github.io/DeBruijn/#values-do-not-reduce
-def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
+def Value.empty_reduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
-  · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
+  · case succ v => cases r; · case succξ => apply (empty_reduce v).false; trivial
 
-def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
+def Reduce.empty_value : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
-  have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
+  have : ∀ {n}, IsEmpty (m —→ n) := Value.empty_reduce v
   exact this.false r
 
 /--

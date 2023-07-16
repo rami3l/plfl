@@ -358,7 +358,7 @@ end Value
 /--
 `Reduce t t'` says that `t` reduces to `t'` via a given step.
 -/
-inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
+inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 | lamβ : Value v → Reduce ((ƛ n) □ v) (n ⇷ v)
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Value v → Reduce m m' → Reduce (v □ m) (v □ m')
@@ -403,24 +403,17 @@ inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Type where
 | consβ : Reduce (.caseList (.cons v w) m n) (subst₂ v w n)
 
 -- https://plfa.github.io/DeBruijn/#reflexive-and-transitive-closure
-/--
-The predicate version of `Reduce`.
--/
-abbrev Reduce.ReduceP (t : Γ ⊢ a) (t' : Γ ⊢ a) := Nonempty (Reduce t t')
 
 namespace Notation
   scoped infix:40 " —→ " => Reduce
-  scoped infix:40 " —→ₚ " => Reduce.ReduceP
 end Notation
 
 namespace Reduce
-  instance : Coe (m —→ n) (m —→ₚ n) where coe r := ⟨r⟩
-
   /--
   A reflexive and transitive closure,
   defined as a sequence of zero or more steps of the underlying relation `—→`.
   -/
-  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) ReduceP
+  abbrev Clos {Γ a} := Relation.ReflTransGen (α := Γ ⊢ a) Reduce
 end Reduce
 
 namespace Notation
@@ -429,14 +422,14 @@ end Notation
 
 namespace Reduce.Clos
   abbrev refl : m —↠ m := .refl
-  abbrev tail : (m —↠ n) → (n —→ₚ n') → (m —↠ n') := .tail
-  abbrev head : (m —→ₚ n) → (n —↠ n') → (m —↠ n') := .head
-  abbrev single : (m —→ₚ n) → (m —↠ n) := .single
+  abbrev tail : (m —↠ n) → (n —→ n') → (m —↠ n') := .tail
+  abbrev head : (m —→ n) → (n —↠ n') → (m —↠ n') := .head
+  abbrev single : (m —→ n) → (m —↠ n) := .single
 
   instance : Coe (m —→ n) (m —↠ n) where coe r := .single r
 
   instance : Trans (α := Γ ⊢ a) Clos Reduce Clos where trans c r := c.tail r
-  instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where trans r r' := .tail r ⟨r'⟩
+  instance : Trans (α := Γ ⊢ a) Reduce Reduce Clos where trans r r' := .tail r r'
   instance : Trans (α := Γ ⊢ a) Reduce Clos Clos where trans r c := .head r c
 end Reduce.Clos
 
@@ -453,23 +446,21 @@ namespace Reduce
 end Reduce
 
 -- https://plfa.github.io/DeBruijn/#values-do-not-reduce
-def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
-  introv v; is_empty; intro r
+def Value.not_reduce : Value m → ∀ {n}, ¬ m —→ n := by
+  introv v; intro r
   cases v with try contradiction
-  | succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
+  | succ v => cases r; · case succξ => apply not_reduce v; trivial
   | prod => cases r with
-    | prodξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
-    | prodξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
-  | left v => cases r; · case leftξ => apply (emptyReduce v).false; trivial
-  | right v => cases r; · case rightξ => apply (emptyReduce v).false; trivial
+    | prodξ₁ r => rename_i v _ _; apply not_reduce v; trivial
+    | prodξ₂ r => rename_i v _; apply not_reduce v; trivial
+  | left v => cases r; · case leftξ => apply not_reduce v; trivial
+  | right v => cases r; · case rightξ => apply not_reduce v; trivial
   | cons => cases r with
-    | consξ₁ r => rename_i v _ _; apply (emptyReduce v).false; trivial
-    | consξ₂ r => rename_i v _; apply (emptyReduce v).false; trivial
+    | consξ₁ r => rename_i v _ _; apply not_reduce v; trivial
+    | consξ₂ r => rename_i v _; apply not_reduce v; trivial
 
-def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
-  intro r; is_empty; intro v
-  have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
-  exact this.false r
+def Reduce.empty_value : m —→ n → IsEmpty (Value m) := by
+  intro r; is_empty; intro v; exact Value.not_reduce v r
 
 /--
 If a term `m` is not ill-typed, then it either is a value or can be reduced.

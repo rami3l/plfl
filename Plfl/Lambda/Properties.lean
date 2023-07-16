@@ -11,14 +11,14 @@ open Context Context.IsTy Term.Reduce
 open Sum
 
 -- https://plfa.github.io/Properties/#values-do-not-reduce
-def Value.emptyReduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
+def Value.empty_reduce : Value m → ∀ {n}, IsEmpty (m —→ n) := by
   introv v; is_empty; intro r
   cases v <;> try contradiction
-  · case succ v => cases r; · case succξ => apply (emptyReduce v).false; trivial
+  · case succ v => cases r; · case succξ => apply (empty_reduce v).false; trivial
 
-def Reduce.emptyValue : m —→ n → IsEmpty (Value m) := by
+def Reduce.empty_value : m —→ n → IsEmpty (Value m) := by
   intro r; is_empty; intro v
-  have : ∀ {n}, IsEmpty (m —→ n) := Value.emptyReduce v
+  have : ∀ {n}, IsEmpty (m —→ n) := Value.empty_reduce v
   exact this.false r
 
 -- https://plfa.github.io/Properties/#exercise-canonical--practice
@@ -113,7 +113,7 @@ def progress : ∅ ⊢ m ⦂ t → Progress m := Progress.ofIsTy
 -- https://plfa.github.io/Properties/#exercise-value-practice
 def IsTy.isValue : ∅ ⊢ m ⦂ t → Decidable (Nonempty (Value m)) := by
   intro j; cases progress j
-  · rename_i n r; have := Reduce.emptyValue r
+  · rename_i n r; have := Reduce.empty_value r
     apply isFalse; simp_all only [not_nonempty_iff]
   · exact isTrue ⟨by trivial⟩
 
@@ -396,24 +396,24 @@ def Reduce.det : (m —→ n) → (m —→ n') → n = n' := by
   intro r r'; cases r
   · case lamβ =>
     cases r' <;> try trivial
-    · case apξ₂ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
+    · case apξ₂ => exfalso; rename_i v _ _ r; exact (Value.empty_reduce v).false r
   · case apξ₁ =>
     cases r' <;> try trivial
     · case apξ₁ => simp only [Term.ap.injEq, and_true]; apply det <;> trivial
-    · case apξ₂ => exfalso; rename_i r _ v _; exact (Value.emptyReduce v).false r
+    · case apξ₂ => exfalso; rename_i r _ v _; exact (Value.empty_reduce v).false r
   · case apξ₂ =>
     cases r' <;> try trivial
-    · case lamβ => exfalso; rename_i r _ _ _ v; exact (Value.emptyReduce v).false r
-    · case apξ₁ => exfalso; rename_i v _ _ r; exact (Value.emptyReduce v).false r
+    · case lamβ => exfalso; rename_i r _ _ _ v; exact (Value.empty_reduce v).false r
+    · case apξ₁ => exfalso; rename_i v _ _ r; exact (Value.empty_reduce v).false r
     · case apξ₂ => simp only [Term.ap.injEq, true_and]; apply det <;> trivial
   · case zeroβ => cases r' <;> try trivial
   · case succβ =>
     cases r' <;> try trivial
-    · case caseξ => exfalso; rename_i v _ r; exact (Value.emptyReduce (Value.succ v)).false r
+    · case caseξ => exfalso; rename_i v _ r; exact (Value.empty_reduce (Value.succ v)).false r
   · case succξ => cases r'; · case succξ => simp only [Term.succ.injEq]; apply det <;> trivial
   · case caseξ =>
     cases r' <;> try trivial
-    · case succβ => exfalso; rename_i v r; exact (Value.emptyReduce (Value.succ v)).false r
+    · case succβ => exfalso; rename_i v r; exact (Value.empty_reduce (Value.succ v)).false r
     · case caseξ => simp only [Term.case.injEq, and_self, and_true]; apply det <;> trivial
   · case muβ => cases r'; try trivial
 

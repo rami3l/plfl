@@ -7,35 +7,30 @@ open More
 open Subst Notation
 
 -- https://plfa.github.io/Bisimulation/#simulation
-inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Type where
+inductive Sim : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 | var : Sim (` x)  (` x)
 | lam : Sim n n' → Sim (ƛ n) (ƛ n')
 | ap : Sim l l' → Sim m m' → Sim (l □ m) (l' □ m')
 | let : Sim l l' → Sim m m' → Sim (.let l m) (.let l' m')
-deriving BEq, DecidableEq, Repr
 
 namespace Sim
   scoped infix:40 " ~ " => Sim
 
-  noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (Nonempty (t ~ t)) :=
-    open Classical (choice) in by
-      cases t with try (apply isFalse; intro ⟨s⟩; contradiction)
-      | var i => exact isTrue ⟨.var⟩
-      | lam t =>
-        if h : Nonempty (t ~ t) then
-          exact isTrue ⟨.lam <| choice h⟩
-        else
-          apply isFalse; intro ⟨.lam s⟩; exact h ⟨s⟩
-      | ap l m =>
-        if h : Nonempty (l ~ l) ∧ Nonempty (m ~ m) then
-          refine isTrue ⟨?_⟩; exact .ap (choice h.1) (choice h.2)
-        else
-          apply isFalse; intro ⟨.ap s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
-      | «let» m n =>
-        if h : Nonempty (m ~ m) ∧ Nonempty (n ~ n) then
-          refine isTrue ⟨?_⟩; exact .let (choice h.1) (choice h.2)
-        else
-          apply isFalse; intro ⟨.let s s'⟩; exact h ⟨⟨s⟩, ⟨s'⟩⟩
+  noncomputable def refl_dec (t : Γ ⊢ a) : Decidable (t ~ t) := by
+    cases t with try (apply isFalse; intro s; contradiction)
+    | var i => exact isTrue .var
+    | lam t =>
+      if h : t ~ t
+        then apply isTrue; exact .lam h
+        else apply isFalse; intro (.lam s); exact h s
+    | ap l m =>
+      if h : (l ~ l) ∧ (m ~ m)
+        then apply isTrue; exact .ap h.1 h.2
+        else apply isFalse; intro (.ap s s'); exact h ⟨s, s'⟩
+    | «let» m n =>
+      if h : (m ~ m) ∧ (n ~ n)
+        then apply isTrue; exact .let h.1 h.2
+        else apply isFalse; intro (.let s s'); exact h ⟨s, s'⟩
 
   -- https://plfa.github.io/Bisimulation/#exercise-_-practice
   def fromEq {s : (m : Γ ⊢ a) ~ m'} : (m' = n) → (m ~ n) := by
@@ -53,46 +48,47 @@ namespace Sim
       | «let» sm' sn' => simp only [toEq (s := sm') sm, toEq (s := sn') sn]
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-values
-  def commValue {m m' : Γ ⊢ a} : (m ~ m') → Value m → Value m'
-  | .lam _, .lam => .lam
+  def commValue {m m' : Γ ⊢ a} : (m ~ m') → Value m → Value m' := by
+    intro s v; cases v with try contradiction
+    | lam => cases m' with try contradiction
+      | lam => exact .lam
 
   -- https://plfa.github.io/Bisimulation/#exercise-val¹-practice
-  def commValue_inv {m m' : Γ ⊢ a} : (m ~ m') → Value m' → Value m
-  | .lam _, .lam => .lam
+  def commValue_inv {m m' : Γ ⊢ a} : (m ~ m') → Value m' → Value m := by
+    intro s v; cases v with try contradiction
+    | lam => cases m with try contradiction
+      | lam => exact .lam
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-renaming
   def commRename (ρ : ∀ {a}, Γ ∋ a → Δ ∋ a) {m m' : Γ ⊢ a}
   : m ~ m' → rename ρ m ~ rename ρ m'
-  := by
-    intro
-    | .var => exact .var
-    | .lam s => apply lam; exact commRename (ext ρ) s
-    | .ap sl sm => apply ap; repeat (apply commRename ρ; trivial)
-    | .let sl sm => apply «let»; repeat
-      first | apply commRename ρ | apply commRename (ext ρ)
-      trivial
+  := by intro
+  | .var => exact .var
+  | .lam s => apply lam; exact commRename (ext ρ) s
+  | .ap sl sm => apply ap; repeat (apply commRename ρ; trivial)
+  | .let sl sm => apply «let»; repeat
+    first | apply commRename ρ | apply commRename (ext ρ)
+    trivial
 
   -- https://plfa.github.io/Bisimulation/#simulation-commutes-with-substitution
   def commExts {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
   (gs : ∀ {a}, (x : Γ ∋ a) → σ x ~ σ' x)
   : (∀ {a b}, (x : Γ‚ b ∋ a) → exts σ x ~ exts σ' x)
-  := by
-    introv; match x with
-    | .z => simp only [exts]; exact .var
-    | .s x => simp only [exts]; apply commRename Lookup.s; apply gs
+  := by introv; match x with
+  | .z => simp only [exts]; exact .var
+  | .s x => simp only [exts]; apply commRename Lookup.s; apply gs
 
   def commSubst {σ σ' : ∀ {a}, Γ ∋ a → Δ ⊢ a}
   (gs : ∀ {a}, (x : Γ ∋ a) → @σ a x ~ @σ' a x)
   {m m' : Γ ⊢ a}
   : m ~ m' → subst σ m ~ subst σ' m'
-  := by
-    intro
-    | .var => apply gs
-    | .lam s => apply lam; exact commSubst (commExts gs) s
-    | .ap sl sm => apply ap; repeat (apply commSubst gs; trivial)
-    | .let sm sn => apply «let»; repeat
-      first | apply commSubst gs | apply commSubst (commExts gs)
-      trivial
+  := by intro
+  | .var => apply gs
+  | .lam s => apply lam; exact commSubst (commExts gs) s
+  | .ap sl sm => apply ap; repeat (apply commSubst gs; trivial)
+  | .let sm sn => apply «let»; repeat
+    first | apply commSubst gs | apply commSubst (commExts gs)
+    trivial
 
   def commSubst₁ {m m' : Γ ⊢ b} {n n' : Γ‚ b ⊢ a}
   (sm : m ~ m') (sn : n ~ n') : m ⇸ n ~ m' ⇸ n'
@@ -124,7 +120,7 @@ open Sim Reduce
 m' - —→ - n'
 ```
 -/
-inductive Leg (m' n : Γ ⊢ a) where
+inductive Leg (m' n : Γ ⊢ a) : Prop where
 | intro (sim : n ~ n') (red : m' —→ n')
 
 def Leg.fromLegInv {m m' n : Γ ⊢ a} (s : m ~ m') (r : m —→ n) : Leg m' n := by
@@ -163,7 +159,7 @@ m - —→ - n
          n'
 ```
 -/
-inductive LegInv (m n' : Γ ⊢ a) where
+inductive LegInv (m n' : Γ ⊢ a) : Prop where
 | intro (sim : n ~ n') (red : m —→ n)
 
 def LegInv.fromLeg {m m' n' : Γ ⊢ a} (s : m ~ m') (r : m' —→ n') : LegInv m n' := by

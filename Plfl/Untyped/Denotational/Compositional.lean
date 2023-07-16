@@ -114,7 +114,7 @@ inductive Holed : Context → Context → Type where
 | lam : Holed (Γ‚ ✶) (Δ‚ ✶) → Holed (Γ‚ ✶) Δ
 /-- Applying to a holed function makes a bigger hole. -/
 | apL : Holed Γ Δ → (Δ ⊢ ✶) → Holed Γ Δ
-/-- Applying a holed parameter makes a bigger hole. -/
+/-- Applying a holed argument makes a bigger hole. -/
 | apR : (Δ ⊢ ✶) → Holed Γ Δ → Holed Γ Δ
 
 /-- `plug`s a term into a `Holed` context, making a new term. -/
