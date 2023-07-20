@@ -111,7 +111,7 @@ namespace Env
     ext x; cases x <;> rfl
 
   /-- We extend the `⊑` relation point-wise to `Env`s. -/
-  abbrev Sub (γ δ : Env Γ) : Prop := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
+  def Sub (γ δ : Env Γ) : Prop := ∀ (x : Γ ∋ ✶), γ x ⊑ δ x
   abbrev conj (γ δ : Env Γ) : Env Γ | x => γ x ⊔ δ x
 end Env
 
@@ -123,6 +123,7 @@ namespace Notation
 end Notation
 
 namespace Env.Sub
+  -- BUG: This definition cannot be found by `rfl`.
   @[refl] def refl : γ `⊑ γ | _ => .refl
   @[simp] def conjR₁ (γ δ : Env Γ) : γ `⊑ (γ ⊔ δ) | _ => .conjR₁ .refl
   @[simp] def conjR₂ (γ δ : Env Γ) : δ `⊑ (γ ⊔ δ) | _ => .conjR₂ .refl
@@ -237,6 +238,11 @@ section
 
   def ext_sub (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ)
   : (γ`‚ v) `⊑ (δ`‚ v) ∘ ext ρ
+  | .z => .refl
+  | .s i => lt i
+
+  def ext_sub' (ρ : Rename Γ Δ) (lt : δ ∘ ρ `⊑ γ)
+  : (δ`‚ v) ∘ ext ρ `⊑ (γ`‚ v)
   | .z => .refl
   | .s i => lt i
 

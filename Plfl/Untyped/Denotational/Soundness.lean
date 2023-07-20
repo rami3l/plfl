@@ -7,12 +7,11 @@ namespace Soundness
 
 open Untyped Untyped.Notation
 open Untyped.Subst
-open Substitution
+open Substitution (Rename Subst)
 open Denotational Denotational.Notation
 open Compositional Compositional.Notation
 
 -- https://plfa.github.io/Soundness/#simultaneous-substitution-preserves-denotations
-
 namespace Env
   /--
   `Eval δ σ γ` means that for every variable `i`,
@@ -61,4 +60,23 @@ section
     | apξ₁ r => exact (ih r).ap d'
     | apξ₂ r => exact d.ap (ih' r)
     | lamβ => exact subst₁_pres (lam_inv d) d'
+
+  -- https://plfa.github.io/Soundness/#renaming-reflects-meaning
+  theorem rename_reflect {ρ : Rename Γ Δ} (lt : δ ∘ ρ `⊑ γ) (d : δ ⊢ rename ρ m ⇓ v)
+  : γ ⊢ m ⇓ v
+  := by
+    generalize hx : rename ρ m = x at *
+    induction d generalizing Γ with
+    | bot => exact .bot
+    | var => cases m with (injection hx; try subst_vars)
+      | var i => exact .sub .var <| (var_inv .var).trans (lt i)
+    | ap _ _ ih ih' => cases m with injection hx
+      | ap => rename_i hx hx'; exact (ih lt hx).ap (ih' lt hx')
+    | fn _ ih => cases m with injection hx
+      | lam => refine .fn ?_; apply ih (ρ := ext ρ) (ext_sub' ρ lt); trivial
+    | conj _ _ ih ih' => exact (ih lt hx).conj (ih' lt hx)
+    | sub _ lt' ih => exact (ih lt hx).sub lt'
+
+  theorem rename_shift_reflect (d : γ`‚ v' ⊢ shift m ⇓ v) : γ ⊢ m ⇓ v :=
+    rename_reflect (by rfl) d
 end
