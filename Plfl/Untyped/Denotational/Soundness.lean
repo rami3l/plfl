@@ -77,6 +77,60 @@ section
     | conj _ _ ih ih' => exact (ih lt hx).conj (ih' lt hx)
     | sub _ lt' ih => exact (ih lt hx).sub lt'
 
-  theorem rename_shift_reflect (d : γ`‚ v' ⊢ shift m ⇓ v) : γ ⊢ m ⇓ v :=
+  theorem rename_shift_reflect (d : γ`‚ u ⊢ shift m ⇓ v) : γ ⊢ m ⇓ v :=
     rename_reflect (by rfl) d
 end
+
+section
+  -- https://plfa.github.io/Soundness/#substitution-reflects-denotations-the-variable-case
+  /-- `const` is an `Env` with a single non-trivial mapping entry: from `i` to `v`. -/
+  def Env.const (i : Γ ∋ ✶) (v : Value) : Env Γ | j => if i = j then v else ⊥
+
+  variable {γ δ : Env Δ}
+
+  lemma subst_reflect_var {i : Γ ∋ ✶} {σ : Subst Γ Δ} (d : γ ⊢ σ i ⇓ v)
+  : ∃ (δ : Env Γ), (γ `⊢ σ ⇓ δ) ∧ (δ ⊢ ` i ⇓ v)
+  := by
+    exists Env.const i v; unfold Env.const; constructor
+    · intro j; by_cases i = j <;> simp only [h] at *
+      · exact d
+      · exact .bot
+    · convert Eval.var; simp only [Env.const, ite_true]
+
+  variable {γ₁ γ₂ : Env Γ} {σ : Subst Γ Δ}
+
+  -- https://plfa.github.io/Soundness/#substitutions-and-environment-construction
+  lemma subst_bot : γ `⊢ σ ⇓ ⊥ | _ => .bot
+
+  lemma subst_conj (d₁ : γ `⊢ σ ⇓ γ₁) (d₂ : γ `⊢ σ ⇓ γ₂) : γ `⊢ σ ⇓ γ₁ ⊔ γ₂
+  | i => (d₁ i).conj (d₂ i)
+end
+
+-- https://plfa.github.io/Soundness/#simultaneous-substitution-reflects-denotations
+theorem subst_reflect {σ : Subst Γ Δ} (d : δ ⊢ l ⇓ v) (h : ⟪σ⟫ m = l)
+: ∃ (γ : Env Γ), (δ `⊢ σ ⇓ γ) ∧ (γ ⊢ m ⇓ v)
+:= by
+  induction d generalizing Γ with
+  | bot => exists ⊥; exact ⟨subst_bot, .bot⟩
+  | var => cases m with try contradiction
+    | var j => apply subst_reflect_var; convert Eval.var
+  | ap d d' ih ih' => rename_i l' _ _ m'; cases m with try contradiction
+    | var => apply subst_reflect_var; convert d.ap d'
+    | ap =>
+      injection h; rename_i h h'
+      let ⟨γ, dγ, dm⟩ := ih h; let ⟨γ', dγ', dm'⟩ := ih' h'; exists γ ⊔ γ'; constructor
+      · exact subst_conj dγ dγ'
+      · exact (sub_env dm <| Env.Sub.conjR₁ γ γ').ap (sub_env dm' <| Env.Sub.conjR₂ γ γ')
+  | fn d ih => cases m with try contradiction
+    | var => apply subst_reflect_var; convert d.fn
+    | lam =>
+      injection h; rename_i h; let ⟨γ, dγ, dm⟩ := ih h; exists γ.init; constructor
+      · intro i; exact rename_shift_reflect <| dγ i.s
+      · rw [Env.init_last γ] at dm; refine .fn (up_env dm ?_); exact var_inv <| dγ .z
+  | conj _ _ ih ih' =>
+    let ⟨γ, dγ, dm⟩ := ih h; let ⟨γ', dγ', dm'⟩ := ih' h; exists γ ⊔ γ'; constructor
+    · exact subst_conj dγ dγ'
+    · exact (sub_env dm <| Env.Sub.conjR₁ γ γ').conj (sub_env dm' <| Env.Sub.conjR₂ γ γ')
+  | sub _ lt' ih => let ⟨γ, dγ, dm⟩ := ih h; exact ⟨γ, dγ, dm.sub lt'⟩
+
+-- https://plfa.github.io/Soundness/#single-substitution-reflects-denotations
