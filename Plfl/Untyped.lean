@@ -436,7 +436,6 @@ theorem Reduce.ap_congr₁ (rs : l —↠ l') : (l □ m) —↠ (l' □ m) := b
   refine rs.head_induction_on .refl ?_
   · introv; intro r _ rs; refine .head ?_ rs; exact apξ₁ r
 
-
 theorem Reduce.ap_congr₂ (rs : m —↠ m') : (l □ m) —↠ (l □ m') := by
   refine rs.head_induction_on .refl ?_
   · introv; intro r _ rs; refine .head ?_ rs; exact apξ₂ r
