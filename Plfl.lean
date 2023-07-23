@@ -4,7 +4,7 @@ import Plfl.DeBruijn
 import Plfl.More
 import Plfl.More.DoubleSubst
 import Plfl.More.Bisimulation
-import Plfl.Inference
+import Plfl.More.Inference
 import Plfl.Untyped
 import Plfl.Untyped.Confluence
 import Plfl.Untyped.Substitution
