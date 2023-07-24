@@ -178,9 +178,7 @@ end Subst
 open Subst
 
 namespace Notation
-  scoped infixr:90 " ⇸ " => subst₁
-  scoped infixl:90 " ⇷ " => flip subst₁
-
+  scoped notation:90 n "⟦" m "⟧" => subst₁ m n
   scoped macro " ⟪" σ:term "⟫ " : term => `(subst $σ)
 end Notation
 
@@ -221,21 +219,21 @@ _Note: This time there's no need to generate data out of `Reduce t t'`,
 so it can just be a `Prop`._
 -/
 inductive Reduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
-| lamβ : Reduce ((ƛ n) □ v) (n ⇷ v)
+| lamβ : Reduce ((ƛ n) □ v) (n⟦v⟧)
 | lamζ : Reduce n n' → Reduce (ƛ n) (ƛ n')
 | apξ₁ : Reduce l l' → Reduce (l □ m) (l' □ m)
 | apξ₂ : Reduce m m' → Reduce (v □ m) (v □ m')
 
 -- https://plfa.github.io/Untyped/#exercise-variant-1-practice
 inductive Reduce' : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-| lamβ : Normal (ƛ n) → Normal v → Reduce' ((ƛ n) □ v) (n ⇷ v)
+| lamβ : Normal (ƛ n) → Normal v → Reduce' ((ƛ n) □ v) (n⟦v⟧)
 | lamζ : Reduce' n n' → Reduce' (ƛ n) (ƛ n')
 | apξ₁ : Reduce' l l' → Reduce' (l □ m) (l' □ m)
 | apξ₂ : Normal v → Reduce' m m' → Reduce' (v □ m) (v □ m')
 
 -- https://plfa.github.io/Untyped/#exercise-variant-2-practice
 inductive Reduce'' : (Γ ⊢ a) → (Γ ⊢ a) → Type where
-| lamβ : Reduce'' ((ƛ n) □ (ƛ v)) (n ⇷ (ƛ v))
+| lamβ : Reduce'' ((ƛ n) □ (ƛ v)) (n⟦ƛ v⟧)
 | apξ₁ : Reduce'' l l' → Reduce'' (l □ m) (l' □ m)
 | apξ₂ : Reduce'' m m' → Reduce'' (v □ m) (v □ m')
 /-

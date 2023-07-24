@@ -168,8 +168,7 @@ section
   variable {n : Γ‚ ✶ ⊢ ✶} {m : Γ ⊢ ✶}
 
   -- https://plfa.github.io/Substitution/#proof-of-the-substitution-lemma
-  theorem subst_comm : (⟪exts σ⟫ n) ⇷ (⟪σ⟫ m) = ⟪σ⟫ (n ⇷ m) :=
-    calc (⟪exts σ⟫ n) ⇷ (⟪σ⟫ m)
+  theorem subst_comm : (⟪exts σ⟫ n)⟦⟪σ⟫ m⟧ = ⟪σ⟫ (n⟦m⟧) := calc _
       _ = ⟪subst₁σ (⟪σ⟫ m)⟫ (⟪exts σ⟫ n) := rfl
       _ = ⟪⟪σ⟫ m ⦂⦂ ids⟫ (⟪exts σ⟫ n) := by congr; simp only [subst_z_cons_ids]
       _ = ⟪(exts σ) ⨟ ((⟪σ⟫ m) ⦂⦂ ids)⟫ n := sub_sub
@@ -181,14 +180,13 @@ section
       _ = ⟪⟪σ⟫ m ⦂⦂ (ids ⨟ σ)⟫ n := by congr; simp only [seq_ids, ids_seq]
       _ = ⟪m ⦂⦂ ids ⨟ σ⟫ n := by congr; simp only [sub_dist]
       _ = ⟪σ⟫ (⟪m ⦂⦂ ids⟫ n) := sub_sub.symm
-      _ = ⟪σ⟫ (n ⇷ m) := by congr; simp only [subst_z_cons_ids]
+      _ = ⟪σ⟫ (n⟦m⟧) := by congr; simp only [subst_z_cons_ids]
 
-  theorem rename_subst_comm : (rename (ext ρ) n) ⇷ (rename ρ m) = rename ρ (n ⇷ m) :=
-    calc (rename (ext ρ) n) ⇷ (rename ρ m)
-      _ = (⟪ren (ext ρ)⟫ n) ⇷ (⟪ren ρ⟫ m) := by rw [rename_subst_ren, rename_subst_ren]
-      _ = (⟪exts (ren ρ)⟫ n) ⇷ (⟪ren ρ⟫ m) := by simp only [ren_ext]
-      _ = ⟪ren ρ⟫ (n ⇷ m) := subst_comm
-      _ = rename ρ (n ⇷ m) := rename_subst_ren.symm
+  theorem rename_subst_comm : (rename (ext ρ) n)⟦rename ρ m⟧ = rename ρ (n⟦m⟧) := calc _
+      _ = (⟪ren (ext ρ)⟫ n)⟦⟪ren ρ⟫ m⟧ := by rw [rename_subst_ren, rename_subst_ren]
+      _ = (⟪exts (ren ρ)⟫ n)⟦⟪ren ρ⟫ m⟧ := by simp only [ren_ext]
+      _ = ⟪ren ρ⟫ (n⟦m⟧) := subst_comm
+      _ = rename ρ (n⟦m⟧) := rename_subst_ren.symm
 end
 
 /--
@@ -197,10 +195,8 @@ Substitute a term `m` for `♯1` within term `n`.
 abbrev subst₁_under₁ (m : Γ ⊢ b) (n : Γ‚ b‚ c ⊢ a) : Γ‚ c ⊢ a := ⟪exts (subst₁σ m)⟫ n
 
 namespace Notation
-  scoped infixl:90 " ⇸‚ " => subst₁_under₁
-  scoped infixl:90 " ⇷‚ " => flip subst₁_under₁
+  scoped notation:90 n "⟦" m "⟧₁" => subst₁_under₁ m n
 end Notation
 
-theorem substitution {m : Γ‚ ✶‚ ✶ ⊢ ✶} {n : Γ‚ ✶ ⊢ ✶} {l : Γ ⊢ ✶}
-: (m ⇷ n) ⇷ l = (m ⇷‚ l) ⇷ (n ⇷ l)
+theorem substitution {m : Γ‚ ✶‚ ✶ ⊢ ✶} {n : Γ‚ ✶ ⊢ ✶} {l : Γ ⊢ ✶} : m⟦n⟧⟦l⟧ = m⟦l⟧₁⟦n⟦l⟧⟧
 := subst_comm.symm

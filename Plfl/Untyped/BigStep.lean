@@ -84,8 +84,7 @@ section
 
   @[simp] lemma ClosEnv.empty_equiv_ids : ∅ ~~ₑ ids := by intro.
 
-  abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ :=
-    (n ⇸ ·) ∘ exts σ
+  abbrev ext_subst (σ : Subst Γ Δ) (n : Δ ⊢ ✶) : Subst (Γ‚ ✶) Δ := (·⟦n⟧) ∘ exts σ
 
   lemma subst₁σ_exts {σ : Subst Γ Δ} {m : Δ ⊢ b} {i : Γ ∋ ✶}
   : (ext_subst σ m) (.s i) = σ i
@@ -136,7 +135,7 @@ namespace BySubst
 inductive Eval : (Γ ⊢ ✶) → (Γ ⊢ ✶) → Type where
 -- Hmmm, it's all ƛ's after all?
 | lam : ∀ {n : ∅‚ ✶ ⊢ ✶}, Eval (ƛ n) (ƛ n)
-| ap : Eval l (ƛ m) → Eval (m ⇷ n) v → Eval (l □ n) v
+| ap : Eval l (ƛ m) → Eval (m⟦n⟧) v → Eval (l □ n) v
 
 namespace Notation
   scoped infix:50 " ⇓' "=> Eval
@@ -161,5 +160,5 @@ theorem Eval.cbn_reduce {n : ∅‚ ✶ ⊢ ✶} (ev : m ⇓' (ƛ n)) : m —↠
   | .lam => rfl
   | .ap evl evmn' => rename_i l m n'; calc l □ n'
       _ —↠ (ƛ m) □ n' := ap_congr₁ evl.cbn_reduce
-      _ —→ m ⇷ n' := lamβ
+      _ —→ m⟦n'⟧ := lamβ
       _ —↠ (ƛ n) := evmn'.cbn_reduce

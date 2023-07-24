@@ -46,7 +46,7 @@ section
 
   -- https://plfa.github.io/Soundness/#single-substitution-preserves-denotations
   /-- The result of evaluation is conserved after single substitution. -/
-  theorem subst₁_pres (dn : γ`‚ v ⊢ n ⇓ w) (dm : γ ⊢ m ⇓ v) : γ ⊢ n ⇷ m ⇓ w
+  theorem subst₁_pres (dn : γ`‚ v ⊢ n ⇓ w) (dm : γ ⊢ m ⇓ v) : γ ⊢ n⟦m⟧ ⇓ w
   := subst_pres (subst₁σ m) (λ | .z => dm | .s _ => .var) dn
 
   -- https://plfa.github.io/Soundness/#reduction-preserves-denotations
@@ -145,7 +145,7 @@ lemma subst₁σ_reflect {δ : Env Δ} {γ : Env (Δ‚ ✶)} (d : δ `⊢ subst
   · exact d .z
 
 /-- Single substitution reflects denotations. -/
-theorem subst₁_reflect {δ : Env Δ} (d : δ ⊢ n ⇷ m ⇓ v) : ∃ w, (δ ⊢ m ⇓ w) ∧ (δ`‚ w ⊢ n ⇓ v)
+theorem subst₁_reflect {δ : Env Δ} (d : δ ⊢ n⟦m⟧ ⇓ v) : ∃ w, (δ ⊢ m ⇓ w) ∧ (δ`‚ w ⊢ n ⇓ v)
 := by
   have ⟨γ, dγ, dn⟩ := subst_reflect d rfl; have ⟨w, ltw, dw⟩ := subst₁σ_reflect dγ
   exists w, dw; exact sub_env dn ltw
@@ -154,7 +154,7 @@ theorem subst₁_reflect {δ : Env Δ} (d : δ ⊢ n ⇷ m ⇓ v) : ∃ w, (δ �
 theorem reduce_reflect {γ : Env Γ} {m n : Γ ⊢ a} (d : γ ⊢ n ⇓ v) (r : m —→ n) : γ ⊢ m ⇓ v := by
   induction r generalizing v with
   | lamβ =>
-    rename_i n u; generalize hx : n ⇷ u = x at *
+    rename_i n u; generalize hx : n⟦u⟧ = x at *
     induction d with
     | var => apply beta; rw [hx]; exact .var
     | ap d d' => apply beta; rw [hx]; exact d.ap d'
@@ -184,7 +184,7 @@ theorem reduce_reflect {γ : Env Γ} {m n : Γ ⊢ a} (d : γ ⊢ n ⇓ v) (r : 
     | conj _ _ ih ih' => exact (ih r ihᵣ hx).conj (ih' r ihᵣ hx)
     | sub _ lt ih => exact (ih r ihᵣ hx).sub lt
   where
-    beta {Γ m n v} {γ : Env Γ} (d : γ ⊢ n ⇷ m ⇓ v) : γ ⊢ (ƛ n) □ m ⇓ v := by
+    beta {Γ m n v} {γ : Env Γ} (d : γ ⊢ n⟦m⟧ ⇓ v) : γ ⊢ (ƛ n) □ m ⇓ v := by
       let ⟨v, dm, dn⟩ := subst₁_reflect d; exact dn.fn.ap dm
 
 -- https://plfa.github.io/Soundness/#reduction-implies-denotational-equality

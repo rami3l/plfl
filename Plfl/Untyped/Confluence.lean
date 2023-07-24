@@ -14,7 +14,7 @@ Parallel reduction.
 -/
 inductive PReduce : (Γ ⊢ a) → (Γ ⊢ a) → Prop where
 | var : PReduce (` x) (` x)
-| lamβ : PReduce n n' → PReduce v v' → PReduce ((ƛ n) □ v) (n' ⇷ v')
+| lamβ : PReduce n n' → PReduce v v' → PReduce ((ƛ n) □ v) (n'⟦v'⟧)
 | lamζ : PReduce n n' → PReduce (ƛ n) (ƛ n')
 | apξ : PReduce l l' → PReduce m m' → PReduce (l □ m) (l' □ m')
 
@@ -66,7 +66,7 @@ namespace PReduce
   | .lamβ rn rv => rename_i n n' v v'; calc (ƛ n) □ v
     _ —↠ (ƛ n') □ v := by refine ap_congr₁ (toReduceClos ?_); exact .lamζ rn
     _ —↠ (ƛ n') □ v' := ap_congr₂ rv.toReduceClos
-    _ —→ n' ⇷ v' := .lamβ
+    _ —→ n'⟦v'⟧ := .lamβ
   | .lamζ rn => apply lam_congr; exact rn.toReduceClos
   | .apξ rl rm => rename_i l l' m m'; calc l □ m
     _ —↠ l' □ m := ap_congr₁ rl.toReduceClos
@@ -128,7 +128,7 @@ section
     | z => exact p
     | s i => exact .var
 
-  theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : (n ⇷ m) ⇛ (n' ⇷ m') :=
+  theorem sub_par (pn : n ⇛ n') (pm : m ⇛ m') : n⟦m⟧ ⇛ n'⟦m'⟧ :=
     subst_par (par_subst₁σ pm) pn
 end
 
@@ -139,7 +139,7 @@ Many parallel reductions at once.
 abbrev PReduce.plus : (Γ ⊢ a) → (Γ ⊢ a)
 | ` i => ` i
 | ƛ n => ƛ (plus n)
-| (ƛ n) □ m => plus n ⇷ plus m
+| (ƛ n) □ m => plus n⟦plus m⟧
 | l □ m => plus l □ plus m
 
 namespace Notation
