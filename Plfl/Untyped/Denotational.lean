@@ -306,3 +306,33 @@ section
         · simp only [vs.get_dropLast 0, Fin.coe_ofNat_eq_mod]
           apply_rules [le_ext, ext_le]; exact .conjR₁ .refl
 end
+
+-- https://plfa.github.io/Denotational/#inversion-of-the-less-than-relation-for-functions
+def Value.Elem (u v : Value) : Prop := match v with
+| ⊥ => u = ⊥
+| v ⇾ w => u = v ⇾ w
+| .conj v w => u.Elem v ∨ u.Elem w
+
+namespace Notation
+  instance : Membership Value Value where mem := Value.Elem
+end Notation
+
+def Value.Included (v w : Value) : Prop := ∀ {u}, u ∈ v → u ∈ w
+
+namespace Notation
+  instance : HasSubset Value where Subset := Value.Included
+end Notation
+
+theorem sub_of_elem (e : u ∈ v) : u ⊑ v := by induction v with cases e
+| bot => exact .bot
+| fn => rfl
+| conj _ _ ih ih' =>
+  all_goals (rename_i h; first | exact (ih h).conjR₁ | exact (ih' h).conjR₂)
+
+theorem sub_of_included (s : u ⊆ v) : u ⊑ v := by induction u with
+| bot => exact .bot
+| fn => apply sub_of_elem; apply s; rfl
+| conj _ _ ih ih' =>
+  apply Sub.conjL
+  · apply ih; intro u e; exact s <| .inl e
+  · apply ih'; intro u e; exact s <| .inr e
