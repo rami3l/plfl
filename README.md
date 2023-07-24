@@ -1,6 +1,6 @@
 # plfl
 
-My journey of learning LEAN4 by implementing proofs from the wonderful book [_Programming Language Foundations in Agda_](https://plfa.github.io).
+My journey of learning Lean 4 by implementing proofs from the wonderful book [_Programming Language Foundations in Agda_](https://plfa.github.io).
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ My journey of learning LEAN4 by implementing proofs from the wonderful book [_Pr
 - [x] 1. [Denotational](https://plfa.github.io/Denotational/): Denotational semantics of untyped lambda calculus
 - [x] 2. [Compositional](https://plfa.github.io/Compositional/): The denotational semantics is compositional
 - [x] 3. [Soundness](https://plfa.github.io/Soundness/): Soundness of reduction with respect to denotational semantics
-- [ ] 4. [Adequacy](https://plfa.github.io/Adequacy/): Adequacy of denotational semantics with respect to operational semantics
+- [x] 4. [Adequacy](https://plfa.github.io/Adequacy/): Adequacy of denotational semantics with respect to operational semantics
 - [ ] 5. [ContextualEquivalence](https://plfa.github.io/ContextualEquivalence/): Denotational equality implies contextual equivalence
 
 ### Appendix
