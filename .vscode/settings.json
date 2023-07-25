@@ -38,6 +38,8 @@
     "compositionality",
     "congr",
     "denot",
-    "determ"
-  ]
+    "determ",
+    "exfalso"
+  ],
+  "editor.rulers": [100]
 }

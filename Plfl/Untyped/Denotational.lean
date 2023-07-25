@@ -50,13 +50,13 @@ def Sub.refl : v ⊑ v := match v with
 def sub_of_sub_bot (d : v ⊑ ⊥) : v ⊑ u := d.trans .bot
 
 /-- The `⊔` operation is monotonic with respect to `⊑`. -/
-def sub_sub (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
+def conj_sub_conj (d₁ : v ⊑ v') (d₂ : w ⊑ w') : v ⊔ w ⊑ v' ⊔ w' :=
   .conjL (.conjR₁ d₁) (.conjR₂ d₂)
 
 def fn_conj_sub_conj_fn : (v ⊔ v') ⇾ (w ⊔ w') ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := calc
   _ ⊑ ((v ⊔ v') ⇾ w) ⊔ ((v ⊔ v') ⇾ w') := .dist
   _ ⊑ (v ⇾ w) ⊔ (v' ⇾ w') := open Sub in by
-    apply sub_sub <;> refine .fn ?_ .refl
+    apply conj_sub_conj <;> refine .fn ?_ .refl
     · apply conjR₁; rfl
     · apply conjR₂; rfl
 
@@ -309,19 +309,23 @@ end
 
 -- https://plfa.github.io/Denotational/#inversion-of-the-less-than-relation-for-functions
 def Value.Elem (u v : Value) : Prop := match v with
-| ⊥ => u = ⊥
-| v ⇾ w => u = v ⇾ w
 | .conj v w => u.Elem v ∨ u.Elem w
+| v => u = v
 
-namespace Notation
-  instance : Membership Value Value where mem := Value.Elem
-end Notation
+instance Value.membership : Membership Value Value where mem := Value.Elem
 
-def Value.Included (v w : Value) : Prop := ∀ {u}, u ∈ v → u ∈ w
+namespace Value
+  def Included (v w : Value) : Prop := ∀ {u}, u ∈ v → u ∈ w
 
-namespace Notation
-  instance : HasSubset Value where Subset := Value.Included
-end Notation
+  instance instTrans : Trans Included Included Included where trans := flip (· ∘ ·)
+  instance : HasSubset Value where Subset := Included
+  instance : Trans Included Subset Included where trans := instTrans.trans
+  instance : Trans Subset Subset Included where trans := instTrans.trans
+
+  variable {u v w : Value}
+  def Included.fst (s : Included (u ⊔ v) w) : u ⊆ w := s ∘ .inl
+  def Included.snd (s : Included (u ⊔ v) w) : v ⊆ w := s ∘ .inr
+end Value
 
 theorem sub_of_elem (e : u ∈ v) : u ⊑ v := by induction v with cases e
 | bot => exact .bot
@@ -334,5 +338,119 @@ theorem sub_of_included (s : u ⊆ v) : u ⊑ v := by induction u with
 | fn => apply sub_of_elem; apply s; rfl
 | conj _ _ ih ih' =>
   apply Sub.conjL
-  · apply ih; intro u e; exact s <| .inl e
-  · apply ih'; intro u e; exact s <| .inr e
+  · apply ih; intro _ e; apply s; left; exact e
+  · apply ih'; intro _ e; apply s; right; exact e
+
+theorem conj_included_inv {u v w : Value} (s : u ⊔ v ⊆ w) : u ⊆ w ∧ v ⊆ w := by
+  constructor <;> (intro _ _; apply s; first | left; trivial | right; trivial)
+
+lemma fn_elem (i : v ⇾ w ⊆ u) : v ⇾ w ∈ u := i rfl
+
+-- https://plfa.github.io/Denotational/#function-values
+/-- `IsFn u` means that `u` is a function value. -/
+inductive IsFn (u : Value) : Prop | mk (h : u = v ⇾ w)
+
+/-- `AllFn v` means that all elements of `v` are function values. -/
+def AllFn (v : Value) : Prop := ∀ {u}, u ∈ v → IsFn u
+
+namespace AllFn
+  def fst (f : AllFn (u ⊔ v)) : AllFn u := f ∘ .inl
+  def snd (f : AllFn (u ⊔ v)) : AllFn v := f ∘ .inr
+end AllFn
+
+lemma not_isFn_bot : ¬ IsFn ⊥ := by intro.
+
+lemma elem_of_allFn (f : AllFn u) : ∃ v w, v ⇾ w ∈ u := by induction u with
+| bot => exact (not_isFn_bot <| f rfl).elim
+| fn v w => exists v, w
+| conj v w ih _ =>
+  -- In fact, the proof is also possible on the `.snd` side.
+  -- There is some information loss in this step.
+  have ⟨v, w, i⟩ := ih f.fst; exists v, w; left; exact i
+
+-- https://plfa.github.io/Denotational/#domains-and-codomains
+/-- Given a set `u` of functions, `u.conjDom` returns the join of their domains. -/
+def Value.conjDom : Value → Value
+| ⊥ => ⊥
+| v ⇾ _ => v
+| .conj u v => u.conjDom ⊔ v.conjDom
+
+/-- Given a set `u` of functions, `u.conjCodom` returns the join of their codomains. -/
+def Value.conjCodom : Value → Value
+| ⊥ => ⊥
+| _ ⇾ w => w
+| .conj u v => u.conjCodom ⊔ v.conjCodom
+
+/-- Given an element `v ⇾ w` of a set of functions `u`, we know that `v` is in `u.conjDom`. -/
+theorem included_conjDom (f : AllFn u) (i : v ⇾ w ∈ u) : v ⊆ u.conjDom := by induction u with
+| bot => cases i
+| fn => cases i; exact id
+| conj u u' ih ih' => match i with
+  | .inl h => calc v
+    _ ⊆ u.conjDom := ih f.fst h
+    _ ⊆ (u ⊔ u').conjDom := .inl
+  | .inr h => calc v
+    _ ⊆ u'.conjDom := ih' f.snd h
+    _ ⊆ (u ⊔ u').conjDom := .inr
+
+/-- Given a set `u` of identical terms `v ⇾ w`, we know that `u.conjCodom` is included in `w`. -/
+theorem conjCodom_included (s : u ⊆ v ⇾ w) : u.conjCodom ⊆ w := by induction u with
+| bot => cases s rfl
+| fn => cases s rfl; exact id
+| conj _ _ ih ih' => intro x; intro
+  | .inl i => exact ih s.fst i
+  | .inr i => exact ih' s.snd i
+
+/--
+We say that `v ⇾ w` factors `u` into `u`, if:
+- `u'` contains only functions;
+- `u` is included in `u`;
+- `u'`'s domain is less than `v`;
+- `u'`'s codomain is greater than `w`.
+-/
+def Factor (u u' v w : Value) : Prop :=
+  AllFn u'
+∧ u' ⊆ u
+∧ u'.conjDom ⊑ v
+∧ w ⊑ u'.conjCodom
+
+-- https://plfa.github.io/Denotational/#inversion-of-less-than-for-functions
+theorem sub_inv (lt : u ⊑ u') {v w} (i : v ⇾ w ∈ u) : ∃ u'', Factor u' u'' v w :=
+  by induction lt generalizing v w with
+  | bot => cases i
+  | conjL _ _ ih ih' => exact i.elim ih ih'
+  | conjR₁ _ ih => have ⟨u'', f, s, ss⟩ := ih i; exists u'', f, .inl ∘ s
+  | conjR₂ _ ih => have ⟨u'', f, s, ss⟩ := ih i; exists u'', f, .inr ∘ s
+  | fn lt lt' => cases i; rename_i v v' w' w _ _; exists v ⇾ w, IsFn.mk, id
+  | dist =>
+    cases i; rename_i v w w'; exists v ⇾ w ⊔ v ⇾ w'
+    refine ⟨(Or.elim · IsFn.mk IsFn.mk), id, ?_, .refl⟩; exact .conjL .refl .refl
+  | trans _ _ ih ih' =>
+    rename_i u' v' w'; have ⟨u'', f, s, ss⟩ := ih i; have ⟨u'', f, s, ss'⟩ := trans f s ih'
+    exists u'', f, s; exact ⟨ss'.1.trans ss.1, ss.2.trans ss'.2⟩
+  where
+    -- https://plfa.github.io/Denotational/#inversion-of-less-than-for-functions-the-case-for--trans
+    trans {u u₁ u₂} (f : AllFn u₁) (s : u₁ ⊆ u) (ih : ∀ {v w}, v ⇾ w ∈ u → ∃ u₃, Factor u₂ u₃ v w)
+    : ∃ u₃, Factor u₂ u₃ u₁.conjDom u₁.conjCodom
+    := by induction u₁ with
+    | bot => exfalso; apply not_isFn_bot; exact f rfl
+    | fn => apply ih; apply fn_elem; exact s
+    | conj _ _ ih ih' =>
+      have ⟨s, s'⟩ := conj_included_inv s
+      have ⟨u₃, f₃, s, ss⟩ := ih f.fst s; have ⟨u₃', f₃', s', ss'⟩ := ih' f.snd s'
+      exists u₃ ⊔ u₃', (Or.elim · f₃ f₃'), (Or.elim · s s')
+      exact ⟨conj_sub_conj ss.1 ss'.1, conj_sub_conj ss.2 ss'.2⟩
+
+lemma sub_inv_fn (lt : v ⇾ w ⊑ u)
+: ∃ u',
+  AllFn u'
+∧ u' ⊆ u
+∧ (∀ {v' w'}, v' ⇾ w' ∈ u' → v' ⊑ v)
+∧ w ⊑ u'.conjCodom
+:= by
+  have ⟨u', f, s, ss⟩ := sub_inv lt rfl; refine ⟨u', f, s, ?_, ss.2⟩
+  introv i; refine .trans ?_ ss.1; exact sub_of_included <| included_conjDom f i
+
+lemma fn_conj_fn_inv (lt : v ⇾ w ⊑ v' ⇾ w') : v' ⊑ v ∧ w ⊑ w' := by
+  have ⟨_, f, s, ss⟩ := sub_inv_fn lt; have ⟨u, u', i⟩ := elem_of_allFn f
+  cases s i; exists ss.1 i; apply ss.2.trans; exact sub_of_included <| conjCodom_included s
