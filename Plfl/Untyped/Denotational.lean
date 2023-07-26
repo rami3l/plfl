@@ -150,14 +150,14 @@ inductive Eval : Env Γ → (Γ ⊢ ✶) → Value → Prop where
 | sub : Eval γ m v → w ⊑ v → Eval γ m w
 
 namespace Notation
-  scoped notation:30 γ " ⊢ " m " ⇓ " v:51 => Eval γ m v
+  scoped notation:30 γ " ⊢ " m " ￬ " v:51 => Eval γ m v
 end Notation
 
 /--
 Relaxation of table lookup in application,
 allowing an argument to match an input entry if the latter is less than the former.
 -/
-def Eval.ap_sub (d : γ ⊢ l ⇓ v ⇾ w) (d' : γ ⊢ m ⇓ v') (lt : v ⊑ v') : γ ⊢ l □ m ⇓ w
+def Eval.ap_sub (d : γ ⊢ l ￬ v ⇾ w) (d' : γ ⊢ m ￬ v') (lt : v ⊑ v') : γ ⊢ l □ m ￬ w
 := d.ap <| d'.sub lt
 
 namespace Example
@@ -165,36 +165,36 @@ namespace Example
   open Eval
 
   -- `id` can be seen as a mapping table for both `⊥ ⇾ ⊥` and `(⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)`.
-  def denot_id₁ : γ ⊢ id ⇓ ⊥ ⇾ ⊥ := .fn .var
-  def denot_id₂ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fn .var
+  def denot_id₁ : γ ⊢ id ￬ ⊥ ⇾ ⊥ := .fn .var
+  def denot_id₂ : γ ⊢ id ￬ (⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥) := .fn .var
 
   -- `id` also produces a table containing both of the previous tables.
-  def denot_id₃ : γ ⊢ id ⇓ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) := denot_id₁.conj denot_id₂
+  def denot_id₃ : γ ⊢ id ￬ (⊥ ⇾ ⊥) ⊔ ((⊥ ⇾ ⊥) ⇾ (⊥ ⇾ ⊥)) := denot_id₁.conj denot_id₂
 
   -- Oops, self application!
-  def denot_id_ap_id : `∅ ⊢ id □ id ⇓ v ⇾ v := .ap (.fn .var) (.fn .var)
+  def denot_id_ap_id : `∅ ⊢ id □ id ￬ v ⇾ v := .ap (.fn .var) (.fn .var)
 
   -- In `def twoC f u := f (f u)`,
   -- `f`'s table must include two entries, both `u ⇾ v` and `v ⇾ w`.
   -- `twoC` then merges those two entries into one: `u ⇾ w`.
-  def denot_twoC : `∅ ⊢ twoC ⇓ (u ⇾ v ⊔ v ⇾ w) ⇾ u ⇾ w := by
+  def denot_twoC : `∅ ⊢ twoC ￬ (u ⇾ v ⊔ v ⇾ w) ⇾ u ⇾ w := by
     apply fn; apply fn; apply ap
     · apply sub .var; exact .conjR₂ .refl
     · apply ap
       · apply sub .var; exact .conjR₁ .refl
       · exact .var
 
-  def denot_delta : `∅ ⊢ delta ⇓ (v ⇾ w ⊔ v) ⇾ w := by
+  def denot_delta : `∅ ⊢ delta ￬ (v ⇾ w ⊔ v) ⇾ w := by
     apply fn; apply ap (v := v) <;> apply sub .var
     · exact .conjR₁ .refl
     · exact .conjR₂ .refl
 
-  example : `∅ ⊢ omega ⇓ ⊥ := by
+  example : `∅ ⊢ omega ￬ ⊥ := by
     apply ap denot_delta; apply conj
     · exact fn (v := ⊥) .bot
     · exact .bot
 
-  def denot_omega : `∅ ⊢ omega ⇓ ⊥ := .bot
+  def denot_omega : `∅ ⊢ omega ￬ ⊥ := .bot
 
   -- https://plfa.github.io/Denotational/#exercise-denot-plus%E1%B6%9C-practice
 
@@ -206,7 +206,7 @@ namespace Example
   def denot_addC
   : let m := u ⇾ w ⇾ x
     let n := u ⇾ v ⇾ w
-    `∅ ⊢ addC ⇓ m ⇾ n ⇾ u ⇾ v ⇾ x
+    `∅ ⊢ addC ￬ m ⇾ n ⇾ u ⇾ v ⇾ x
   := by apply_rules [fn, ap, var]
 end Example
 
@@ -220,7 +220,7 @@ abbrev Denot (Γ : Context) : Type := Env Γ → Value → Prop
 /--
 `ℰ m` is the instance of `Denot` that corresponds to the `Eval` of `m`.
 -/
-abbrev ℰ : (Γ ⊢ ✶) → Denot Γ | m, γ, v => γ ⊢ m ⇓ v
+abbrev ℰ : (Γ ⊢ ✶) → Denot Γ | m, γ, v => γ ⊢ m ￬ v
 
 -- Denotational Equality
 
@@ -247,8 +247,8 @@ section
   | .s i => lt i
 
   /-- The result of evaluation is conserved after renaming. -/
-  def rename_pres (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ) (d : γ ⊢ m ⇓ v)
-  : δ ⊢ rename ρ m ⇓ v
+  def rename_pres (ρ : Rename Γ Δ) (lt : γ `⊑ δ ∘ ρ) (d : γ ⊢ m ￬ v)
+  : δ ⊢ rename ρ m ￬ v
   := by induction d generalizing Δ with
   | var => apply sub .var; apply lt
   | ap _ _ r r' => exact .ap (r ρ lt) (r' ρ lt)
@@ -262,10 +262,10 @@ section
   variable {γ δ : Env Γ}
 
   /-- The result of evaluation is conserved under a superset. -/
-  def sub_env (d : γ ⊢ m ⇓ v) (lt : γ `⊑ δ) : δ ⊢ m ⇓ v := by
+  def sub_env (d : γ ⊢ m ￬ v) (lt : γ `⊑ δ) : δ ⊢ m ￬ v := by
     convert rename_pres id lt d; exact rename_id.symm
 
-  lemma up_env (d : (γ`‚ u) ⊢ m ⇓ v) (lt : u ⊑ u') : (γ`‚ u') ⊢ m ⇓ v := by
+  lemma up_env (d : (γ`‚ u) ⊢ m ￬ v) (lt : u ⊑ u') : (γ`‚ u') ⊢ m ￬ v := by
     apply sub_env d; exact Env.Sub.ext_le lt
 end
 
@@ -294,7 +294,7 @@ section
   open Eval
   open Env.Sub
 
-  def denot_church {vs} : `∅ ⊢ church n ⇓ Value.church n vs := by
+  def denot_church {vs} : `∅ ⊢ church n ￬ Value.church n vs := by
     apply_rules [fn]; induction n with
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
@@ -348,7 +348,7 @@ lemma fn_elem (i : v ⇾ w ⊆ u) : v ⇾ w ∈ u := i rfl
 
 -- https://plfa.github.io/Denotational/#function-values
 /-- `IsFn u` means that `u` is a function value. -/
-inductive IsFn (u : Value) : Prop | mk (h : u = v ⇾ w)
+inductive IsFn (u : Value) : Prop | isFn (h : u = v ⇾ w)
 
 /-- `AllFn v` means that all elements of `v` are function values. -/
 def AllFn (v : Value) : Prop := ∀ {u}, u ∈ v → IsFn u
@@ -421,10 +421,10 @@ theorem sub_inv (lt : u ⊑ u') {v w} (i : v ⇾ w ∈ u) : ∃ u'', Factor u' u
   | conjL _ _ ih ih' => exact i.elim ih ih'
   | conjR₁ _ ih => have ⟨u'', f, s, ss⟩ := ih i; exists u'', f, .inl ∘ s
   | conjR₂ _ ih => have ⟨u'', f, s, ss⟩ := ih i; exists u'', f, .inr ∘ s
-  | fn lt lt' => cases i; rename_i v v' w' w _ _; exists v ⇾ w, IsFn.mk, id
+  | fn lt lt' => cases i; rename_i v v' w' w _ _; exists v ⇾ w, .isFn, id
   | dist =>
     cases i; rename_i v w w'; exists v ⇾ w ⊔ v ⇾ w'
-    refine ⟨(Or.elim · IsFn.mk IsFn.mk), id, ?_, .refl⟩; exact .conjL .refl .refl
+    refine ⟨(Or.elim · .isFn .isFn), id, ?_, .refl⟩; exact .conjL .refl .refl
   | trans _ _ ih ih' =>
     rename_i u' v' w'; have ⟨u'', f, s, ss⟩ := ih i; have ⟨u'', f, s, ss'⟩ := trans f s ih'
     exists u'', f, s; exact ⟨ss'.1.trans ss.1, ss.2.trans ss'.2⟩

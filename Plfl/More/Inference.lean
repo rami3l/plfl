@@ -514,9 +514,7 @@ mutual
   | .snd m => .snd m.erase
   | .inh m => m.erase
 end
-termination_by
-  TyS.erase m => sizeOf m
-  TyI.erase m => sizeOf m
+termination_by _ m => sizeOf m
 
 example : fourTy.erase (Γ := ∅) = More.Term.four := by rfl
 

@@ -31,7 +31,7 @@ lemma ℱ_ℰ (d : ℰ (ƛ n) γ v) : ℱ (ℰ n) γ v := by
   | conj _ _ ih ih' => exact ⟨ih hx, ih' hx⟩
   | sub _ lt ih => exact sub_ℱ (ih hx) lt
 
-theorem lam_inv (d : γ ⊢ ƛ n ⇓ v ⇾ v') : (γ`‚ v) ⊢ n ⇓ v' := ℱ_ℰ d
+theorem lam_inv (d : γ ⊢ ƛ n ￬ v ⇾ v') : (γ`‚ v) ⊢ n ￬ v' := ℱ_ℰ d
 
 lemma ℰ_lam (d : ℱ (ℰ n) γ v) : ℰ (ƛ n) γ v := match v with
 | .bot => .bot
