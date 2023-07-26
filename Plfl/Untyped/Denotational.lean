@@ -123,7 +123,6 @@ namespace Notation
 end Notation
 
 namespace Env.Sub
-  -- BUG: This definition cannot be found by `rfl`.
   @[refl] def refl : γ `⊑ γ | _ => .refl
   @[simp] def conjR₁ (γ δ : Env Γ) : γ `⊑ (γ ⊔ δ) | _ => .conjR₁ .refl
   @[simp] def conjR₂ (γ δ : Env Γ) : δ `⊑ (γ ⊔ δ) | _ => .conjR₂ .refl

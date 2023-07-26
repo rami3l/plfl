@@ -56,19 +56,26 @@ theorem GtFn.dec (v : Value) : Decidable (GtFn v) := by induction v with
     | isFalse h' => left; exact not_gtFn_conj h h'
 
 -- https://plfa.github.io/Adequacy/#relating-values-to-closures
-def 𝕍 : Value → Clos → Prop
-| _, .clos (` _) _ => ⊥
-| _, .clos (_ □ _) _ => ⊥
-| ⊥, .clos (ƛ _) _ => ⊤
-| v ⇾ w, .clos (ƛ n) γ => ∀ (c : Clos), (
-    let .clos m γ' := c
-    (GtFn v → ∃ c, (γ' ⊢ m ⇓ c) ∧ 𝕍 v c)
-    → GtFn w → ∃ c', (γ‚' c ⊢ n ⇓ c') ∧ 𝕍 w c'
-  )
-| .conj u v, c@(.clos (ƛ _) _) => 𝕍 u c ∧ 𝕍 v c
+mutual
+  def 𝕍 : Value → Clos → Prop
+  | _, .clos (` _) _ => ⊥
+  | _, .clos (_ □ _) _ => ⊥
+  | ⊥, .clos (ƛ _) _ => ⊤
+  | v ⇾ w, .clos (ƛ n) γ =>
+    have : sizeOf w < 1 + sizeOf v + sizeOf w := by simp_arith; apply Nat.zero_le
+    ∀ c, 𝔼 v c → GtFn w → ∃ c', (γ‚' c ⊢ n ⇓ c') ∧ 𝕍 w c'
+  | .conj u v, c@(.clos (ƛ _) _) =>
+    have : sizeOf v < 1 + sizeOf u + sizeOf v := by simp_arith; apply Nat.zero_le
+    𝕍 u c ∧ 𝕍 v c
 
-def 𝔼 : Value → Clos → Prop
-| v, .clos m γ' => GtFn v → ∃ c, (γ' ⊢ m ⇓ c) ∧ 𝕍 v c
+  def 𝔼 : Value → Clos → Prop
+  | v, .clos m γ' => GtFn v → ∃ c, (γ' ⊢ m ⇓ c) ∧ 𝕍 v c
+end
+-- https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/topic/Termination.20of.20mutual.20recursive.20defs.20with.20a.20.22shorthand.22.3F/near/378733953
+termination_by
+  𝕍 v c => (sizeOf v, 0)
+  𝔼 v c => (sizeOf v, 1)
+
 
 -- namespace Notation
 -- end Notation
