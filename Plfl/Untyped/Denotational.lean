@@ -16,10 +16,12 @@ inductive Value : Type where
 | conj : Value → Value → Value
 deriving BEq, DecidableEq, Repr
 
-namespace Notation
-  instance : Bot Value where bot := .bot
-  instance : Sup Value where sup := .conj
+namespace Value
+  instance instBot : Bot Value where bot := .bot
+  instance instSup : Sup Value where sup := .conj
+end Value
 
+namespace Notation
   scoped infixr:70 " ⇾ " => Value.fn
 end Notation
 
@@ -347,7 +349,7 @@ lemma fn_elem (i : v ⇾ w ⊆ u) : v ⇾ w ∈ u := i rfl
 
 -- https://plfa.github.io/Denotational/#function-values
 /-- `IsFn u` means that `u` is a function value. -/
-inductive IsFn (u : Value) : Prop | isFn (h : u = v ⇾ w)
+inductive IsFn (u : Value) : Prop where | isFn (h : u = v ⇾ w)
 
 /-- `AllFn v` means that all elements of `v` are function values. -/
 def AllFn (v : Value) : Prop := ∀ {u}, u ∈ v → IsFn u
