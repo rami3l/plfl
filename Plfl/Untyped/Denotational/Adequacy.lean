@@ -47,12 +47,12 @@ lemma not_gtFn_conj_inv (ngtuv : ¬ GtFn (u ⊔ v)) : ¬ GtFn u ∧ ¬ GtFn v :=
 lemma not_gtFn_conj_iff : (¬ GtFn u ∧ ¬ GtFn v) ↔ ¬ GtFn (u ⊔ v) :=
   ⟨(λ nn => not_gtFn_conj nn.1 nn.2), not_gtFn_conj_inv⟩
 
-theorem GtFn.dec (v : Value) : Decidable (GtFn v) := by induction v with
-| bot => left; exact not_gtFn_bot
-| fn v w => right; exists v, w
-| conj _ _ ih ih' => cases ih with
+instance GtFn.dec {v} : Decidable (GtFn v) := by match v with
+| ⊥ => left; exact not_gtFn_bot
+| v ⇾ w => right; exists v, w
+| .conj u v => cases @dec u with
   | isTrue h => right; have ⟨v, w, lt⟩ := h; exists v, w; exact lt.conjR₁
-  | isFalse h => cases ih' with
+  | isFalse h => cases @dec v with
     | isTrue h' => right; have ⟨v, w, lt⟩ := h'; exists v, w; exact lt.conjR₂
     | isFalse h' => left; exact not_gtFn_conj h h'
 
@@ -108,30 +108,37 @@ lemma 𝕍.of_not_gtFn (nf : ¬ GtFn v) : 𝕍 v (.clos (ƛ n) γ') := by induct
 | fn v w => exfalso; apply nf; exists v, w
 | conj _ _ ih ih' => exact not_gtFn_conj_inv nf |>.imp ih ih'
 
-mutual
-  lemma 𝕍.sub {v v'} (vvc : 𝕍 v c) (lt : v' ⊑ v) : 𝕍 v' c := by
-    let .clos m γ := c; cases m with (simp [𝕍] at *; try contradiction) | lam m =>
-      rename_i Γ; induction lt generalizing Γ with
-      | bot => triv
-      | conjL lt lt' ih ih' => unfold 𝕍; exact ⟨ih _ _ _ vvc, ih' _ _ _ vvc⟩
-      | conjR₁ lt ih => apply ih; unfold 𝕍 at vvc; exact vvc.1
-      | conjR₂ lt ih => apply ih; unfold 𝕍 at vvc; exact vvc.2
-      | trans lt lt' ih ih' => apply_rules [ih, ih']
-      | @fn v₂ v₁ w₁ w₂ lt lt' ih ih' =>
-        unfold 𝕍 at vvc ⊢; intro c evc gtw
-        have : sizeOf v₁ + sizeOf v₂ < sizeOf v + sizeOf v' := by
-          -- change _ < sizeOf (v₁ ⇾ w₁) + sizeOf (v₂ ⇾ w₂)
-          sorry
-        have ⟨c', ec', h⟩ := vvc (evc.sub lt) (gtw.sub lt'); exists c', ec'
-        let .clos m γ := c'; have ⟨m', h'⟩ := WHNF.of_𝕍 h; subst h'; exact ih' _ _ _ h
-      | dist => sorry
+lemma 𝕍.sub {v v'} (vvc : 𝕍 v c) (lt : v' ⊑ v) : 𝕍 v' c := by
+  let .clos m γ := c; cases m with (simp [𝕍] at *; try contradiction) | lam m =>
+    rename_i Γ; induction lt generalizing Γ with
+    | bot => triv
+    | conjL _ _ ih ih' => unfold 𝕍; exact ⟨ih _ _ _ vvc, ih' _ _ _ vvc⟩
+    | conjR₁ _ ih => apply ih; unfold 𝕍 at vvc; exact vvc.1
+    | conjR₂ _ ih => apply ih; unfold 𝕍 at vvc; exact vvc.2
+    | trans _ _ ih ih' => apply_rules [ih, ih']
+    | @fn v₂ v₁ w₁ w₂ lt lt' ih ih' =>
+      unfold 𝕍 at vvc ⊢; intro c evc gtw
+      have : 𝔼 v₂ c := by
+        -- HACK: Broken mutual induction with `𝔼.sub` here.
+        cases c; simp only [𝔼] at *; intro gtv'
+        have ⟨c, ec, vv₁c⟩ := evc <| gtv'.sub lt; exists c, ec
+        cases c with | clos m γ => have ⟨m', h'⟩ := WHNF.of_𝕍 vv₁c; subst h'; exact ih _ γ _ vv₁c
+      have ⟨c', ec', vw₂c'⟩ := vvc this (gtw.sub lt'); exists c', ec'
+      let .clos _ _ := c'; have ⟨m', h'⟩ := WHNF.of_𝕍 vw₂c'; subst h'; exact ih' _ _ _ vw₂c'
+    | @dist v₁ w₁ w₂ =>
+      unfold 𝕍 at vvc ⊢; intro c ev₁c gt; unfold 𝕍 at vvc
+      by_cases gt₁ : GtFn w₁ <;> by_cases gt₂ : GtFn w₂
+      · have ⟨c₁, ec₁, vw₁⟩ := vvc.1 ev₁c gt₁; have ⟨c₂, ec₂, vw₂⟩ := vvc.2 ev₁c gt₂
+        exists c₁, ec₁; cases c₁; have ⟨m', h'⟩ := WHNF.of_𝕍 vw₁; subst h'; unfold 𝕍
+        exists vw₁; rwa [←ec₁.determ ec₂] at vw₂
+      · have ⟨.clos l γ₁, ec₁, vw₁⟩ := vvc.1 ev₁c gt₁; exists .clos l γ₁, ec₁
+        have ⟨m', h'⟩ := WHNF.of_𝕍 vw₁; subst h'; apply vw₁.conj; exact of_not_gtFn gt₂
+      · have ⟨.clos l γ₂, ec₂, vw₂⟩ := vvc.2 ev₁c gt₂; exists .clos l γ₂, ec₂
+        have ⟨m', h'⟩ := WHNF.of_𝕍 vw₂; subst h'; apply (𝕍.conj · vw₂); exact of_not_gtFn gt₁
+      · cases gt.conj <;> contradiction
 
-  lemma 𝔼.sub (evc : 𝔼 v c) (lt : v' ⊑ v) : 𝔼 v' c := by
-    let .clos m γ := c; simp only [𝔼] at *; intro gtv'
-    have ⟨c, ec, vvc⟩ := evc <| gtv'.sub lt; exists c, ec; exact vvc.sub lt
-end
-termination_by
-  𝕍.sub => (sizeOf v + sizeOf v', 0)
-  𝔼.sub => (sizeOf v + sizeOf v', 1)
+lemma 𝔼.sub (evc : 𝔼 v c) (lt : v' ⊑ v) : 𝔼 v' c := by
+  let .clos m γ := c; simp only [𝔼] at *; intro gtv'
+  have ⟨c, ec, vvc⟩ := evc <| gtv'.sub lt; exists c, ec; exact vvc.sub lt
 
-#print Value.fn.sizeOf_spec
+-- https://plfa.github.io/Adequacy/#programs-with-function-denotation-terminate-via-call-by-name
