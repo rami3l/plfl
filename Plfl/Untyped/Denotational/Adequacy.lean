@@ -91,6 +91,12 @@ termination_by
 /-- `𝔾` relates `γ` to `γ'` if the corresponding values and closures are related by `𝔼` -/
 def 𝔾 (γ : Env Γ) (γ' : ClosEnv Γ) : Prop := ∀ {i : Γ ∋ ✶}, 𝔼 (γ i) (γ' i)
 
+def 𝔾.empty : 𝔾 `∅ ∅ := by intro.
+
+def 𝔾.ext (g : 𝔾 γ γ') (e : 𝔼 v c) : 𝔾 (γ`‚ v) (γ'‚' c) := by unfold 𝔾; intro
+| .z => exact e
+| .s _ => exact g
+
 /-- The proof of a term being in Weak-Head Normal Form. -/
 def WHNF (t : Γ ⊢ a) : Prop := ∃ n : Γ‚ ✶ ⊢ ✶, t = (ƛ n)
 
@@ -126,14 +132,14 @@ lemma 𝕍.sub {v v'} (vvc : 𝕍 v c) (lt : v' ⊑ v) : 𝕍 v' c := by
       let .clos _ _ := c'; have ⟨m', h'⟩ := WHNF.of_𝕍 vw₂c'; subst h'; exact ih' _ _ _ vw₂c'
     | @dist v₁ w₁ w₂ =>
       unfold 𝕍 at vvc ⊢; intro c ev₁c gt; unfold 𝕍 at vvc
-      by_cases gt₁ : GtFn w₁ <;> by_cases gt₂ : GtFn w₂
-      · have ⟨c₁, ec₁, vw₁⟩ := vvc.1 ev₁c gt₁; have ⟨c₂, ec₂, vw₂⟩ := vvc.2 ev₁c gt₂
+      by_cases hgt₁ : GtFn w₁ <;> by_cases hgt₂ : GtFn w₂
+      · have ⟨c₁, ec₁, vw₁⟩ := vvc.1 ev₁c hgt₁; have ⟨c₂, ec₂, vw₂⟩ := vvc.2 ev₁c hgt₂
         exists c₁, ec₁; cases c₁; have ⟨m', h'⟩ := WHNF.of_𝕍 vw₁; subst h'; unfold 𝕍
         exists vw₁; rwa [←ec₁.determ ec₂] at vw₂
-      · have ⟨.clos l γ₁, ec₁, vw₁⟩ := vvc.1 ev₁c gt₁; exists .clos l γ₁, ec₁
-        have ⟨m', h'⟩ := WHNF.of_𝕍 vw₁; subst h'; apply vw₁.conj; exact of_not_gtFn gt₂
-      · have ⟨.clos l γ₂, ec₂, vw₂⟩ := vvc.2 ev₁c gt₂; exists .clos l γ₂, ec₂
-        have ⟨m', h'⟩ := WHNF.of_𝕍 vw₂; subst h'; apply (𝕍.conj · vw₂); exact of_not_gtFn gt₁
+      · have ⟨.clos l γ₁, ec₁, vw₁⟩ := vvc.1 ev₁c hgt₁; exists .clos l γ₁, ec₁
+        have ⟨m', h'⟩ := WHNF.of_𝕍 vw₁; subst h'; apply vw₁.conj; exact of_not_gtFn hgt₂
+      · have ⟨.clos l γ₂, ec₂, vw₂⟩ := vvc.2 ev₁c hgt₂; exists .clos l γ₂, ec₂
+        have ⟨m', h'⟩ := WHNF.of_𝕍 vw₂; subst h'; apply (𝕍.conj · vw₂); exact of_not_gtFn hgt₁
       · cases gt.conj <;> contradiction
 
 lemma 𝔼.sub (evc : 𝔼 v c) (lt : v' ⊑ v) : 𝔼 v' c := by
@@ -141,13 +147,31 @@ lemma 𝔼.sub (evc : 𝔼 v c) (lt : v' ⊑ v) : 𝔼 v' c := by
   have ⟨c, ec, vvc⟩ := evc <| gtv'.sub lt; exists c, ec; exact vvc.sub lt
 
 -- https://plfa.github.io/Adequacy/#programs-with-function-denotation-terminate-via-call-by-name
-theorem 𝔼.of_eval (g : 𝔾 γ γ') (d : γ ⊢ m ￬ v) : 𝔼 v (.clos m γ') := by
-  induction d with (unfold 𝔾 at g; unfold 𝔼 at g ⊢)
+theorem 𝔼.of_eval {Γ} {γ : Env Γ} {γ' : ClosEnv Γ} {m : Γ ⊢ ✶} (g : 𝔾 γ γ') (d : γ ⊢ m ￬ v)
+: 𝔼 v (.clos m γ')
+:= by
+  generalize hx : v = x at *
+  induction d generalizing v with (unfold 𝔼; intro gt)
   | @var _ γ i =>
-    intro gt; have := @g i; split at this; rename_i Δ m' δ h
-    have ⟨c, e, v⟩ := this gt; refine ⟨c, ?_, v⟩; exact e.var h
-  | ap => sorry
-  | fn => sorry
-  | bot => sorry
-  | conj => sorry
-  | sub => sorry
+    unfold 𝔾 𝔼 at g; have := @g i; split at this
+    have ⟨c, em', vγi⟩ := this gt; refine ⟨c, ?_, vγi⟩; apply em'.var; trivial
+  | @ap _ _ _ _ _ m _ _ ih ih' =>
+    unfold 𝔼 at ih; have ⟨.clos l' δ, e_cl', v_cl'⟩ := ih g rfl ⟨_, _, .refl⟩
+    have ⟨m', h'⟩ := WHNF.of_𝕍 v_cl'; subst h'; unfold 𝕍 at v_cl'
+    have ⟨c', em'c', v_c'⟩ := @v_cl' (.clos m γ') (ih' g rfl) gt; exact ⟨c', e_cl'.ap em'c', v_c'⟩
+  | @fn _ _ n _ _ _ ih =>
+    unfold 𝔼 at ih; exists .clos (ƛ n) γ', .lam; unfold 𝕍; intro c ev₁c; exact ih (g.ext ev₁c) rfl
+  | bot => subst_vars; exfalso; exact not_gtFn_bot gt
+  | sub _ lt ih =>
+    unfold 𝔼 at ih; have ⟨c, e_c, v_c⟩ := ih g rfl <| gt.sub lt; exact ⟨c, e_c, v_c.sub lt⟩
+  | @conj _ _ _ w w' _ _ ih ih' =>
+    by_cases hgt : GtFn w <;> by_cases hgt' : GtFn w'
+    · unfold 𝔼 at ih ih'; have ⟨c, e_c, vwc⟩ := ih g rfl hgt; exists c, e_c
+      have ⟨_, e_c', vw'c⟩ := ih' g rfl hgt'; rw [←e_c.determ e_c'] at vw'c; exact vwc.conj vw'c
+    · unfold 𝔼 at ih; have ⟨.clos l γ, e_cl, vw⟩ := ih g rfl hgt; exists .clos l γ, e_cl
+      have ⟨m', h'⟩ := WHNF.of_𝕍 vw; subst h'; apply vw.conj; exact 𝕍.of_not_gtFn hgt'
+    · unfold 𝔼 at ih'; have ⟨.clos l' γ', e_cl', vw'⟩ := ih' g rfl hgt'; exists .clos l' γ', e_cl'
+      have ⟨m', h'⟩ := WHNF.of_𝕍 vw'; subst h'; apply (𝕍.conj · vw'); exact 𝕍.of_not_gtFn hgt
+    · cases gt.conj <;> contradiction
+
+-- https://plfa.github.io/Adequacy/#proof-of-denotational-adequacy

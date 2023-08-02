@@ -145,7 +145,7 @@ end Env.Sub
 inductive Eval : Env Γ → (Γ ⊢ ✶) → Value → Prop where
 | var : Eval γ (` i) (γ i)
 | ap : Eval γ l (v ⇾ w) → Eval γ m v → Eval γ (l □ m) w
-| fn : Eval (γ`‚ v) n w → Eval γ (ƛ n) (v ⇾ w)
+| fn {v w} : Eval (γ`‚ v) n w → Eval γ (ƛ n) (v ⇾ w)
 | bot : Eval γ m ⊥
 | conj : Eval γ m v → Eval γ m w → Eval γ m (v ⊔ w)
 | sub : Eval γ m v → w ⊑ v → Eval γ m w

@@ -53,7 +53,6 @@ example
 
 -- https://plfa.github.io/BigStep/#the-big-step-semantics-is-deterministic
 theorem Eval.determ (e : γ ⊢ m ⇓ v) (e' : γ ⊢ m ⇓ v') : v = v' := by
-  -- generalize hx : γ = x, hx' : m = x' at *
   induction e generalizing v' with cases e'
   | lam => rfl
   | var h _ ih =>
