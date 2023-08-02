@@ -13,3 +13,4 @@ import Plfl.Untyped.Denotational
 import Plfl.Untyped.Denotational.Compositional
 import Plfl.Untyped.Denotational.Soundness
 import Plfl.Untyped.Denotational.Adequacy
+import Plfl.Untyped.Denotational.ContextualEquivalence

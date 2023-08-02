@@ -123,6 +123,11 @@ def Holed.plug : Holed Γ Δ → (Γ ⊢ ✶) → (Δ ⊢ ✶)
 | .apL c n, l => c.plug l □ n
 | .apR l c, m => l □ c.plug m
 
+/--
+Given two terms that are denotationally equal,
+plugging them both into any holed context produces two programs
+that are denotationally equal.
+-/
 theorem compositionality {c : Holed Γ Δ} (h : ℰ m = ℰ n) : ℰ (c.plug m) = ℰ (c.plug n) := by
   induction c with unfold Holed.plug
   | hole => exact h
