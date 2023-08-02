@@ -81,8 +81,7 @@ mutual
   - `c` evaluates to a closure `c'` in WHNF;
   - `𝕍 v c` holds.
   -/
-  def 𝔼 : Value → Clos → Prop
-  | v, .clos m γ' => GtFn v → ∃ c, (γ' ⊢ m ⇓ c) ∧ 𝕍 v c
+  def 𝔼 (v : Value) : Clos → Prop | .clos m γ' => GtFn v → ∃ c, (γ' ⊢ m ⇓ c) ∧ 𝕍 v c
 end
 -- https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/topic/.E2.9C.94.20Termination.20of.20mutual.20recursive.20defs.20with.20a.20.22shorthand.22.3F/near/378733953
 termination_by
@@ -90,7 +89,7 @@ termination_by
   𝔼 v c => (sizeOf v, 1)
 
 /-- `𝔾` relates `γ` to `γ'` if the corresponding values and closures are related by `𝔼` -/
-def 𝔾 (γ : Env Γ) (γ' : ClosEnv Γ) : Prop := ∀ {x : Γ ∋ ✶}, 𝔼 (γ x) (γ' x)
+def 𝔾 (γ : Env Γ) (γ' : ClosEnv Γ) : Prop := ∀ {i : Γ ∋ ✶}, 𝔼 (γ i) (γ' i)
 
 /-- The proof of a term being in Weak-Head Normal Form. -/
 def WHNF (t : Γ ⊢ a) : Prop := ∃ n : Γ‚ ✶ ⊢ ✶, t = (ƛ n)
@@ -142,3 +141,13 @@ lemma 𝔼.sub (evc : 𝔼 v c) (lt : v' ⊑ v) : 𝔼 v' c := by
   have ⟨c, ec, vvc⟩ := evc <| gtv'.sub lt; exists c, ec; exact vvc.sub lt
 
 -- https://plfa.github.io/Adequacy/#programs-with-function-denotation-terminate-via-call-by-name
+theorem 𝔼.of_eval (g : 𝔾 γ γ') (d : γ ⊢ m ￬ v) : 𝔼 v (.clos m γ') := by
+  induction d with (unfold 𝔾 at g; unfold 𝔼 at g ⊢)
+  | @var _ γ i =>
+    intro gt; have := @g i; split at this; rename_i Δ m' δ h
+    have ⟨c, e, v⟩ := this gt; refine ⟨c, ?_, v⟩; exact e.var h
+  | ap => sorry
+  | fn => sorry
+  | bot => sorry
+  | conj => sorry
+  | sub => sorry
