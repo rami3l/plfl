@@ -8,7 +8,8 @@ namespace Adequacy
 
 open Untyped Untyped.Notation
 open Untyped.Subst
-open BigStep BigStep.Notation
+open BigStep (Clos ClosEnv Eval.reduce_of_cbn)
+open BigStep.Notation
 open Denotational Denotational.Notation
 open Soundness (soundness)
 
@@ -174,4 +175,35 @@ theorem 𝔼.of_eval {Γ} {γ : Env Γ} {γ' : ClosEnv Γ} {m : Γ ⊢ ✶} (g :
       have ⟨m', h'⟩ := WHNF.of_𝕍 vw'; subst h'; apply (𝕍.conj · vw'); exact 𝕍.of_not_gtFn hgt
     · cases gt.conj <;> contradiction
 
--- https://plfa.github.io/Adequacy/#proof-of-denotational-adequacy
+section
+  variable {m : ∅ ⊢ ✶} {n : ∅‚ ✶ ⊢ ✶}
+
+  -- https://plfa.github.io/Adequacy/#proof-of-denotational-adequacy
+  theorem Eval.to_big_step (he : ℰ m = ℰ (ƛ n))
+  : ∃ (Γ : Context) (n' : Γ‚ ✶ ⊢ ✶) (γ : ClosEnv Γ), ClosEnv.empty ⊢ m ⇓ .clos (ƛ n') γ
+  := by
+    have : ℰ (ƛ n) ∅ (⊥ ⇾ ⊥) := by apply_rules [Eval.fn, Eval.bot]
+    rw [←he] at this; have := 𝔼.of_eval 𝔾.empty this; unfold 𝔼 at this
+    have ⟨.clos _ γ, emc, v_cl⟩ := this ⟨_, _, .refl⟩
+    have ⟨m', h'⟩ := WHNF.of_𝕍 v_cl; subst h'; exists _, m', γ
+
+  theorem adequacy (he : ℰ m = ℰ (ƛ n)) : ∃ n', m —↠ ƛ n' := by
+    have ⟨_, _, _, e⟩ := Eval.to_big_step he; exact e.reduce_of_cbn
+
+  -- https://plfa.github.io/Adequacy/#call-by-name-is-equivalent-to-beta-reduction
+  /--
+  If the program can be reduced to a λ-abstraction via β-rules,
+  then call-by-name can produce a value.
+  -/
+  theorem Eval.reduce_to_cbn (rs : m —↠ ƛ n)
+  : ∃ (Δ : Context) (n' : Δ‚ ✶ ⊢ ✶) (δ : ClosEnv Δ), ClosEnv.empty ⊢ m ⇓ .clos (ƛ n') δ
+  := soundness rs |> to_big_step
+end
+
+theorem Eval.reduce_iff_cbn {m : ∅ ⊢ ✶}
+: ∃ (n : ∅‚ ✶ ⊢ ✶), m —↠ ƛ n
+↔ ∃ (Δ : Context) (n' : Δ‚ ✶ ⊢ ✶) (δ : ClosEnv Δ), ClosEnv.empty ⊢ m ⇓ .clos (ƛ n') δ
+:= by
+  constructor
+  · intro ⟨_, r⟩; exact reduce_to_cbn r
+  · intro ⟨_, _, _, e⟩; exact Eval.reduce_of_cbn e

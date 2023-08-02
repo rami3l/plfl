@@ -22,7 +22,10 @@ An environment in call-by-name is a mapping from variables to closures.
 -/
 abbrev ClosEnv (Γ : Context) := (Γ ∋ ✶) → Clos
 
-instance : EmptyCollection (ClosEnv ∅) where emptyCollection := by intro.
+def ClosEnv.empty : ClosEnv ∅ := by intro.
+
+instance ClosEnv.instEmptyCollection : EmptyCollection (ClosEnv ∅) where
+  emptyCollection := empty
 
 def ClosEnv.tail (γ : ClosEnv Γ) (c : Clos) : ClosEnv (Γ‚ ✶)
 | .z => c
@@ -118,7 +121,7 @@ section
   If call-by-name can produce a value,
   then the program can be reduced to a λ-abstraction via β-rules.
   -/
-  theorem Eval.cbn_reduce {m : ∅ ⊢ ✶} {δ : ClosEnv Δ} {n' : Δ‚ ✶ ⊢ ✶}
+  theorem Eval.reduce_of_cbn {m : ∅ ⊢ ✶} {δ : ClosEnv Δ} {n' : Δ‚ ✶ ⊢ ✶}
   (ev : ∅ ⊢ m ⇓ .clos (ƛ n') δ)
   : ∃ (n : ∅‚ ✶ ⊢ ✶), m —↠ ƛ n
   := by
@@ -154,7 +157,7 @@ open Untyped.Subst
 If call-by-name can produce a value,
 then the program can be reduced to a λ-abstraction via β-rules.
 -/
-theorem Eval.cbn_reduce {n : Γ‚ ✶ ⊢ ✶} (ev : m ⇓' (ƛ n)) : m —↠ ƛ n := by
+theorem Eval.reduce_of_cbn {n : Γ‚ ✶ ⊢ ✶} (ev : m ⇓' (ƛ n)) : m —↠ ƛ n := by
   generalize hx : (ƛ n) = x, hx' : m = x' at *
   induction ev with
   | lam => rfl
