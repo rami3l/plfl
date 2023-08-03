@@ -6,24 +6,24 @@ My journey of learning Lean 4 by implementing proofs from the wonderful book [_P
 
 ### Volume 2
 
-- [x] 1. [Lambda](https://plfa.github.io/Lambda/): Introduction to Lambda Calculus
-- [x] 2. [Properties](https://plfa.github.io/Properties/): Progress and Preservation
-- [x] 3. [DeBruijn](https://plfa.github.io/DeBruijn/): Intrinsically-typed de Bruijn representation
-- [x] 4. [More](https://plfa.github.io/More/): Additional constructs of simply-typed lambda calculus
-- [x] 5. [Bisimulation](https://plfa.github.io/Bisimulation/): Relating reduction systems
-- [x] 6. [Inference](https://plfa.github.io/Inference/): Bidirectional type inference
-- [x] 7. [Untyped](https://plfa.github.io/Untyped/): Untyped lambda calculus with full normalisation
-- [x] 8. [Confluence](https://plfa.github.io/Confluence/): Confluence of untyped lambda calculus
-- [x] 9. [BigStep](https://plfa.github.io/BigStep/): Big-step semantics of untyped lambda calculus
+- [x] 1. [Lambda](Plfl/Lambda.lean): Introduction to Lambda Calculus
+- [x] 2. [Properties](Plfl/Lambda/Properties.lean): Progress and Preservation
+- [x] 3. [DeBruijn](Plfl/DeBruijn.lean): Intrinsically-typed de Bruijn representation
+- [x] 4. [More](Plfl/More.lean): Additional constructs of simply-typed lambda calculus
+- [x] 5. [Bisimulation](Plfl/More/Bisimulation.lean): Relating reduction systems
+- [x] 6. [Inference](Plfl/More/Inference.lean): Bidirectional type inference
+- [x] 7. [Untyped](Plfl/Untyped.lean): Untyped lambda calculus with full normalisation
+- [x] 8. [Confluence](Plfl/Untyped/Confluence.lean): Confluence of untyped lambda calculus
+- [x] 9. [BigStep](Plfl/Untyped/BigStep.lean): Big-step semantics of untyped lambda calculus
 
 ### Volume 3
 
-- [x] 1. [Denotational](https://plfa.github.io/Denotational/): Denotational semantics of untyped lambda calculus
-- [x] 2. [Compositional](https://plfa.github.io/Compositional/): The denotational semantics is compositional
-- [x] 3. [Soundness](https://plfa.github.io/Soundness/): Soundness of reduction with respect to denotational semantics
-- [x] 4. [Adequacy](https://plfa.github.io/Adequacy/): Adequacy of denotational semantics with respect to operational semantics
-- [x] 5. [ContextualEquivalence](https://plfa.github.io/ContextualEquivalence/): Denotational equality implies contextual equivalence
+- [x] 1. [Denotational](Plfl/Untyped/Denotational.lean): Denotational semantics of untyped lambda calculus
+- [x] 2. [Compositional](Plfl/Untyped/Denotational/Compositional.lean): The denotational semantics is compositional
+- [x] 3. [Soundness](Plfl/Untyped/Denotational/Soundness.lean): Soundness of reduction with respect to denotational semantics
+- [x] 4. [Adequacy](Plfl/Untyped/Denotational/Adequacy.lean): Adequacy of denotational semantics with respect to operational semantics
+- [x] 5. [ContextualEquivalence](Plfl/Untyped/Denotational/ContextualEquivalence.lean): Denotational equality implies contextual equivalence
 
 ### Appendix
 
-- [x] 1. [Substitution](https://plfa.github.io/Substitution/): Substitution in the untyped lambda calculus
+- [x] 1. [Substitution](Plfl/Untyped/Substitution.lean): Substitution in the untyped lambda calculus
