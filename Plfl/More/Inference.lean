@@ -186,17 +186,16 @@ mutual
   /--
   Typing of `TermS` terms.
   -/
-  inductive TyS : Context → TermS → Ty → Type where
+  inductive TyS : Context → TermS → Ty → Prop where
   | var : Γ ∋ x ⦂ a → TyS Γ (` x) a
   | ap: TyS Γ l (a =⇒ b) → TyI Γ m a → TyS Γ (l □ m) b
   | prod: TyS Γ m a → TyS Γ n b → TyS Γ (.prod m n) (a * b)
   | syn : TyI Γ m a → TyS Γ (m.the a) a
-  deriving Repr
 
   /--
   Typing of `TermI` terms.
   -/
-  inductive TyI : Context → TermI → Ty → Type where
+  inductive TyI : Context → TermI → Ty → Prop where
   | lam : TyI (Γ‚ x ⦂ a) n b → TyI Γ (ƛ x : n) (a =⇒ b)
   | zero : TyI Γ 𝟘 ℕt
   | succ : TyI Γ m ℕt → TyI Γ (ι m) ℕt
@@ -207,7 +206,6 @@ mutual
   | fst: TyS Γ p (a * b) → TyI Γ (.fst p) a
   | snd: TyS Γ p (a * b) → TyI Γ (.snd p) b
   | inh : TyS Γ m a → TyI Γ m a
-  deriving Repr
 end
 
 instance : Coe (TyI Γ m a) (TyS Γ (m.the a) a) where coe := TyS.syn
