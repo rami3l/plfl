@@ -338,7 +338,7 @@ section subject_expansion
     by_contra; simp_all only [isEmpty_pi, not_exists, not_isEmpty_iff]
     let illCase := 𝟘? 𝟘 [zero: 𝟘 |succ "x" : add]
     have nty_ill : ∅ ⊬ illCase := by
-      by_contra; simp_all only [not_isEmpty_iff]; rename_i t _ j
+      by_contra; simp_all only [not_isEmpty_iff]; rename_i t j
       cases t <;> (cases j; · contradiction)
     rename_i f; have := f 𝟘 ℕt illCase tyZero zeroβ
     exact nty_ill.false this.some
@@ -347,7 +347,7 @@ section subject_expansion
     by_contra; simp_all only [isEmpty_pi, not_exists, not_isEmpty_iff]
     let illAp := (ƛ "x" : 𝟘) □ illLam
     have nty_ill : ∅ ⊬ illAp := by
-      by_contra; simp_all only [not_isEmpty_iff]; rename_i t _ j
+      by_contra; simp_all only [not_isEmpty_iff]; rename_i t j
       cases t <;> (
         · cases j
           · rename_i j; cases j

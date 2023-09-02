@@ -103,10 +103,10 @@ def WHNF (t : Γ ⊢ a) : Prop := ∃ n : Γ‚ ✶ ⊢ ✶, t = (ƛ n)
 
 /-- A closure in a 𝕍 relation must be in WHNF. -/
 lemma WHNF.of_𝕍 (vc : 𝕍 v (.clos m γ)) : WHNF m := by
-  cases m with (simp [𝕍] at vc; try contradiction) | lam n => exists n
+  cases m with (try simp [𝕍] at vc; try contradiction) | lam n => exists n
 
 lemma 𝕍.conj (uc : 𝕍 u c) (vc : 𝕍 v c) : 𝕍 (u ⊔ v) c := by
-  let .clos m γ := c; cases m with (simp [𝕍] at *; try contradiction)
+  let .clos m γ := c; cases m with (try simp [𝕍] at *; try contradiction)
   | lam => unfold 𝕍; exact ⟨uc, vc⟩
 
 lemma 𝕍.of_not_gtFn (nf : ¬ GtFn v) : 𝕍 v (.clos (ƛ n) γ') := by induction v with unfold 𝕍
@@ -115,7 +115,7 @@ lemma 𝕍.of_not_gtFn (nf : ¬ GtFn v) : 𝕍 v (.clos (ƛ n) γ') := by induct
 | conj _ _ ih ih' => exact not_gtFn_conj_inv nf |>.imp ih ih'
 
 lemma 𝕍.sub {v v'} (vvc : 𝕍 v c) (lt : v' ⊑ v) : 𝕍 v' c := by
-  let .clos m γ := c; cases m with (simp [𝕍] at *; try contradiction) | lam m =>
+  let .clos m γ := c; cases m with (try simp [𝕍] at *; try contradiction) | lam m =>
     rename_i Γ; induction lt generalizing Γ with
     | bot => triv
     | conjL _ _ ih ih' => unfold 𝕍; exact ⟨ih _ _ _ vvc, ih' _ _ _ vvc⟩
