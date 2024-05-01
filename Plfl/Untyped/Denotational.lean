@@ -89,7 +89,7 @@ An `Env` gives meaning to a term's free vars by mapping vars to values.
 abbrev Env (Γ : Context) : Type := ∀ (_ : Γ ∋ ✶), Value
 
 namespace Env
-  instance : EmptyCollection (Env ∅) where emptyCollection := by intro.
+  instance : EmptyCollection (Env ∅) where emptyCollection := nofun
 
   abbrev snoc (γ : Env Γ) (v : Value) : Env (Γ‚ ✶)
   | .z => v
@@ -299,8 +299,8 @@ section
     apply_rules [fn]; induction n with
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
-      unfold church.applyN; apply ap (v := vs.get n)
-      · apply sub var; simp only [Env.snoc, Value.path]; simp_arith; exact .conjR₂ .refl
+      unfold church.applyN; apply ap
+      · apply sub var; simp only [Env.snoc, Value.path]; convert Sub.refl.conjR₂; sorry
       · convert sub_env (@r vs.dropLast) ?_ using 1
         · simp only [vs.get_dropLast n, Fin.coe_ofNat_eq_mod]
           congr; simp_arith [Nat.mod_eq_of_lt]
@@ -359,7 +359,7 @@ namespace AllFn
   def snd (f : AllFn (u ⊔ v)) : AllFn v := f ∘ .inr
 end AllFn
 
-lemma not_isFn_bot : ¬ IsFn ⊥ := by intro.
+lemma not_isFn_bot : ¬ IsFn ⊥ := nofun
 
 lemma elem_of_allFn (f : AllFn u) : ∃ v w, v ⇾ w ∈ u := by induction u with
 | bot => exact (not_isFn_bot <| f rfl).elim
