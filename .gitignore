@@ -1,4 +1,5 @@
 /.cache
+/.lake/*
 /build
 /lake-packages/*
 /lakefile.olean

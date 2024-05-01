@@ -300,15 +300,17 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
   | ` x => apply done; exact ′`ₙ x
   | ƛ n =>
     have : sizeOf n < sizeOf (ƛ n) := by simp only [
-      Term.lam.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff, true_or
+      Term.lam.sizeOf_spec, lt_add_iff_pos_left,
+      add_pos_iff, zero_lt_one, true_or,
     ]
     match progress n with
     | .done n => apply done; exact ƛₙ n
     | .step n => apply step; exact lamζ n
   | ` x □ m =>
     have : sizeOf m < sizeOf (` x □ m) := by simp only [
-      Term.ap.sizeOf_spec, Term.var.sizeOf_spec, Ty.star.sizeOf_spec,
-      lt_add_iff_pos_left, add_pos_iff, true_or, or_self
+      Term.ap.sizeOf_spec, Term.var.sizeOf_spec,
+      Ty.star.sizeOf_spec, lt_add_iff_pos_left,
+      add_pos_iff, zero_lt_one, true_or, or_self,
     ]
     match progress m with
     | .done m => apply done; exact ′`ₙx □ₙ m
@@ -321,8 +323,10 @@ def Progress.progress : (m : Γ ⊢ a) → Progress m := open Reduce in by
     | .done (′l') =>
       simp_all only [namedPattern]; rename_i h; simp only [h.symm, Term.ap.sizeOf_spec]
       have : sizeOf m < sizeOf (l □ m) := by
-        aesop_subst h
-        simp only [Term.ap.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff, true_or, or_self]
+        aesop_subst h; simp only [
+          Term.ap.sizeOf_spec, lt_add_iff_pos_left, add_pos_iff,
+          zero_lt_one, true_or, or_self,
+        ]
       match progress m with
       | .done m => apply done; exact ′l' □ₙ m
       | .step m => apply step; exact apξ₂ m

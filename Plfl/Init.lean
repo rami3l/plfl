@@ -43,7 +43,5 @@ namespace Vector
       Vector.get, dropLast, v.1.dropLast_eq_take,
       Vector.length_val, Nat.pred_succ, Fin.coe_eq_castSucc
     ]
-    change List.get _ _ = List.get _ _; rw [←List.get_take]
-    · rfl
-    · simp only [Fin.is_lt]
+    change List.get _ _ = List.get _ _; rw [List.get_dropLast]; rfl
 end Vector

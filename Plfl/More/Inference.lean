@@ -60,7 +60,7 @@ if its parse tree node value is determined by the attribute value at its *parent
 mutual
   /--
   A term with synthesized types.
-  The main term in an eliminator is typed via synthesis.
+  The main term in a constructor is typed via inheritance.
   -/
   inductive TermS where
   | var : Sym → TermS
@@ -73,7 +73,7 @@ mutual
 
   /--
   A term with inherited types.
-  Constructors are typed via inheritance.
+  The main term in an eliminator is typed via synthesis.
   -/
   inductive TermI where
   | lam : Sym → TermI → TermI
@@ -214,42 +214,42 @@ instance : Coe (TyI Γ m a) (TyS Γ (m.the a) a) where coe := TyS.syn
 instance : Coe (TyS Γ m a) (TyI Γ m a) where coe := TyI.inh
 
 namespace Notation
-  scoped notation:40 Γ " ⊢ " m " ↥ " a:51 => TyS Γ m a
+  scoped notation:40 Γ " ⊢ " m " ⇡ " a:51 => TyS Γ m a
   scoped notation:40 Γ " ⊢ " m " ↟ " a:51 => TyS Γ (TermS.syn m a) a
-  scoped notation:40 Γ " ⊢ " m " ↧ " a:51 => TyI Γ m a
+  scoped notation:40 Γ " ⊢ " m " ⇣ " a:51 => TyI Γ m a
 end Notation
 
 abbrev twoTy : Γ ⊢ two ↟ ℕt := open TyS TyI in by
   apply_rules [syn, succ, zero]
 
-abbrev addTy : Γ ⊢ add ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Lookup in by
+abbrev addTy : Γ ⊢ add ⇡ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh]
   <;> elem
 
 -- https://plfa.github.io/Inference/#bidirectional-mul
-abbrev mulTy : Γ ⊢ mul ↥ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Lookup in by
+abbrev mulTy : Γ ⊢ mul ⇡ (ℕt =⇒ ℕt =⇒ ℕt) := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
     addTy]
   <;> elem
 
-abbrev twoCTy : Γ ⊢ twoC ↧ Ch := open TyS TyI Lookup in by
+abbrev twoCTy : Γ ⊢ twoC ⇣ Ch := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh]
   <;> elem
 
-abbrev addCTy : Γ ⊢ addC ↥ (Ch =⇒ Ch =⇒ Ch) := open TyS TyI Lookup in by
+abbrev addCTy : Γ ⊢ addC ⇡ (Ch =⇒ Ch =⇒ Ch) := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh]
   <;> elem
 
 -- https://plfa.github.io/Inference/#bidirectional-products
-example : Γ ⊢ .prod (two.the ℕt) add ↥ ℕt * (ℕt =⇒ ℕt =⇒ ℕt)
+example : Γ ⊢ .prod (two.the ℕt) add ⇡ ℕt * (ℕt =⇒ ℕt =⇒ ℕt)
 := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
@@ -286,7 +286,7 @@ theorem Lookup.unique (i : Γ ∋ x ⦂ a) (j : Γ ∋ x ⦂ b) : a = b := by
   | s => cases j with try trivial
     | s => apply unique <;> trivial
 
-theorem TyS.unique (t : Γ ⊢ x ↥ a) (u : Γ ⊢ x ↥ b) : a = b := by
+theorem TyS.unique (t : Γ ⊢ x ⇡ a) (u : Γ ⊢ x ⇡ b) : a = b := by
   match t with
   | .var i => cases u with | var j => apply Lookup.unique <;> trivial
   | .ap l _ => cases u with | ap l' _ => injection unique l l'
@@ -304,7 +304,7 @@ lemma Lookup.empty_ext_empty
 
 def Lookup.lookup (Γ : Context) (x : Sym) : Decidable' (Σ a, Γ ∋ x ⦂ a) := by
   match Γ, x with
-  | [], _ => left; is_empty; intro.
+  | [], _ => left; is_empty; nofun
   | ⟨y, b⟩ :: Γ, x =>
     if h : x = y then
       right; subst h; exact ⟨b, .z⟩
@@ -314,18 +314,18 @@ def Lookup.lookup (Γ : Context) (x : Sym) : Decidable' (Σ a, Γ ∋ x ⦂ a) :
 
 -- https://plfa.github.io/Inference/#promoting-negations
 lemma TyS.empty_arg
-: Γ ⊢ l ↥ a =⇒ b
-→ IsEmpty (Γ ⊢ m ↧ a)
-→ IsEmpty (Σ b', Γ ⊢ l □ m ↥ b')
+: Γ ⊢ l ⇡ a =⇒ b
+→ IsEmpty (Γ ⊢ m ⇣ a)
+→ IsEmpty (Σ b', Γ ⊢ l □ m ⇡ b')
 := by
   intro tl n; is_empty; intro ⟨b', .ap tl' tm'⟩
   injection tl.unique tl'; rename_i h _; apply n.false; rwa [←h] at tm'
 
-lemma TyS.empty_switch : Γ ⊢ m ↥ a → a ≠ b → IsEmpty (Γ ⊢ m ↥ b) := by
+lemma TyS.empty_switch : Γ ⊢ m ⇡ a → a ≠ b → IsEmpty (Γ ⊢ m ⇡ b) := by
   intro ta n; is_empty; intro tb; have := ta.unique tb; contradiction
 
 mutual
-  def TermS.infer (m : TermS) (Γ : Context) : Decidable' (Σ a, Γ ⊢ m ↥ a) := by
+  def TermS.infer (m : TermS) (Γ : Context) : Decidable' (Σ a, Γ ⊢ m ⇡ a) := by
     match m with
     | ` x => match Lookup.lookup Γ x with
       | .inr ⟨a, i⟩ => right; exact ⟨a, .var i⟩
@@ -335,7 +335,7 @@ mutual
         | .inr ta => right; exact ⟨b, .ap tab ta⟩
         | .inl n => left; exact tab.empty_arg n
       | .inr ⟨ℕt, t⟩ => left; is_empty; intro ⟨_, .ap tl _⟩; injection t.unique tl
-      | .inr ⟨_ * _, t⟩ => left; is_empty; intro ⟨_, .ap tl _⟩; injection t.unique tl
+      | .inr ⟨.prod _ _, t⟩ => left; is_empty; intro ⟨_, .ap tl _⟩; injection t.unique tl
       | .inl n => left; is_empty; intro ⟨a, .ap tl _⟩; rename_i b _; exact n.false ⟨b =⇒ a, tl⟩
     | .prod m n => match m.infer Γ, n.infer Γ with
       | .inr ⟨a, tm⟩, .inr ⟨b, tn⟩ => right; exact ⟨a * b, tm.prod tn⟩
@@ -345,37 +345,37 @@ mutual
       | .inr t => right; exact ⟨a, t⟩
       | .inl n => left; is_empty; intro ⟨a', t'⟩; cases t'; apply n.false; trivial
 
-  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : Decidable' (Γ ⊢ m ↧ a) := by
+  def TermI.infer (m : TermI) (Γ : Context) (a : Ty) : Decidable' (Γ ⊢ m ⇣ a) := by
     match m with
     | ƛ x : n => match a with
       | a =⇒ b => match n.infer (Γ‚ x ⦂ a) b with
         | .inr t => right; exact .lam t
         | .inl n => left; is_empty; intro (.lam t); exact n.false t
-      | ℕt => left; is_empty; intro.
-      | _ * _ => left; is_empty; intro.
+      | ℕt => left; is_empty; nofun
+      | .prod _ _ => left; is_empty; nofun
     | 𝟘 => match a with
       | ℕt => right; exact .zero
-      | _ =⇒ _ => left; is_empty; intro.
-      | _ * _ => left; is_empty; intro.
+      | _ =⇒ _ => left; is_empty; nofun
+      | .prod _ _ => left; is_empty; nofun
     | ι n => match a with
       | ℕt => match n.infer Γ ℕt with
         | .inr t => right; exact .succ t
         | .inl n => left; is_empty; intro (.succ t); exact n.false t
-      | _ =⇒ _ => left; is_empty; intro.
-      | _ * _ => left; is_empty; intro.
+      | _ =⇒ _ => left; is_empty; nofun
+      | .prod _ _ => left; is_empty; nofun
     | .case l m x n => match l.infer Γ with
       | .inr ⟨ℕt, tl⟩ => match m.infer Γ a, n.infer (Γ‚ x ⦂ ℕt) a with
         | .inr tm, .inr tn => right; exact .case tl tm tn
         | .inl nm, _ => left; is_empty; intro (.case _ _ _); apply nm.false; trivial
         | .inr _, .inl nn => left; is_empty; intro (.case _ _ _); apply nn.false; trivial
       | .inr ⟨_ =⇒ _, tl⟩ => left; is_empty; intro (.case t _ _); injection t.unique tl
-      | .inr ⟨_ * _, tl⟩ => left; is_empty; intro (.case t _ _); injection t.unique tl
+      | .inr ⟨.prod _ _, tl⟩ => left; is_empty; intro (.case t _ _); injection t.unique tl
       | .inl nl => left; is_empty; intro (.case _ _ _); apply nl.false; constructor <;> trivial
     | μ x : n => match n.infer (Γ‚ x ⦂ a) a with
       | .inr t => right; exact .mu t
       | .inl n => left; is_empty; intro (.mu t); exact n.false t
     | .fst m => match m.infer Γ with
-      | .inr ⟨b * _, tm⟩ => if h : a = b then
+      | .inr ⟨.prod b _, tm⟩ => if h : a = b then
           right; subst h; exact .fst tm
         else
           left; is_empty; intro (.fst t); injection t.unique tm; contradiction
@@ -383,7 +383,7 @@ mutual
       | .inr ⟨_ =⇒ _, tm⟩ => left; is_empty; intro (.fst t); injection t.unique tm
       | .inl n => left; is_empty; intro (.fst t); apply n.false; constructor <;> trivial
     | .snd m => match m.infer Γ with
-      | .inr ⟨_ * b, tm⟩ => if h : a = b then
+      | .inr ⟨.prod _ b, tm⟩ => if h : a = b then
           right; subst h; exact .snd tm
         else
           left; is_empty; intro (.snd t); injection t.unique tm; contradiction
@@ -398,12 +398,9 @@ mutual
           apply (tm.empty_switch h.symm).false; trivial
       | .inl nm => left; is_empty; intro (.inh tm); apply nm.false; exists a
 end
-termination_by
-  TermS.infer m Γ => sizeOf m
-  TermI.infer n Γ a => sizeOf n
 
 -- https://plfa.github.io/Inference/#testing-the-example-terms
-abbrev fourTy : Γ ⊢ four ↥ ℕt := open TyS TyI Lookup in by
+abbrev fourTy : Γ ⊢ four ⇡ ℕt := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -412,7 +409,7 @@ abbrev fourTy : Γ ⊢ four ↥ ℕt := open TyS TyI Lookup in by
 
 example : four.infer ∅ = .inr ⟨ℕt, fourTy⟩ := by rfl
 
-abbrev four'Ty : Γ ⊢ four' ↥ ℕt := open TyS TyI Lookup in by
+abbrev four'Ty : Γ ⊢ four' ⇡ ℕt := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -423,7 +420,7 @@ example : four'.infer ∅ = .inr ⟨ℕt, four'Ty⟩ := by rfl
 
 abbrev four'': TermS := mul □ two □ two
 
-abbrev four''Ty : Γ ⊢ four'' ↥ ℕt := open TyS TyI Lookup in by
+abbrev four''Ty : Γ ⊢ four'' ⇡ ℕt := open TyS TyI Lookup in by
   repeat apply_rules
     [var, ap, prod, syn,
     lam, zero, succ, case, mu, fst, snd, inh,
@@ -445,9 +442,9 @@ See: <https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/topic/.
 This won't work either, probably due to similar reasons...
 -/
 
--- instance : Decidable (Nonempty (Σ a, Γ ⊢ m ↥ a)) := (m.infer Γ).toDecidable
+-- instance : Decidable (Nonempty (Σ a, Γ ⊢ m ⇡ a)) := (m.infer Γ).toDecidable
 
--- example := let m := (ƛ "x" : `"y").the (ℕt =⇒ ℕt); show IsEmpty (Σ a, ∅ ⊢ m ↥ a) by
+-- example := let m := (ƛ "x" : `"y").the (ℕt =⇒ ℕt); show IsEmpty (Σ a, ∅ ⊢ m ⇡ a) by
 --   rw [←not_nonempty_iff]; decide
 
 -- Unbound variable:
@@ -487,7 +484,7 @@ This won't work either, probably due to similar reasons...
 def Ty.erase : Ty → More.Ty
 | ℕt => .nat
 | a =⇒ b => .fn a.erase b.erase
-| a * b => a.erase * b.erase
+| .prod a b => a.erase * b.erase
 
 def Context.erase : Context → More.Context
 | [] => ∅
@@ -498,13 +495,13 @@ def Lookup.erase : Γ ∋ x ⦂ a → More.Lookup Γ.erase a.erase
 | .s _ i => .s i.erase
 
 mutual
-  def TyS.erase : Γ ⊢ m ↥ a → More.Term Γ.erase a.erase
+  def TyS.erase : Γ ⊢ m ⇡ a → More.Term Γ.erase a.erase
   | .var i => .var i.erase
   | .ap l m => .ap l.erase m.erase
   | .prod m n => .prod m.erase n.erase
   | .syn m => m.erase
 
-  def TyI.erase : Γ ⊢ m ↧ a → More.Term Γ.erase a.erase
+  def TyI.erase : Γ ⊢ m ⇣ a → More.Term Γ.erase a.erase
   | .lam m => .lam m.erase
   | .zero => .zero
   | .succ m => .succ m.erase
@@ -514,7 +511,6 @@ mutual
   | .snd m => .snd m.erase
   | .inh m => m.erase
 end
-termination_by _ m => sizeOf m
 
 example : fourTy.erase (Γ := ∅) = More.Term.four := by rfl
 
