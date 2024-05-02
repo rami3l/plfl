@@ -39,12 +39,12 @@ lemma subst_comp {ρ : ∀ {a}, Γ ∋ a → Δ ∋ a} {σ : ∀ {a}, Δ ∋ a �
 : subst σ (rename ρ t) = subst (σ ∘ ρ) t
 := by
   match t with
-  | ` i => triv
+  | ` i => trivial
   | ƛ t =>
     apply congr_arg lam; rw [subst_comp t]
     conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
   | l □ m => apply congr_arg₂ ap <;> apply subst_comp
-  | 𝟘 => triv
+  | 𝟘 => trivial
   | ι t => apply congr_arg succ; apply subst_comp
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply subst_comp
@@ -53,7 +53,7 @@ lemma subst_comp {ρ : ∀ {a}, Γ ∋ a → Δ ∋ a} {σ : ∀ {a}, Δ ∋ a �
   | μ t =>
     apply congr_arg mu; rw [subst_comp t]
     conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
-  | .prim t => triv
+  | .prim t => trivial
   | .mulP m n => apply congr_arg₂ mulP <;> apply subst_comp
   | .let m n =>
     apply congr_arg₂ «let» <;> try apply subst_comp
@@ -71,8 +71,8 @@ lemma subst_comp {ρ : ∀ {a}, Γ ∋ a → Δ ∋ a} {σ : ∀ {a}, Δ ∋ a �
     · rw [subst_comp r]
       conv_lhs => arg 1; ext a t; simp only [Function.comp_apply, exts_comp t]
   | .caseVoid v => apply congr_arg caseVoid; apply subst_comp
-  | ◯ => triv
-  | .nil => triv
+  | ◯ => trivial
+  | .nil => trivial
   | .cons m n => apply congr_arg₂ cons <;> apply subst_comp
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply subst_comp
@@ -84,13 +84,13 @@ lemma subst_comp {ρ : ∀ {a}, Γ ∋ a → Δ ∋ a} {σ : ∀ {a}, Δ ∋ a �
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L93
 lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
   match t with
-  | ` i => apply congr_arg var; triv
+  | ` i => apply congr_arg var; trivial
   | ƛ t =>
     apply congr_arg lam
     conv_lhs => arg 1; ext a i; rw [exts_var i]
     exact subst_var t
   | l □ m => apply congr_arg₂ ap <;> apply subst_var
-  | 𝟘 => triv
+  | 𝟘 => trivial
   | ι t => apply congr_arg succ; apply subst_var
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply subst_var
@@ -100,7 +100,7 @@ lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
     apply congr_arg mu
     conv_lhs => arg 1; ext a i; rw [exts_var i]
     exact subst_var t
-  | .prim t => triv
+  | .prim t => trivial
   | .mulP m n => apply congr_arg₂ mulP <;> apply subst_var
   | .let m n =>
     apply congr_arg₂ «let» <;> try apply subst_var
@@ -118,8 +118,8 @@ lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
     · conv_lhs => arg 1; ext a i; rw [exts_var i]
       exact subst_var r
   | .caseVoid v => apply congr_arg caseVoid; apply subst_var
-  | ◯ => triv
-  | .nil => triv
+  | ◯ => trivial
+  | .nil => trivial
   | .cons m n => apply congr_arg₂ cons <;> apply subst_var
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply subst_var
@@ -131,7 +131,7 @@ lemma subst_var (t : Γ ⊢ a) : subst var t = t := by
 theorem subst₁_shift : (shift (t : Γ ⊢ a))⟦(t' : Γ ⊢ b)⟧ = t := by
   simp_all only [subst₁, subst₁σ, subst_comp]
   conv_lhs => arg 1; ext a t'; simp
-  simp_all only [subst_var]
+  rw [subst_var]
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L112
 lemma insert_twice_idx {Γ Δ Φ : Context} {a b c : Ty} (i : Γ‚‚ Δ‚‚ Φ ∋ a)
@@ -156,13 +156,13 @@ lemma insert_twice {Γ Δ Φ : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Φ �
   | ` i => apply congr_arg var; exact insert_twice_idx i
   | ƛ t => apply congr_arg lam; rename_i a' b'; exact insert_twice (Φ := Φ‚ a') t
   | l □ m => apply congr_arg₂ ap <;> apply insert_twice
-  | 𝟘 => triv
+  | 𝟘 => trivial
   | ι t => apply congr_arg succ; apply insert_twice
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply insert_twice
     · exact insert_twice (Φ := Φ‚ ℕt) n
   | μ t => apply congr_arg mu; exact insert_twice (Φ := Φ‚ a) t
-  | .prim t => triv
+  | .prim t => trivial
   | .mulP m n => apply congr_arg₂ mulP <;> apply insert_twice
   | .let m n =>
     apply congr_arg₂ «let» <;> try apply insert_twice
@@ -177,8 +177,8 @@ lemma insert_twice {Γ Δ Φ : Context} {a b c : Ty} (t : Γ‚‚ Δ‚‚ Φ �
     · rename_i a' b'; exact insert_twice (Φ := Φ‚ a') l
     · rename_i a' b'; exact insert_twice (Φ := Φ‚ b') r
   | .caseVoid v => apply congr_arg caseVoid; apply insert_twice
-  | ◯ => triv
-  | .nil => triv
+  | ◯ => trivial
+  | .nil => trivial
   | .cons m n => apply congr_arg₂ cons <;> apply insert_twice
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply insert_twice
@@ -210,13 +210,13 @@ lemma insert_subst
   | ` i => exact insert_subst_idx i
   | ƛ t => rename_i a b; apply congr_arg lam; exact insert_subst (Φ := Φ‚ a) t
   | l □ m => apply congr_arg₂ ap <;> apply insert_subst
-  | 𝟘 => triv
+  | 𝟘 => trivial
   | ι t => apply congr_arg succ; apply insert_subst
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply insert_subst
     · exact insert_subst (Φ := Φ‚ ℕt) n
   | μ t => apply congr_arg mu; exact insert_subst (Φ := Φ‚ a) t
-  | .prim t => triv
+  | .prim t => trivial
   | .mulP m n => apply congr_arg₂ mulP <;> apply insert_subst
   | .let m n =>
     apply congr_arg₂ «let» <;> try apply insert_subst
@@ -231,8 +231,8 @@ lemma insert_subst
     · rename_i a' b'; exact insert_subst (Φ := Φ‚ a') l
     · rename_i a' b'; exact insert_subst (Φ := Φ‚ b') r
   | .caseVoid v => apply congr_arg caseVoid; apply insert_subst
-  | ◯ => triv
-  | .nil => triv
+  | ◯ => trivial
+  | .nil => trivial
   | .cons m n => apply congr_arg₂ cons <;> apply insert_subst
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply insert_subst
@@ -252,7 +252,7 @@ lemma exts_subst_comp
 : subst (exts σ') (exts σ i) = exts (subst σ' ∘ σ) i
 := by
   match i with
-  | .z => triv
+  | .z => trivial
   | .s i => exact shift_subst (σ i)
 
 -- https://github.com/kaa1el/plfa_solution/blob/c5869a34bc4cac56cf970e0fe38874b62bd2dafc/src/plfa/demo/DoubleSubstitutionDeBruijn.agda#L170
@@ -262,13 +262,13 @@ theorem subst_subst_comp
 : subst σ' (subst σ t) = subst (subst σ' ∘ σ) t
 := by
   match t with
-  | ` _ => triv
+  | ` _ => trivial
   | ƛ t =>
     apply congr_arg lam
     rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') t]
     congr; ext; apply exts_subst_comp
   | l □ m => apply congr_arg₂ ap <;> apply subst_subst_comp
-  | 𝟘 => triv
+  | 𝟘 => trivial
   | ι t => apply congr_arg succ; apply subst_subst_comp
   | 𝟘? l m n =>
     apply congr_arg₃ case <;> try apply subst_subst_comp
@@ -279,7 +279,7 @@ theorem subst_subst_comp
     apply congr_arg mu
     have := subst_subst_comp (σ := exts σ) (σ' := exts σ') t
     rw [this]; congr; ext; apply exts_subst_comp
-  | .prim t => triv
+  | .prim t => trivial
   | .mulP m n => apply congr_arg₂ mulP <;> apply subst_subst_comp
   | .let m n =>
     apply congr_arg₂ «let»
@@ -301,8 +301,8 @@ theorem subst_subst_comp
       rw [subst_subst_comp (σ := exts σ) (σ' := exts σ') r]
       arg 1; ext tt t; rw [Function.comp_apply, exts_subst_comp t]
   | .caseVoid v => apply congr_arg caseVoid; apply subst_subst_comp
-  | ◯ => triv
-  | .nil => triv
+  | ◯ => trivial
+  | .nil => trivial
   | .cons m n => apply congr_arg₂ cons <;> apply subst_subst_comp
   | .caseList l m n =>
     apply congr_arg₃ caseList <;> try apply subst_subst_comp
@@ -314,12 +314,8 @@ theorem double_subst
 : subst₂ (v : Γ ⊢ a) (w : Γ ⊢ b) (n : Γ‚ a‚ b ⊢ c)
 = n⟦rename .s w⟧⟦v⟧
 := by
-  cases n <;> first
-  | triv
-  | simp_all only [subst₂, subst₁, subst₁σ, subst_subst_comp]; congr; ext
-    -- The following is generated by `aesop?`:
-    simp_all only [Function.comp_apply]
-    split
-    · simp_all only [subst₁_shift]
-    · simp_all only; rfl
-    · simp_all only; rfl
+  simp only [subst₂, subst₁, subst_subst_comp]; congr; ext
+  simp only [Function.comp_apply, subst₁σ]; split
+  · simp only [subst₁_shift]
+  · simp only [shift_subst]; rfl
+  · simp only [shift_subst]; rfl

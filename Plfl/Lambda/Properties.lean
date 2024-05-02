@@ -56,7 +56,7 @@ namespace Canonical
   := by
     match c with
     | ⟨tyLam ty, Value.lam⟩ => simp_all only [wellTyped]
-    | ⟨tyZero, Value.zero⟩ => simp_all only
+    | ⟨tyZero, Value.zero⟩ => simp_all only [wellTyped]
     | ⟨tySucc ty, Value.succ n⟩ =>
         rename_i v'; have := @wellTyped_right_inv v' ℕt ⟨ty, n⟩;
         rw [wellTypedInv, wellTyped]; split
@@ -240,7 +240,7 @@ def subst
     · have := weaken (Γ := Γ) j; cases k <;> try trivial
     · cases k <;> simp_all only [not_true]; · repeat trivial
   | tyLam k =>
-    rename_i y _ _ _; by_cases y = x <;> (
+    rename_i y _ _ _; by_cases h : y = x <;> (
       simp_all only [Term.subst, ite_true]; apply tyLam
     )
     · subst h; apply drop; trivial
@@ -249,7 +249,7 @@ def subst
   | tyZero => exact tyZero
   | tySucc _ => apply tySucc; apply subst j; trivial
   | tyCase k l m =>
-    rename_i y _; by_cases y = x <;> simp_all only [Term.subst, ite_true]
+    rename_i y _; by_cases h : y = x <;> simp_all only [Term.subst, ite_true]
     · apply tyCase
       · apply subst j; exact k
       · apply subst j; exact l
@@ -257,7 +257,7 @@ def subst
     · apply tyCase <;> (apply subst j; try trivial)
       · exact swap (by trivial) m
   | tyMu k =>
-    rename_i y _; by_cases y = x <;> simp_all only [Term.subst, ite_true]
+    rename_i y _; by_cases h : y = x <;> simp_all only [Term.subst, ite_true]
     · subst h; apply tyMu; exact drop k
     · apply tyMu; apply subst j; exact swap (by trivial) k
 
@@ -310,7 +310,7 @@ section examples
   abbrev tySuccμ : ∅ ⊢ succμ ⦂ ℕt := by
     apply tyMu; apply tySucc; trivial
 
-  #eval eval 3 tySuccμ |> (·.3)
+  #eval eval 3 tySuccμ |>.3
 
   abbrev add_2_2 := add □ 2 □ 2
 
@@ -327,7 +327,7 @@ section examples
     · iterate 2 (apply tySucc)
       · exact tyZero
 
-  #eval eval 100 tyAdd_2_2 |> (·.3)
+  #eval eval 100 tyAdd_2_2 |>.3
 end examples
 
 section subject_expansion
@@ -339,7 +339,7 @@ section subject_expansion
     let illCase := 𝟘? 𝟘 [zero: 𝟘 |succ "x" : add]
     have nty_ill : ∅ ⊬ illCase := by
       by_contra; simp_all only [not_isEmpty_iff]; rename_i t j
-      cases t <;> (cases j; · contradiction)
+      cases t <;> (simp only [illCase] at j; cases j; · contradiction)
     rename_i f; have := f 𝟘 ℕt illCase tyZero zeroβ
     exact nty_ill.false this.some
 
@@ -350,7 +350,7 @@ section subject_expansion
       by_contra; simp_all only [not_isEmpty_iff]; rename_i t j
       cases t <;> (
         · cases j
-          · rename_i j; cases j
+          · rename_i j; simp only [illAp] at j; cases j
             · apply nty_illLam.false <;> trivial
       )
     rename_i f; have := f 𝟘 ℕt illAp tyZero (lamβ Value.lam)
@@ -363,8 +363,8 @@ abbrev Stuck m := Normal m ∧ IsEmpty (Value m)
 
 example : Stuck (` "x") := by
   unfold Stuck Normal; constructor
-  · intro n; is_empty; intro.
-  · is_empty; intro.
+  · intro n; is_empty; nofun
+  · is_empty; nofun
 
 -- https://plfa.github.io/Properties/#exercise-unstuck-recommended
 /--

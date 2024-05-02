@@ -300,7 +300,8 @@ section
     | zero => let ⟨_ :: [], _⟩ := vs; exact var
     | succ n r =>
       unfold church.applyN; apply ap
-      · apply sub var; simp only [Env.snoc, Value.path]; convert Sub.refl.conjR₂; sorry
+      · apply sub var; simp only [Env.snoc, Value.path]; convert Sub.refl.conjR₂
+        rw [←Fin.instAddMonoidWithOne.proof_2]
       · convert sub_env (@r vs.dropLast) ?_ using 1
         · simp only [vs.get_dropLast n, Fin.coe_ofNat_eq_mod]
           congr; simp_arith [Nat.mod_eq_of_lt]

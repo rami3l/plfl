@@ -84,15 +84,11 @@ mutual
   -/
   def 𝔼 (v : Value) : Clos → Prop | .clos m γ' => GtFn v → ∃ c, (γ' ⊢ m ⇓ c) ∧ 𝕍 v c
 end
--- https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/topic/.E2.9C.94.20Termination.20of.20mutual.20recursive.20defs.20with.20a.20.22shorthand.22.3F/near/378733953
-termination_by
-  𝕍 v c => (sizeOf v, 0)
-  𝔼 v c => (sizeOf v, 1)
 
 /-- `𝔾` relates `γ` to `γ'` if the corresponding values and closures are related by `𝔼` -/
 def 𝔾 (γ : Env Γ) (γ' : ClosEnv Γ) : Prop := ∀ {i : Γ ∋ ✶}, 𝔼 (γ i) (γ' i)
 
-def 𝔾.empty : 𝔾 `∅ ∅ := by intro.
+def 𝔾.empty : 𝔾 `∅ ∅ := nofun
 
 def 𝔾.ext (g : 𝔾 γ γ') (e : 𝔼 v c) : 𝔾 (γ`‚ v) (γ'‚' c) := by unfold 𝔾; intro
 | .z => exact e
@@ -110,20 +106,20 @@ lemma 𝕍.conj (uc : 𝕍 u c) (vc : 𝕍 v c) : 𝕍 (u ⊔ v) c := by
   | lam => unfold 𝕍; exact ⟨uc, vc⟩
 
 lemma 𝕍.of_not_gtFn (nf : ¬ GtFn v) : 𝕍 v (.clos (ƛ n) γ') := by induction v with unfold 𝕍
-| bot => triv
+| bot => trivial
 | fn v w => exfalso; apply nf; exists v, w
 | conj _ _ ih ih' => exact not_gtFn_conj_inv nf |>.imp ih ih'
 
 lemma 𝕍.sub {v v'} (vvc : 𝕍 v c) (lt : v' ⊑ v) : 𝕍 v' c := by
   let .clos m γ := c; cases m with (try simp [𝕍] at *; try contradiction) | lam m =>
     rename_i Γ; induction lt generalizing Γ with
-    | bot => triv
+    | bot => trivial
     | conjL _ _ ih ih' => unfold 𝕍; exact ⟨ih _ _ _ vvc, ih' _ _ _ vvc⟩
     | conjR₁ _ ih => apply ih; unfold 𝕍 at vvc; exact vvc.1
     | conjR₂ _ ih => apply ih; unfold 𝕍 at vvc; exact vvc.2
     | trans _ _ ih ih' => apply_rules [ih, ih']
     | @fn v₂ v₁ w₁ w₂ lt lt' ih ih' =>
-      unfold 𝕍 at vvc ⊢; intro c evc gtw
+      unfold 𝕍 at vvc ⊢; intro _ c evc gtw
       have : 𝔼 v₂ c := by
         -- HACK: Broken mutual induction with `𝔼.sub` here.
         cases c; simp only [𝔼] at *; intro gtv'
@@ -132,7 +128,7 @@ lemma 𝕍.sub {v v'} (vvc : 𝕍 v c) (lt : v' ⊑ v) : 𝕍 v' c := by
       have ⟨c', ec', vw₂c'⟩ := vvc this (gtw.sub lt'); exists c', ec'
       let .clos _ _ := c'; have ⟨m', h'⟩ := WHNF.of_𝕍 vw₂c'; subst h'; exact ih' _ _ _ vw₂c'
     | @dist v₁ w₁ w₂ =>
-      unfold 𝕍 at vvc ⊢; intro c ev₁c gt; unfold 𝕍 at vvc
+      unfold 𝕍 at vvc ⊢; intro _ c ev₁c gt; unfold 𝕍 at vvc
       by_cases hgt₁ : GtFn w₁ <;> by_cases hgt₂ : GtFn w₂
       · have ⟨c₁, ec₁, vw₁⟩ := vvc.1 ev₁c hgt₁; have ⟨c₂, ec₂, vw₂⟩ := vvc.2 ev₁c hgt₂
         exists c₁, ec₁; cases c₁; have ⟨m', h'⟩ := WHNF.of_𝕍 vw₁; subst h'; unfold 𝕍
@@ -161,7 +157,7 @@ theorem 𝔼.of_eval {Γ} {γ : Env Γ} {γ' : ClosEnv Γ} {m : Γ ⊢ ✶} (g :
     have ⟨m', h'⟩ := WHNF.of_𝕍 v_cl'; subst h'; unfold 𝕍 at v_cl'
     have ⟨c', em'c', v_c'⟩ := @v_cl' (.clos m γ') (ih' g rfl) gt; exact ⟨c', e_cl'.ap em'c', v_c'⟩
   | @fn _ _ n _ _ _ ih =>
-    unfold 𝔼 at ih; exists .clos (ƛ n) γ', .lam; unfold 𝕍; intro c ev₁c; exact ih (g.ext ev₁c) rfl
+    unfold 𝔼 at ih; exists .clos (ƛ n) γ', .lam; unfold 𝕍; intro _ c ev₁c; exact ih (g.ext ev₁c) rfl
   | bot => subst_vars; exfalso; exact not_gtFn_bot gt
   | sub _ lt ih =>
     unfold 𝔼 at ih; have ⟨c, e_c, v_c⟩ := ih g rfl <| gt.sub lt; exact ⟨c, e_c, v_c.sub lt⟩
