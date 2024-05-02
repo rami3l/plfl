@@ -15,7 +15,7 @@ def ℱ (d : Denot (Γ‚ ✶)) : Denot Γ
 | γ, .conj u v => ℱ d γ u ∧ ℱ d γ v
 
 lemma sub_ℱ (d : ℱ (ℰ n) γ v) (lt : u ⊑ v) : ℱ (ℰ n) γ u := by induction lt with
-| bot => triv
+| bot => trivial
 | conjL _ _ ih ih' => exact ⟨ih d, ih' d⟩
 | conjR₁ _ ih => exact ih d.1
 | conjR₂ _ ih => exact ih d.2
@@ -27,7 +27,7 @@ lemma ℱ_ℰ (d : ℰ (ƛ n) γ v) : ℱ (ℰ n) γ v := by
   generalize hx : (ƛ n) = x at *
   induction d with try injection hx
   | fn d => subst_vars; exact d
-  | bot => triv
+  | bot => trivial
   | conj _ _ ih ih' => exact ⟨ih hx, ih' hx⟩
   | sub _ lt ih => exact sub_ℱ (ih hx) lt
 

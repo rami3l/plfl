@@ -92,7 +92,7 @@ section
   : ∃ (δ : Env Γ), (γ `⊢ σ ￬ δ) ∧ (δ ⊢ ` i ￬ v)
   := by
     exists Env.const i v; unfold Env.const; constructor
-    · intro j; by_cases i = j <;> simp only [h] at *
+    · intro j; by_cases h : i = j <;> simp only [h] at *
       · exact d
       · exact .bot
     · convert Eval.var; simp only [Env.const, ite_true]
